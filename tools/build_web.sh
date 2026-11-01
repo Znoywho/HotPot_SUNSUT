@@ -9,7 +9,7 @@
 # (hoặc: ITCH_TARGET=tenban/soi-sung-suc ./tools/build_web.sh push).
 set -euo pipefail
 
-ITCH_TARGET="${ITCH_TARGET:-}"   # TODO: điền "<tên-itch>/<tên-game>" sau khi tạo trang itch.io
+ITCH_TARGET="${ITCH_TARGET:-znoywho/soi-sung-suc}"   # https://znoywho.itch.io/soi-sung-suc
 GODOT="${GODOT:-godot}"          # Godot 4.7.2
 
 cd "$(dirname "$0")/.."
