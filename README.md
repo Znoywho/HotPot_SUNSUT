@@ -59,6 +59,28 @@ Hiện tại mọi màn đều là **bản tạm**: nút bấm và log, kế th�
 
 Kế hoạch 3 tuần: [`docs/PLAN.md`](docs/PLAN.md)
 
+## Dùng Claude Code
+
+Phân công và quy tắc cho Claude nằm trong [`.claude/CLAUDE.md`](.claude/CLAUDE.md) (mã task S01–S25).
+Mỗi người tạo file `CLAUDE.local.md` ở thư mục gốc (đã nằm trong `.gitignore`) để Claude biết mình là ai.
+Claude chỉ sửa code trong phần của bạn, thấy lỗi ở phần người khác thì báo lại chứ không tự sửa.
+
+**Hải:**
+```markdown
+# Current user
+- I am Member 2 — Đỗ Hoàng Hải, responsible for hunting/combat and art assets.
+- My area: `scenes/hunt/`, `data/combatants/`, `assets/sprites/`, `CREDITS.md` entries (see task list in `.claude/CLAUDE.md`).
+- Everything else belongs to Member 1 (Hạo) or Member 3 (Tuấn): report issues there, do not edit.
+```
+
+**Tuấn:**
+```markdown
+# Current user
+- I am Member 3 — Nguyễn Ngọc Minh Tuấn, responsible for the kitchen and restaurant (cook & sell).
+- My area: `scenes/cook/`, `scenes/sell/`, `data/broths/` (see task list in `.claude/CLAUDE.md`).
+- Everything else belongs to Member 1 (Hạo) or Member 2 (Hải): report issues there, do not edit.
+```
+
 ## Quy ước
 
 - Tên file/thư mục `snake_case`, class `PascalCase`, thụt lề bằng **tab**.
