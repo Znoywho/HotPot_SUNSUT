@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/hunt/combat/passives/greens_burn.gd" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "greens_mage"
+display_name = "Rau cải pháp sư"
+max_hp = 85
+damage = 20
+speed = 12
+passive = ExtResource("2")
+drops = {"greens": 2}
+is_boss = false
+min_day = 1

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/upgrade_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "stove"
+display_name = "Bếp xịn"
+description = "Hệ số thời gian nấu (càng nhỏ càng nhanh)."
+category = 0
+costs = Array[int]([150000, 300000, 600000, 1200000, 2400000])
+values = Array[float]([1.0, 0.9, 0.8, 0.7, 0.6, 0.5])
+evolves_into = "golden_stove"

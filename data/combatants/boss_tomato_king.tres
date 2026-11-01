@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+
+
+[resource]
+script = ExtResource("1")
+id = "boss_tomato_king"
+display_name = "Vua Cà Chua (Boss tạm)"
+max_hp = 400
+damage = 22
+speed = 12
+
+drops = {"golden_tomato": 1, "tomato": 3}
+is_boss = true
+min_day = 1

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/upgrade_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "armor"
+display_name = "Giáp phòng hộ"
+description = "+ máu tối đa khi đi săn."
+category = 1
+costs = Array[int]([80000, 160000, 320000, 640000, 1280000])
+values = Array[float]([0.0, 30.0, 60.0, 100.0, 150.0, 200.0])
+evolves_into = "battle_robe"

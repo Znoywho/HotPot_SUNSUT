@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/hunt/combat/passives/enoki_first_strike.gd" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "enoki_archer"
+display_name = "Nấm kim châm cung thủ"
+max_hp = 90
+damage = 17
+speed = 20
+passive = ExtResource("2")
+drops = {"enoki": 2}
+is_boss = false
+min_day = 1

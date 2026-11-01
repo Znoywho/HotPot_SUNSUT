@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/upgrade_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "furniture"
+display_name = "Nội thất"
+description = "+5% tip mỗi cấp (doc: mỗi cấp tăng sao, tăng giá, +5% tip)."
+category = 2
+costs = Array[int]([200000, 400000, 800000, 1600000, 3200000])
+values = Array[float]([0.0, 0.05, 0.1, 0.15, 0.2, 0.25])
+evolves_into = ""
