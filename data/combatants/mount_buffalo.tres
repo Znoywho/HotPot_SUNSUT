@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/hunt/combat/passives/buffalo_hide.gd" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "mount_buffalo"
+display_name = "Trâu nước"
+max_hp = 180
+damage = 10
+speed = 12
+passive = ExtResource("2")
+drops = {}
+is_boss = false
+min_day = 999

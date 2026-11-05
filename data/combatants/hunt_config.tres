@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="HuntConfig" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/hunt/hunt_config.gd" id="1"]
+[ext_resource type="Resource" path="res://data/combatants/mount_buffalo.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+mount = ExtResource("2")
