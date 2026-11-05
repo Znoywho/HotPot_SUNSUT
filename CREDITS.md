@@ -15,7 +15,8 @@ Giấy phép thường gặp: CC0 (tự do), CC-BY (ghi tác giả), OFL (font).
 
 | Asset | Dùng cho | Tác giả | Giấy phép | Link |
 |---|---|---|---|---|
-| | | | | |
+| `assets/sprites/monsters/*.png` (11 quái + 2 boss, pixel 32×32, bản tạm) | Sprite toàn bộ quái và boss | Nhóm tự làm | Của nhóm | — |
+| `assets/sprites/characters/player.png` (pixel 32×32, bản tạm) | Sprite đầu bếp (người chơi) | Nhóm tự làm | Của nhóm | — |
 
 ## Âm thanh
 
