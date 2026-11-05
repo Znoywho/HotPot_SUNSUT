@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1")
 id = "boss_tomato_king"
-display_name = "Vua Cà Chua (Boss tạm)"
+display_name = "Vua Cà Chua"
 max_hp = 400
 damage = 22
 speed = 12
