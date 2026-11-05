@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/hunt/combat/passives/beef_ball_bounce.gd" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "bouncy_beef_ball"
+display_name = "Bò viên nảy"
+max_hp = 110
+damage = 14
+speed = 13
+passive = ExtResource("2")
+drops = {"beef": 2}
+is_boss = false
+min_day = 5
