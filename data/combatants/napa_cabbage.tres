@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/hunt/combat/passives/napa_layers.gd" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "napa_cabbage"
+display_name = "Cải thảo nhiều lớp"
+max_hp = 140
+damage = 9
+speed = 9
+passive = ExtResource("2")
+drops = {"napa_cabbage": 2, "greens": 1}
+is_boss = false
+min_day = 6

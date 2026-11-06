@@ -25,6 +25,14 @@ const INGREDIENT_NAMES := {
 	"shrimp": "Tôm",
 	"greens": "Rau cải",
 	"enoki": "Nấm kim châm",
+	# Đồ nhúng (phần săn rơi ra).
+	"beef_ball": "Bò viên",
+	"squid": "Mực",
+	"clam": "Nghêu",
+	"napa_cabbage": "Cải thảo",
+	"water_spinach": "Rau muống",
+	"beef_roll": "Bò cuộn",
+	"shiitake": "Nấm hương",
 }
 const GOLDEN_PREFIX := "golden_" ## vd "golden_tomato" = cà chua hoàng kim.
 const GOLDEN_PRICE_MULTIPLIER := 3.0

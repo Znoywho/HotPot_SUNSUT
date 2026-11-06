@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/hunt/combat/passives/cherry_swarm.gd" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "cherry_tomato_swarm"
+display_name = "Cà chua bi bầy đàn"
+max_hp = 60
+damage = 9
+speed = 16
+passive = ExtResource("2")
+drops = {"tomato": 1}
+is_boss = false
+min_day = 3

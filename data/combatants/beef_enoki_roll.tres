@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/hunt/combat/passives/beef_roll_curl.gd" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "beef_enoki_roll"
+display_name = "Bò cuộn kim châm"
+max_hp = 110
+damage = 15
+speed = 13
+passive = ExtResource("2")
+drops = {"beef_roll": 2, "enoki": 1}
+is_boss = false
+min_day = 8

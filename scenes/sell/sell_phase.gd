@@ -112,7 +112,7 @@ func _finish_eating(table: TableNode) -> void:
 	var broth := Database.get_broth(table.order_broth_id)
 	if broth:
 		var tip_rate := randf_range(TIP_MIN, TIP_MAX) + Database.upgrade_value("furniture")
-		var tip := roundi(broth.price * tip_rate)
+		var tip := roundi(broth.price * tip_rate / 1000.0) * 1000 # Làm tròn đến 1.000đ.
 		GameState.add_money(broth.price + tip)
 		log_line("Khách thanh toán %s: %s + tip %s" % [broth.display_name, GameState.format_money(broth.price), GameState.format_money(tip)])
 	table.clear()

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/hunt/combat/passives/mushroom_split.gd" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "splitting_mushroom"
+display_name = "Nấm mỡ sinh sôi"
+max_hp = 100
+damage = 14
+speed = 14
+passive = ExtResource("2")
+drops = {"mushroom": 2}
+is_boss = false
+min_day = 10

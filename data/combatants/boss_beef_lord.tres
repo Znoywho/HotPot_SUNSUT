@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/hunt/combat/passives/beef_lord_rage.gd" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "boss_beef_lord"
+display_name = "Lão Bò Lẩu"
+max_hp = 480
+damage = 18
+speed = 13
+passive = ExtResource("2")
+drops = {"golden_beef": 1, "beef": 4}
+is_boss = true
+min_day = 10

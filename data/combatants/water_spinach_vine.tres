@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/hunt/combat/passives/spinach_bind.gd" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "water_spinach_vine"
+display_name = "Rau muống quấn"
+max_hp = 80
+damage = 12
+speed = 17
+passive = ExtResource("2")
+drops = {"water_spinach": 2, "greens": 1}
+is_boss = false
+min_day = 1

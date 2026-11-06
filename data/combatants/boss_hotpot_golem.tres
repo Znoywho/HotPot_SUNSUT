@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/classes/combatant_data.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/hunt/combat/passives/hotpot_golem_boil.gd" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "boss_hotpot_golem"
+display_name = "Nồi Lẩu Thần"
+max_hp = 560
+damage = 18
+speed = 11
+passive = ExtResource("2")
+drops = {"golden_shrimp": 1, "shrimp": 3, "greens": 2}
+is_boss = true
+min_day = 15
