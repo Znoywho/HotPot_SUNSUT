@@ -31,6 +31,9 @@ var monsters: Array[CombatantData] = [
 var broths: Array[BrothData] = [
 	preload("res://data/broths/tomato_broth.tres"),
 	preload("res://data/broths/mushroom_broth.tres"),
+	preload("res://data/broths/spicy_broth.tres"),
+	preload("res://data/broths/seafood_broth.tres"),
+	preload("res://data/broths/royal_broth.tres"),
 ]
 
 var upgrades: Array[UpgradeData] = [
