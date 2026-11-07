@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = "seafood_broth"
 display_name = "Lẩu Thái"
-ingredients = {"shrimp": 2, "enoki": 1}
+ingredients = {"shrimp": 2, "enoki": 1, "chili": 1}
 cook_time = 12.0
 price = 220000
 unlock_day = 10

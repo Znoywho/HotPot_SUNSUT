@@ -86,6 +86,7 @@ func _build_ui() -> void:
 	floor_panel.add_theme_stylebox_override("panel", floor_style)
 	bg_container.add_child(floor_panel)
 
+
 	# 2. KHÔNG GIAN CHÍNH (Chừa 92px phía trên cho HUD chung của Hạo)
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -214,6 +215,14 @@ func _build_ui() -> void:
 	close_btn.custom_minimum_size = Vector2(180, 48)
 	close_btn.pressed.connect(DayManager.next_phase)
 	bottom_row.add_child(close_btn)
+
+	# Ánh sáng theo giờ (13h sáng -> chiều vàng -> 18h tối dần, bật đèn ấm). Phủ lên cả quán ở mức
+	# nhẹ (strength 0.5) để chữ vẫn dễ đọc; bảng thương lượng / sự kiện mở sau sẽ nằm trên lớp này.
+	var day_light := DayLight.new()
+	day_light.strength = 0.5
+	add_child(day_light)
+	for x in [220.0, 640.0, 1060.0]:
+		day_light.add_lamp(Vector2(x, 150.0), 300.0, 0.45, 0.7)
 
 
 func _setup() -> void:
