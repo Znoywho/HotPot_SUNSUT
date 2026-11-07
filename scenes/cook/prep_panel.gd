@@ -21,6 +21,7 @@ const ACTIONS := {
 	"skewer": preload("res://scenes/cook/prep_actions/skewer.gd"),
 }
 const PANEL_SIZE := Vector2(1200, 540)
+const BAR_HEIGHT := 28.0 ## Đủ cao để chữ 18px nằm trong thanh tiến độ.
 const HUD_SHIFT := 46.0 ## Dời khung xuống dưới thanh HUD.
 const LIST_W := 330.0
 const GRADE_TEXT := ["HỎNG!", "ỔN", "HOÀN HẢO!"]
@@ -131,9 +132,6 @@ func open(needs: Dictionary) -> void:
 	_host = Control.new()
 	_host.custom_minimum_size = PrepAction.AREA
 	gbox.add_child(_host)
-	var prow := HBoxContainer.new()
-	prow.add_theme_constant_override("separation", 12)
-	gbox.add_child(prow)
 	_bar = ProgressBar.new()
 	_bar.show_percentage = false
 	var bar_bg := StyleBoxFlat.new()
@@ -151,13 +149,13 @@ func open(needs: Dictionary) -> void:
 	_bar.add_theme_stylebox_override("background", bar_bg)
 	_bar.add_theme_stylebox_override("fill", bar_fill)
 	_bar.max_value = 1.0
-	_bar.size_flags_horizontal = SIZE_EXPAND_FILL
-	_bar.custom_minimum_size = Vector2(0, 24)
-	prow.add_child(_bar)
-	_status = HuntUI.label("", 17, HuntUI.INK)
-	_status.custom_minimum_size = Vector2(340, 0)
-	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	prow.add_child(_status)
+	_bar.custom_minimum_size = Vector2(0, BAR_HEIGHT)
+	gbox.add_child(_bar) # Thanh chạy hết bề ngang thẻ, số Hoàn hảo/Ổn/Hỏng nằm gọn trong thanh.
+	_status = HuntUI.outlined_label("", 18, Color("fbe9d0"))
+	_status.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_bar.add_child(_status)
 
 	_collect_ids()
 	_rebuild_list()
@@ -502,16 +500,16 @@ func _finish_session() -> void:
 		var q := cfg.quality_of(avg)
 		var n := GameState.prep_items(id, units, q)
 		_title.text = "SƠ CHẾ XONG: %s" % str(GameState.QUALITY_NAMES[q]).to_upper()
-		_hint.text = "Hoàn hảo %d · Ổn %d · Hỏng %d" % [_grades.count(2), _grades.count(1), fails]
+		_hint.text = _effect_text(q) # Số Hoàn hảo/Ổn/Hỏng đã hiện trong thanh tiến độ.
 		var pic := HuntUI.texture_rect(HuntUI.prepped_texture(id), 96)
 		pic.size_flags_horizontal = SIZE_SHRINK_CENTER
 		v.add_child(pic) # Icon đồ đã sơ chế (bày trên đĩa).
 		v.add_child(_center_label("+%d %s" % [n, GameState.item_display_name(id).to_lower()], 26, HuntUI.INK))
 		v.add_child(_center_label(str(GameState.QUALITY_NAMES[q]), 40, [HuntUI.BAD, HuntUI.INK, HuntUI.GOLDEN_INK][q]))
-		v.add_child(_center_label(_effect_text(q), 18, HuntUI.INK_SOFT))
 		prepped.emit(id)
 	_recipe = null
 	_bar.value = 1.0
+	_status.text = "Hoàn hảo %d · Ổn %d · Hỏng %d" % [_grades.count(2), _grades.count(1), fails]
 	_refresh_buttons()
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
