@@ -10,6 +10,7 @@ var _info_label: Label
 
 
 func _ready() -> void:
+	DayManager.phase_time_up.connect(_on_phase_time_up)
 	_build_ui()
 	_rebuild()
 
@@ -27,7 +28,8 @@ func _process(delta: float) -> void:
 		(ui["time"] as Label).text = "%.0fs" % maxf(float(pot["remaining"]), 0.0)
 		if float(pot["remaining"]) <= 0.0:
 			_cooking.remove_at(i)
-			GameState.add_broth(str(pot["broth_id"]))
+			_add_cooked(pot)
+			log_line("Đã nấu xong 1 nồi %s." % str(pot["display_name"]))
 			(ui["card"] as Control).queue_free()
 			_rebuild()
 	_update_info()
@@ -151,7 +153,8 @@ func _cook(broth: BrothData) -> void:
 		return
 	if not GameState.has_items(broth.ingredients):
 		return
-	if not GameState.consume_items(broth.ingredients):
+	var used := GameState.consume_items_info(broth.ingredients)
+	if not used["ok"]:
 		return
 	var cook_time := broth.cook_time * Database.upgrade_value("stove")
 	_cooking.append({
@@ -159,6 +162,25 @@ func _cook(broth: BrothData) -> void:
 		"display_name": broth.display_name,
 		"remaining": cook_time,
 		"total": cook_time,
+		"from_day": used["oldest_day"],
+		"expired": used["expired"],
 		"ui": {},
 	})
+	if used["expired"]:
+		print("[color=orange]Nồi này nấu từ nguyên liệu hết hạn, bán ra có thể bị khách phát hiện![/color]")
 	_rebuild()
+
+
+func _add_cooked(pot: Dictionary) -> void:
+	GameState.add_broth(str(pot["broth_id"]), 1, int(pot.get("from_day", -1)), bool(pot.get("expired", false)))
+
+
+func _on_phase_time_up() -> void:
+	for pot in _cooking:
+		_add_cooked(pot)
+	_cooking.clear()
+	DayManager.next_phase()
+
+
+func log_line(text: String) -> void:
+	print(text)

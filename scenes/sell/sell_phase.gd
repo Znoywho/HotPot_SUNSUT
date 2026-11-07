@@ -6,11 +6,20 @@ const TIP_MAX := 0.07
 const BASE_EATING_TIME := 8.0
 const SPAWN_INTERVAL := 6.0
 const CUSTOMER_WAIT := 20.0
+const STAR_FAST_SERVE := 0.15
+const STAR_SERVE := 0.05
+const STAR_CUSTOMER_LEFT := 0.25
+const NEGOTIATE_CHANCE := 0.5
+const EXPIRED_DETECT_CHANCE := 0.25
+const EXPIRED_COMPENSATION := 2.0
+const EXPIRED_STAR_LOSS := 0.5
 
 var tables: Array[TableNode] = []
 var cart := Cart.new()
 var _spawn_timer := 3.0
 var _table_ui: Array[Dictionary] = []
+var _negotiating: TableNode = null
+var _events = preload("res://scenes/sell/sell_events.gd").new()
 
 var _revenue_label: Label
 var _stars_label: Label
@@ -24,6 +33,8 @@ var _inventory_ids: Array[String] = []
 
 func _ready() -> void:
 	add_child(cart)
+	add_child(_events)
+	_events.setup(self)
 	_build_ui()
 	_setup()
 
@@ -35,7 +46,7 @@ func _process(delta: float) -> void:
 		_spawn_timer = spawn_interval
 		_try_spawn_customer()
 	for table in tables:
-		if table.state == TableNode.State.WAITING_ORDER and table.customer:
+		if table.state == TableNode.State.WAITING_ORDER and table.customer and table != _negotiating:
 			if table.customer.remaining_time() <= 0.0:
 				_customer_timeout(table)
 		elif table.state == TableNode.State.EATING:
@@ -149,6 +160,9 @@ func _setup() -> void:
 			"serve": serve_btn,
 		})
 	log_line_safe("Quán có %d bàn." % GameState.tables_floor1)
+	var expired := GameState.expired_stock_count()
+	if expired > 0:
+		log_line_safe("[color=orange]Kho đang giữ %d món hết hạn: bán ra có thể bị khách phát hiện, thanh tra tới là bị phạt.[/color]" % expired)
 	for broth in Database.broths_for_day(GameState.day):
 		var btn := HuntUI.button(broth.display_name)
 		btn.custom_minimum_size = Vector2(120, 40)
@@ -171,7 +185,11 @@ func _try_spawn_customer() -> void:
 	customer.setup(broth.id, sides, CUSTOMER_WAIT)
 	empty_table.occupy(customer)
 	empty_table.place_order(broth.id, sides)
-	log_line_safe("Khách vào bàn, gọi %s." % broth.display_name)
+	empty_table.special = _events.take_pending_special()
+	if empty_table.special == "critic":
+		log_line_safe("[color=#6a3d9a]Nhà phê bình vào bàn, gọi %s.[/color]" % broth.display_name)
+	else:
+		log_line_safe("Khách vào bàn, gọi %s." % broth.display_name)
 
 
 func _first_empty_table() -> TableNode:
@@ -211,36 +229,104 @@ func _pick_to_cart(broth_id: String) -> void:
 func _serve_table(table: TableNode) -> void:
 	if table.state != TableNode.State.WAITING_ORDER:
 		return
+	if _negotiating != null:
+		return
 	if cart.carrying_broth_id == "":
 		if not cart.pick_broth(table.order_broth_id):
-			var broth := Database.get_broth(table.order_broth_id)
-			_notification_label.text = "Kho chưa có món %s!" % (broth.display_name if broth else table.order_broth_id)
+			_negotiate(table)
 			return
 	elif cart.carrying_broth_id != table.order_broth_id:
 		_notification_label.text = "Xe đẩy đang chở %s, bàn này gọi %s!" % [cart.carrying_broth_id, table.order_broth_id]
 		return
+	_deliver(table)
+
+
+func _deliver(table: TableNode) -> void:
+	var fast := table.customer != null and table.customer.remaining_time() > CUSTOMER_WAIT * 0.5
 	if cart.serve_to(table):
-		log_line_safe("Đã giao %s đến bàn." % table.order_broth_id)
+		table.served_fast = fast
+		GameState.add_star(STAR_FAST_SERVE if fast else STAR_SERVE)
+		log_line_safe("Đã giao %s đến bàn%s." % [_broth_name(table.order_broth_id), " (nhanh, +sao)" if fast else ""])
 		_notification_label.text = "Đã phục vụ bàn thành công."
 
 
+func _negotiate(table: TableNode) -> void:
+	var missing := _broth_name(table.order_broth_id)
+	var offer := _best_in_stock()
+	if offer == null:
+		log_line_safe("[color=orange]Hết %s và kho không còn nồi nào để mời đổi![/color]" % missing)
+		return
+	if table.customer != null and table.customer.has_meta("negotiated"):
+		log_line_safe("[color=orange]Khách bàn này đã từ chối đổi món rồi.[/color]")
+		return
+	_negotiating = table
+	var wheel = preload("res://scenes/sell/negotiation_wheel.gd").new()
+	add_child(wheel)
+	wheel.open(missing, offer.display_name, NEGOTIATE_CHANCE)
+	var accepted: bool = await wheel.decided
+	_negotiating = null
+	if table.state != TableNode.State.WAITING_ORDER:
+		return
+	if table.customer != null:
+		table.customer.set_meta("negotiated", true)
+	if accepted and cart.pick_broth(offer.id):
+		table.order_broth_id = offer.id
+		if table.customer != null:
+			table.customer.desired_broth_id = offer.id
+		log_line_safe("[color=#4caf50]Khách đồng ý đổi sang %s.[/color]" % offer.display_name)
+		_deliver(table)
+	else:
+		_customer_timeout(table)
+
+
+func _best_in_stock() -> BrothData:
+	var best: BrothData = null
+	for b in Database.broths:
+		var n := GameState.get_broth_count(b.id)
+		if n <= 0:
+			continue
+		if best == null or n > GameState.get_broth_count(best.id) or (n == GameState.get_broth_count(best.id) and b.price > best.price):
+			best = b
+	return best
+
+
+func _broth_name(id: String) -> String:
+	var broth := Database.get_broth(id)
+	return broth.display_name if broth else id
+
+
 func _finish_eating(table: TableNode) -> void:
+	if table.state != TableNode.State.EATING:
+		return
 	var broth := Database.get_broth(table.order_broth_id)
+	if broth and table.served_expired and (table.special != "" or randf() < EXPIRED_DETECT_CHANCE):
+		var compensation := roundi(broth.price * EXPIRED_COMPENSATION / 1000.0) * 1000
+		GameState.add_money(-compensation, false)
+		GameState.lose_star(EXPIRED_STAR_LOSS)
+		log_line_safe("[color=red]Khách phát hiện %s đã hết hạn! Không trả tiền, quán bồi thường %s, trừ sao.[/color]" % [broth.display_name, GameState.format_money(compensation)])
+		if table.special != "":
+			_events.special_result(table, false, broth.price)
+		table.clear()
+		return
 	if broth:
 		var tip_rate := randf_range(TIP_MIN, TIP_MAX) + Database.upgrade_value("furniture")
 		var tip := roundi(broth.price * tip_rate / 1000.0) * 1000
 		GameState.add_money(broth.price + tip)
 		log_line_safe("Khách thanh toán %s: %s + tip %s" % [broth.display_name, GameState.format_money(broth.price), GameState.format_money(tip)])
 		_notification_label.text = "Bàn thanh toán: +%s (Tip: +%s)" % [GameState.format_money(broth.price), GameState.format_money(tip)]
+		if table.special != "":
+			_events.special_result(table, table.served_fast and not table.served_expired, broth.price)
 	table.clear()
 
 
 func _customer_timeout(table: TableNode) -> void:
 	if table.state != TableNode.State.WAITING_ORDER:
 		return
-	GameState.lose_star()
+	GameState.lose_star(STAR_CUSTOMER_LEFT)
 	log_line_safe("[color=red]Khách bỏ về, quán bị trừ sao.[/color]")
 	_notification_label.text = "Khách hết kiên nhẫn bỏ về! Bị trừ 1 sao."
+	if table.special != "":
+		_events.special_result(table, false, 0)
 	table.clear()
 
 
