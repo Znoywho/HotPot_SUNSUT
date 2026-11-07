@@ -14,6 +14,7 @@ const KIT := "res://assets/sprites/kitchen/"
 const CHAR_DIR := "res://assets/sprites/characters/"
 const STAGE := Vector2(1280, 720)
 const PX := 4.0 ## 1 điểm ảnh nền = 4 px màn hình.
+const SIDE_WALL_PX := 160.0 ## Bề rộng ảnh tường nối (điểm ảnh nền), đủ lấp màn rất rộng.
 const FEET_Y := 452.0
 const STOVE_X0 := 388.0
 const STOVE_SCALE := 0.8 ## Thu nhỏ hàng bếp cho gọn, dồn vào giữa.
@@ -109,6 +110,7 @@ func _build_stage() -> void:
 	_stage.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(_stage)
 	_kit_sprite("kitchen_bg", Vector2(320, 180), Vector2.ZERO)
+	_build_side_walls()
 
 	_fridge = _kit_sprite("fridge_closed", Vector2(36, 56), Vector2(16, 148))
 	_fridge.mouse_filter = MOUSE_FILTER_STOP
@@ -151,6 +153,13 @@ func _build_stage() -> void:
 	_stage.add_child(chips)
 	for slot in _stoves:
 		slot.detach_chip(chips)
+
+
+## Nối tường và sàn sang hai bên nền bếp để màn rộng hơn 16:9 không bị dải trống.
+func _build_side_walls() -> void:
+	var side_size := Vector2(SIDE_WALL_PX, 180)
+	_kit_sprite("kitchen_bg_side", side_size, Vector2(-SIDE_WALL_PX * PX, 0))
+	_kit_sprite("kitchen_bg_side", side_size, Vector2(STAGE.x, 0))
 
 
 ## Dàn các bếp (kể cả ô "nâng cấp") ra giữa khu bếp nấu cho cân đối.
