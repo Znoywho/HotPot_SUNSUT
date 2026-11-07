@@ -10,7 +10,7 @@ const SWIPE_CUT := "swipe_cut" ## Vuốt theo đường chấm để cắt/khía
 const TIMED_STAGE := "timed_stage" ## Bấm "Xong!" khi kim nằm trong vùng xanh (chần, ướp, ngâm, để ráo).
 
 @export var title := "" ## Tên bước hiện trên bảng, vd "Khía chữ thập".
-@export_enum("hold_wash", "tap_targets", "drag_pull", "swipe_cut", "timed_stage") var kind: String = "hold_wash"
+@export_enum("hold_wash", "tap_targets", "drag_pull", "swipe_cut", "timed_stage", "scrub", "roll_ball", "skewer") var kind: String = "hold_wash"
 @export_multiline var hint := "" ## Hướng dẫn ngắn dưới tên bước.
 @export var duration := 1.5 ## Giây: thời gian giữ cần thiết (hold_wash) hoặc chu kỳ kim chạy (timed_stage).
 @export var count := 1 ## Số điểm chạm (tap_targets) / số lần kéo (drag_pull) / số đường cắt (swipe_cut).
