@@ -6,7 +6,7 @@
 |---|---|
 | **MVP (bắt buộc)** | Vòng lặp ngày + KPI, săn theo lượt (6 quái + nội tại người chơi), nấu 2–3 nước cốt, bán hàng (khách, bàn, xe đẩy, tip, sao), shop cơ bản (Nồi, Bếp, Dao, Giáp, Nội thất, bàn tầng 1), Game Over |
 | **Nên có** | Boss + nguyên liệu hoàng kim, chí mạng, Thú cưỡi, Lầu 2, mốc ngày 5/10/15, save/load |
-| **Nếu dư thời gian** | Bản tiến hóa max cấp, nhân viên, phòng riêng + lẩu 4 ngăn, nhiệm vụ |
+| **Nếu dư thời gian** | Bản tiến hóa max cấp, nhân viên, phòng riêng + lẩu 4 ngăn, nhiệm vụ, dọn bếp buổi tối (đoạn ngắn sau khi bán xong để thấy cửa sổ bếp đổi màu đêm; thêm một giai đoạn vào `DayManager` nên cần cả nhóm đồng ý) |
 
 ## Tuần 1: Bản chơi được (xấu cũng được)
 
