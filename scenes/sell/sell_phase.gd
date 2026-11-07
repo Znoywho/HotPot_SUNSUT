@@ -78,12 +78,6 @@ func _build_ui() -> void:
 	grid.set_meta("grid", true)
 	set_meta("grid", grid)
 
-	var footer := Button.new()
-	footer.text = "Đóng cửa, tổng kết »"
-	footer.custom_minimum_size = Vector2(0, 56)
-	footer.pressed.connect(DayManager.next_phase)
-	root.add_child(footer)
-
 	var cart_bar := HBoxContainer.new()
 	root.add_child(cart_bar)
 	var inv_label := Label.new()
@@ -101,6 +95,12 @@ func _build_ui() -> void:
 	_notification_label.add_theme_font_size_override("font_size", 20)
 	_notification_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(_notification_label)
+
+	var footer := Button.new()
+	footer.text = "Đóng cửa, tổng kết »"
+	footer.custom_minimum_size = Vector2(0, 56)
+	footer.pressed.connect(DayManager.next_phase)
+	root.add_child(footer)
 
 
 func _setup() -> void:
@@ -220,9 +220,13 @@ func _pick_to_cart(broth_id: String) -> void:
 func _serve_table(table: TableNode) -> void:
 	if table.state != TableNode.State.WAITING_ORDER:
 		return
-	if not cart.pick_broth(table.order_broth_id):
-		var broth := Database.get_broth(table.order_broth_id)
-		log_line_safe("[color=orange]Kho chưa có món %s![/color]" % (broth.display_name if broth else table.order_broth_id))
+	if cart.carrying_broth_id == "":
+		if not cart.pick_broth(table.order_broth_id):
+			var broth := Database.get_broth(table.order_broth_id)
+			_notification_label.text = "Kho chưa có món %s!" % (broth.display_name if broth else table.order_broth_id)
+			return
+	elif cart.carrying_broth_id != table.order_broth_id:
+		_notification_label.text = "Xe đẩy đang chở %s, bàn này gọi %s!" % [cart.carrying_broth_id, table.order_broth_id]
 		return
 	if cart.serve_to(table):
 		log_line_safe("Đã giao %s đến bàn." % table.order_broth_id)
