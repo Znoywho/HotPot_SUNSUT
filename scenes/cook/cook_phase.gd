@@ -19,6 +19,8 @@ func _process(delta: float) -> void:
 		var pot := _cooking[i]
 		pot["remaining"] = float(pot["remaining"]) - delta
 		var ui: Dictionary = pot["ui"]
+		if ui.is_empty() or not ui.has("bar"):
+			continue
 		var total := float(pot["total"])
 		var progress := 100.0 * (1.0 - float(pot["remaining"]) / total) if total > 0.0 else 100.0
 		(ui["bar"] as ProgressBar).value = clampf(progress, 0.0, 100.0)
@@ -98,7 +100,7 @@ func _update_pots() -> void:
 		var vbox := VBoxContainer.new()
 		card.add_child(vbox)
 		var pot_data := _pot_at_index(i)
-		if pot_data == null:
+		if pot_data.is_empty():
 			var lbl := Label.new()
 			lbl.text = "Bếp lò trống"
 			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
