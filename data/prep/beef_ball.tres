@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="PrepRecipeData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://data/classes/prep_recipe_data.gd" id="1"]
+[ext_resource type="Script" path="res://data/classes/prep_step_data.gd" id="2"]
+
+[sub_resource type="Resource" id="step_1"]
+script = ExtResource("2")
+title = "Vo viên"
+kind = "roll_ball"
+hint = "Xoay tròn ngón tay quanh nắm thịt cho viên tròn đều. Xoay nhanh quá thịt sẽ nát."
+duration = 1.5
+count = 3
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_2"]
+script = ExtResource("2")
+title = "Xiên que"
+kind = "skewer"
+hint = "Vuốt từ đầu que xuyên qua hết các viên theo đường chấm."
+duration = 1.5
+count = 3
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[resource]
+script = ExtResource("1")
+ingredient_id = "beef_ball"
+steps = Array[ExtResource("2")]([SubResource("step_1"), SubResource("step_2")])

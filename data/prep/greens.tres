@@ -1,0 +1,79 @@
+[gd_resource type="Resource" script_class="PrepRecipeData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://data/classes/prep_recipe_data.gd" id="1"]
+[ext_resource type="Script" path="res://data/classes/prep_step_data.gd" id="2"]
+
+[sub_resource type="Resource" id="step_1"]
+script = ExtResource("2")
+title = "Nhặt lá úa"
+kind = "tap_targets"
+hint = "Chạm vào các lá úa vàng để nhặt bỏ."
+duration = 1.5
+count = 3
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_2"]
+script = ExtResource("2")
+title = "Tách lá"
+kind = "drag_pull"
+hint = "Kéo theo mũi tên để tách từng bẹ lá."
+duration = 1.5
+count = 3
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_3"]
+script = ExtResource("2")
+title = "Rửa nhiều nước"
+kind = "hold_wash"
+hint = "Giữ lâu để rửa qua nhiều nước cho sạch đất."
+duration = 1.5
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "sink"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_4"]
+script = ExtResource("2")
+title = "Ngâm muối loãng"
+kind = "timed_stage"
+hint = "Bấm \"Xong!\" khi kim vào vùng xanh."
+duration = 1.8
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "bowl"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_5"]
+script = ExtResource("2")
+title = "Để ráo"
+kind = "timed_stage"
+hint = "Bấm \"Xong!\" khi rau vừa ráo nước."
+duration = 1.4
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "basket"
+pattern = "slices"
+
+[resource]
+script = ExtResource("1")
+ingredient_id = "greens"
+steps = Array[ExtResource("2")]([SubResource("step_1"), SubResource("step_2"), SubResource("step_3"), SubResource("step_4"), SubResource("step_5")])

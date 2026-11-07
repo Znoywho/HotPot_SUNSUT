@@ -1,0 +1,65 @@
+[gd_resource type="Resource" script_class="PrepRecipeData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://data/classes/prep_recipe_data.gd" id="1"]
+[ext_resource type="Script" path="res://data/classes/prep_step_data.gd" id="2"]
+
+[sub_resource type="Resource" id="step_1"]
+script = ExtResource("2")
+title = "Ngâm nước muối nhả cát"
+kind = "timed_stage"
+hint = "Bấm \"Xong!\" khi kim vào vùng xanh: ngâm đủ lâu cho nghêu nhả hết cát."
+duration = 2.0
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "bowl"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_2"]
+script = ExtResource("2")
+title = "Cọ vỏ"
+kind = "scrub"
+hint = "Chà qua lại lên các vết bẩn cho sạch vỏ nghêu. Chà mạnh tay quá sẽ bị trừ điểm."
+duration = 1.2
+count = 2
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "sink"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_3"]
+script = ExtResource("2")
+title = "Cạy vỏ"
+kind = "drag_pull"
+hint = "Kéo núm lên để cạy nắp vỏ, giữ lại nửa vỏ có thịt. Kéo mạnh quá thịt sẽ nát."
+duration = 1.5
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_4"]
+script = ExtResource("2")
+title = "Rửa lại"
+kind = "hold_wash"
+hint = "Giữ để rửa lại lần cuối."
+duration = 0.8
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "sink"
+pattern = "slices"
+
+[resource]
+script = ExtResource("1")
+ingredient_id = "clam"
+steps = Array[ExtResource("2")]([SubResource("step_1"), SubResource("step_2"), SubResource("step_3"), SubResource("step_4")])

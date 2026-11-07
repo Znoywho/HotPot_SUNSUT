@@ -1,6 +1,8 @@
 extends Control
 ## Trưa – sơ chế nguyên liệu và nấu nước cốt lẩu (khu bếp pixel, cùng phong cách màn săn).
-## - Chỉ nấu được bằng nguyên liệu ĐÃ SƠ CHẾ: bấm "Sơ chế nguyên liệu" (hoặc chạm bàn sơ chế) để chơi trò sơ chế.
+## - Sơ chế: bấm "Sơ chế nguyên liệu" (hoặc chạm bàn sơ chế) -> bảng PrepPanel (quy trình từng nguyên liệu, data/prep/).
+## - Nấu ưu tiên đồ đã sơ chế (chất lượng càng cao nấu càng nhanh); thiếu thì dùng đồ thô:
+##   nấu chậm hơn và có nguy cơ khách chê, mất sao (data/prep/prep_config.tres).
 ## - Lúc đầu chỉ có đầu bếp và 1 bếp. Mỗi cấp "Bếp xịn" mở thêm 1 bếp; "Nhân viên bếp" thêm phụ bếp
 ##   tự sơ chế (cấp 1–2) và bếp phó tự nấu khi có bếp trống (cấp 3).
 ## - Mỗi lần nấu ra nhiều phần lẩu (giá trị nâng cấp "Nồi"), thời gian = cook_time × hệ số "Bếp xịn".
@@ -14,10 +16,15 @@ const STAGE := Vector2(1280, 720)
 const PX := 4.0 ## 1 điểm ảnh nền = 4 px màn hình.
 const FEET_Y := 452.0
 const STOVE_X0 := 388.0
-const STOVE_STEP := 146.0
-const STOVE_TOP := 158.0
+const STOVE_SCALE := 0.8 ## Thu nhỏ hàng bếp cho gọn, dồn vào giữa.
+const STOVE_W := StoveSlot.WIDTH * STOVE_SCALE
+const STOVE_STEP := STOVE_W + 10.0
+const STOVE_AREA := 870.0 ## Bề rộng khu bếp nấu (từ STOVE_X0 tới mép kệ phải).
+const STOVE_FLOOR := 374.0 ## Đáy bếp chạm sàn.
+const STOVE_TOP := STOVE_FLOOR - StoveSlot.HEIGHT * STOVE_SCALE
 const CHEF_HOME := 232.0
-const PANEL_Y := 456.0
+const MENU_Y := 362.0 ## Bảng chọn món (chỉ hiện khi chạm vào bếp).
+const STRIP_Y := 604.0 ## Dải thông tin luôn hiện phía trên nút mở quán.
 const STAFF := [
 	{"tex": "staff_lan", "name": "Lan", "x": 336.0, "right": false},
 	{"tex": "staff_tung", "name": "Tùng", "x": 92.0, "right": true},
@@ -35,6 +42,9 @@ var _sous_wait := 0.0
 var _fridge: TextureRect
 var _cards: Dictionary = {} ## broth id -> {button: Button, chips: Dictionary(id -> Label), sub: Label}
 var _info: Label
+var _menu: PanelContainer
+var _menu_title: Label
+var _menu_slot: StoveSlot = null
 var _timer_label: Label
 var _prep_panel: PrepPanel = null
 var _storage_open := false
@@ -111,7 +121,8 @@ func _build_stage() -> void:
 		var slot := StoveSlot.new()
 		_stage.add_child(slot)
 		slot.setup(i, i >= cfg.gas_stove_from)
-		slot.position = Vector2(STOVE_X0 + i * STOVE_STEP, STOVE_TOP)
+		slot.scale = Vector2(STOVE_SCALE, STOVE_SCALE)
+		slot.position = Vector2(_stove_x(i), STOVE_TOP)
 		slot.tapped.connect(_on_stove_tapped)
 		_stoves.append(slot)
 	if stove_count() < cfg.max_stoves:
@@ -142,6 +153,13 @@ func _build_stage() -> void:
 		slot.detach_chip(chips)
 
 
+## Dàn các bếp (kể cả ô "nâng cấp") ra giữa khu bếp nấu cho cân đối.
+func _stove_x(i: int) -> float:
+	var slots := stove_count() + (1 if stove_count() < cfg.max_stoves else 0)
+	var used := STOVE_W + (slots - 1) * STOVE_STEP
+	return STOVE_X0 + floorf((STOVE_AREA - used) / 2.0) + i * STOVE_STEP
+
+
 func _build_locked_slot(i: int) -> void:
 	var box := PanelContainer.new()
 	var st := StyleBoxFlat.new()
@@ -150,8 +168,8 @@ func _build_locked_slot(i: int) -> void:
 	st.set_border_width_all(3)
 	st.set_corner_radius_all(8)
 	box.add_theme_stylebox_override("panel", st)
-	box.position = Vector2(STOVE_X0 + i * STOVE_STEP + 4, STOVE_TOP + StoveSlot.STOVE_Y + 8)
-	box.size = Vector2(StoveSlot.WIDTH - 8, 140)
+	box.position = Vector2(_stove_x(i) + 3, STOVE_TOP + StoveSlot.STOVE_Y * STOVE_SCALE + 6)
+	box.size = Vector2(STOVE_W - 6, 140 * STOVE_SCALE)
 	box.mouse_filter = MOUSE_FILTER_IGNORE
 	var l := HuntUI.outlined_label("Bếp %d\nNâng cấp\nBếp xịn" % (i + 1), 18, Color(1, 1, 1, 0.85))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -194,45 +212,76 @@ func _build_ui() -> void:
 	var prep := Button.new()
 	prep.text = "Sơ chế nguyên liệu"
 	prep.focus_mode = Control.FOCUS_NONE
-	prep.position = Vector2(184, 176)
-	prep.size = Vector2(196, 58)
-	prep.add_theme_font_size_override("font_size", 20)
-	_style_button(prep, Color("b8432a"), Color("5a1f12"), Color("fbe9d0"))
+	prep.add_theme_font_size_override("font_size", 18)
+	_style_button(prep, Color("b8432a"), Color("5a1f12"), Color("fbe9d0"), 14)
+	prep.custom_minimum_size = Vector2(0, 56)
 	prep.pressed.connect(_open_prep.bind(""))
 	_stage.add_child(prep)
+	# Nút vừa khít chữ, đặt giữa bàn sơ chế.
+	prep.size = prep.get_combined_minimum_size()
+	prep.position = Vector2(280.0 - prep.size.x / 2.0, 180)
 
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_panel", 8, Vector2(18, 10)))
-	panel.position = Vector2(16, PANEL_Y)
-	panel.size = Vector2(1248, 196)
-	_stage.add_child(panel)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	panel.add_child(box)
-	var head := HBoxContainer.new()
-	box.add_child(head)
-	head.add_child(HuntUI.label("Chọn món nấu", 20, HuntUI.RUST))
-	_info = HuntUI.label("", 18, HuntUI.INK_SOFT)
+	# Dải thông tin: gợi ý + số bếp/nhân viên.
+	var strip := PanelContainer.new()
+	var ss := StyleBoxFlat.new()
+	ss.bg_color = Color(0.17, 0.1, 0.07, 0.82)
+	ss.border_color = Color("8a5a3c")
+	ss.set_border_width_all(3)
+	ss.set_corner_radius_all(6)
+	ss.content_margin_left = 16
+	ss.content_margin_right = 16
+	ss.content_margin_top = 6
+	ss.content_margin_bottom = 6
+	strip.add_theme_stylebox_override("panel", ss)
+	strip.position = Vector2(16, STRIP_Y)
+	strip.size = Vector2(1248, 50)
+	strip.mouse_filter = MOUSE_FILTER_IGNORE
+	_stage.add_child(strip)
+	var srow := HBoxContainer.new()
+	srow.add_theme_constant_override("separation", 16)
+	strip.add_child(srow)
+	srow.add_child(HuntUI.outlined_label("Chạm vào bếp để chọn món nấu", 18, HuntUI.GOLD))
+	_info = HuntUI.outlined_label("", 18, Color("f3e2c0"))
 	_info.size_flags_horizontal = SIZE_EXPAND_FILL
 	_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	head.add_child(_info)
+	_info.clip_text = true
+	srow.add_child(_info)
+
+	# Bảng chọn món: ẩn, chạm bếp mới hiện.
+	_menu = PanelContainer.new()
+	_menu.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_panel", 8, Vector2(18, 10)))
+	_menu.position = Vector2(16, MENU_Y)
+	_menu.size = Vector2(1248, 236)
+	_menu.visible = false
+	_stage.add_child(_menu)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	_menu.add_child(box)
+	_menu_title = HuntUI.label("Chọn món nấu", 20, HuntUI.RUST)
+	box.add_child(_menu_title)
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 10)
+	box.add_child(body)
 	var scroll := ScrollContainer.new()
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(0, 150)
-	box.add_child(scroll)
+	scroll.custom_minimum_size = Vector2(0, 186) # Thẻ 156 + chỗ cho thanh cuộn ngang.
+	scroll.size_flags_horizontal = SIZE_EXPAND_FILL
+	body.add_child(scroll)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	scroll.add_child(row)
-	var i := 0
 	for broth in Database.broths_for_day(GameState.day):
 		row.add_child(_make_card(broth))
-		HuntUI.pop_in(row.get_child(row.get_child_count() - 1), 0.06 * i)
-		i += 1
+	var close := HuntUI.button("Đóng", 0)
+	close.custom_minimum_size = Vector2(110, 158)
+	close.size_flags_vertical = SIZE_SHRINK_BEGIN
+	close.pressed.connect(_close_menu)
+	body.add_child(close)
 
 	var leave := Button.new()
 	leave.text = "Mở quán bán hàng  »"
 	leave.focus_mode = Control.FOCUS_NONE
-	leave.position = Vector2(16, 660)
+	leave.position = Vector2(16, 662)
 	leave.size = Vector2(1248, 56)
 	leave.add_theme_font_size_override("font_size", 22)
 	_style_button(leave, Color("f2a33a"), Color("8a5a3c"), HuntUI.INK)
@@ -240,7 +289,7 @@ func _build_ui() -> void:
 	_stage.add_child(leave)
 
 
-func _style_button(b: Button, bg: Color, border: Color, font: Color) -> void:
+func _style_button(b: Button, bg: Color, border: Color, font: Color, pad := 0) -> void:
 	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
 		var s := StyleBoxFlat.new()
 		s.bg_color = bg.darkened(0.18) if state.ends_with("pressed") else (bg.darkened(0.4) if state == "disabled" else bg)
@@ -250,6 +299,8 @@ func _style_button(b: Button, bg: Color, border: Color, font: Color) -> void:
 		s.shadow_color = Color(0, 0, 0, 0.3)
 		s.shadow_offset = Vector2(0, 3)
 		s.shadow_size = 1
+		s.content_margin_left = pad
+		s.content_margin_right = pad
 		b.add_theme_stylebox_override(state, s)
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
@@ -258,8 +309,8 @@ func _style_button(b: Button, bg: Color, border: Color, font: Color) -> void:
 
 func _make_card(broth: BrothData) -> Control:
 	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_card", 8, Vector2(10, 8)))
-	card.custom_minimum_size = Vector2(232, 146)
+	card.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_card", 8, Vector2(14, 13)))
+	card.custom_minimum_size = Vector2(244, 156)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	card.add_child(row)
@@ -295,36 +346,36 @@ func _make_card(broth: BrothData) -> Control:
 
 
 func _refresh_cards() -> void:
-	var free := _free_stove() != null
+	var free := (_menu_slot != null and _menu_slot.is_idle()) or _free_stove() != null
 	for broth in Database.broths_for_day(GameState.day):
 		if not _cards.has(broth.id):
 			continue
 		var ui: Dictionary = _cards[broth.id]
 		var chips: Dictionary = ui["chips"]
-		var missing_raw := false
 		for id in broth.ingredients:
 			var need := int(broth.ingredients[id])
-			var have := GameState.get_prepped_count(id)
+			var prepped := GameState.get_prepped_count(id)
+			var have := prepped + GameState.get_item_count(id)
 			var label: Label = chips[id]
 			label.text = "%d/%d " % [mini(have, 99), need]
-			label.add_theme_color_override("font_color", HuntUI.GOOD if have >= need else HuntUI.BAD)
-			if have < need and GameState.get_item_count(id) + have < need:
-				missing_raw = true
+			# Xanh: đủ đồ đã sơ chế; cam: phải dùng đồ thô; đỏ: thiếu.
+			var col := HuntUI.GOOD if prepped >= need else (Color("d9822b") if have >= need else HuntUI.BAD)
+			label.add_theme_color_override("font_color", col)
 		(ui["sub"] as Label).text = "%s · %d phần" % [GameState.format_money(broth.price), servings()]
 		var button: Button = ui["button"]
-		var ready := GameState.has_prepped(broth.ingredients)
-		if ready and free:
-			button.text = "Nấu · %ds" % ceili(broth.cook_time * Database.upgrade_value("stove"))
+		var can := GameState.can_cook(broth.ingredients)
+		var prepped_ok := GameState.has_prepped(broth.ingredients)
+		var pc := Database.prep_config
+		var secs := ceili(broth.cook_time * Database.upgrade_value("stove") * (1.0 if prepped_ok else pc.raw_cook_time))
+		if can and free:
+			button.text = ("Nấu · %ds" if prepped_ok else "Nấu đồ thô · %ds") % secs
 			button.disabled = false
-		elif ready:
+		elif can:
 			button.text = "Bếp đang bận"
 			button.disabled = true
-		elif missing_raw:
+		else:
 			button.text = "Thiếu nguyên liệu"
 			button.disabled = true
-		else:
-			button.text = "Sơ chế để nấu"
-			button.disabled = false
 
 
 func _update_info() -> void:
@@ -333,7 +384,7 @@ func _update_info() -> void:
 		if not slot.is_idle():
 			cooking += 1
 	var staff := _prep_staff.size() + (1 if _sous != null else 0)
-	_info.text = "Bếp đang nấu: %d/%d   ·   Nhân viên: %d   ·   Mỗi mẻ ra %d phần   ·   Kho lạnh giữ %d ngày" % [
+	_info.text = "Bếp đang nấu: %d/%d  ·  Nhân viên: %d  ·  Mỗi mẻ ra %d phần  ·  Kho lạnh giữ %d ngày" % [
 		cooking, _stoves.size(), staff, servings(), GameState.shelf_days()]
 	var has_hud := get_tree().get_first_node_in_group("hud") != null
 	_timer_label.visible = DayManager.timer_running and not has_hud
@@ -350,28 +401,34 @@ func _free_stove() -> StoveSlot:
 
 
 func _on_card_pressed(broth: BrothData) -> void:
-	if GameState.has_prepped(broth.ingredients):
-		if not _cook(broth, _chef):
-			_chef.say("Hết bếp trống!", Color("ffccbc"))
+	if not GameState.can_cook(broth.ingredients):
 		return
-	# Thiếu đồ sơ chế: mở bảng sơ chế đúng nguyên liệu còn thiếu.
-	for id in broth.ingredients:
-		if GameState.get_prepped_count(id) < int(broth.ingredients[id]) and GameState.get_item_count(id) > 0:
-			_open_prep(str(id))
-			return
+	var slot := _menu_slot if _menu_slot != null and _menu_slot.is_idle() else null
+	if not _cook(broth, _chef, slot):
+		_chef.say("Hết bếp trống!", Color("ffccbc"))
+	_close_menu()
 
 
-func _cook(broth: BrothData, actor: KitchenActor) -> bool:
-	var slot := _free_stove()
+func _cook(broth: BrothData, actor: KitchenActor, on_slot: StoveSlot = null) -> bool:
+	var slot := on_slot if on_slot != null and on_slot.is_idle() else _free_stove()
 	if slot == null:
 		return false
-	var used := GameState.consume_prepped_info(broth.ingredients)
+	var used := GameState.consume_for_cook(broth.ingredients)
 	if not bool(used["ok"]):
 		return false
-	slot.start(broth, broth.cook_time * Database.upgrade_value("stove"), servings(), bool(used["expired"]), used["taken"])
+	# Chất lượng sơ chế đổi thời gian nấu; có đồ thô thì nấu chậm hơn (PrepConfig).
+	var pc := Database.prep_config
+	var raw_units := int(used["raw_units"])
+	var mult := pc.raw_cook_time if raw_units > 0 else pc.cook_time_mult(roundi(float(used["quality"])))
+	slot.start(broth, broth.cook_time * Database.upgrade_value("stove") * mult, servings(), bool(used["expired"]), used["taken"])
 	slot.cook_actor = actor
 	if bool(used["expired"]):
 		actor.say("Đồ cũ, coi chừng!", Color("ffab91"))
+	elif raw_units > 0:
+		actor.say("Đồ chưa sơ chế...", Color("ffcc80"))
+		if randf() < pc.raw_star_risk:
+			GameState.lose_star(pc.raw_star_loss)
+			_float_text("Nấu đồ thô, khách chê! -%s sao" % str(pc.raw_star_loss), slot.position + Vector2(STOVE_W / 2.0, 30), Color("ff8a80"))
 	_send_to_stove(actor, slot)
 	_sfx("splash", -10.0)
 	_refresh_cards()
@@ -380,7 +437,7 @@ func _cook(broth: BrothData, actor: KitchenActor) -> bool:
 
 ## Người nấu đi tới bếp, khuấy nồi rồi quay về chỗ cũ.
 func _send_to_stove(actor: KitchenActor, slot: StoveSlot) -> void:
-	var x := slot.position.x + StoveSlot.WIDTH * 0.5 - 44.0
+	var x := slot.position.x + STOVE_W * 0.5 - 44.0
 	var t := actor.walk_to(x)
 	t.tween_callback(func(): actor.face(true); actor.work(0.8, "stir"))
 	t.tween_interval(0.9)
@@ -396,7 +453,7 @@ func _finish_stove(slot: StoveSlot) -> void:
 	if b == null:
 		return
 	GameState.add_broth(b.id, slot.servings, -1, slot.expired)
-	_float_text("+%d phần %s" % [slot.servings, b.display_name], slot.position + Vector2(StoveSlot.WIDTH / 2.0, -20), HuntUI.GOLD)
+	_float_text("+%d phần %s" % [slot.servings, b.display_name], slot.position + Vector2(STOVE_W / 2.0, -20), HuntUI.GOLD)
 	slot.flash()
 	slot.clear()
 	_sfx("loot", -10.0)
@@ -405,12 +462,36 @@ func _finish_stove(slot: StoveSlot) -> void:
 
 func _on_stove_tapped(slot: StoveSlot) -> void:
 	if slot.is_idle():
-		_chef.say("Chọn món ở bảng dưới!", Color.WHITE)
-		for id in _cards:
-			var card: Control = (_cards[id] as Dictionary)["card"]
-			HuntUI.pop_in(card)
+		if _menu_slot == slot:
+			_close_menu()
+		else:
+			_open_menu(slot)
 	else:
-		_float_text("%s · còn %ds" % [slot.broth.display_name, ceili(slot.remaining)], slot.position + Vector2(StoveSlot.WIDTH / 2.0, 10), Color.WHITE)
+		_float_text("%s · còn %ds" % [slot.broth.display_name, ceili(slot.remaining)], slot.position + Vector2(STOVE_W / 2.0, 10), Color.WHITE)
+
+
+func _open_menu(slot: StoveSlot) -> void:
+	if _menu_slot != null:
+		_menu_slot.set_selected(false)
+	_menu_slot = slot
+	slot.set_selected(true)
+	_menu_title.text = "Chọn món nấu ở Bếp %d" % (slot.index + 1)
+	_refresh_cards()
+	if not _menu.visible:
+		_menu.visible = true
+		HuntUI.pop_in(_menu)
+		var i := 0
+		for id in _cards:
+			HuntUI.pop_in((_cards[id] as Dictionary)["card"], 0.04 * i)
+			i += 1
+	_sfx("splash", -20.0)
+
+
+func _close_menu() -> void:
+	if _menu_slot != null:
+		_menu_slot.set_selected(false)
+	_menu_slot = null
+	_menu.visible = false
 
 
 # --- Nhân viên ----------------------------------------------------------------
@@ -425,7 +506,7 @@ func _staff_tick(delta: float) -> void:
 		var id := _staff_pick()
 		if id == "":
 			continue
-		if GameState.prep_items(id, 1) > 0:
+		if GameState.prep_items(id, 1, Database.prep_config.quick_quality) > 0:
 			var a := _prep_staff[i]
 			a.work(0.6, "chop")
 			a.say("+1 " + GameState.item_display_name(id), Color("c8e6c9"))
@@ -476,13 +557,15 @@ func _on_counter_input(event: InputEvent) -> void:
 func _open_prep(focus: String) -> void:
 	if _prep_panel != null or _leaving:
 		return
+	_close_menu()
 	_chef.walk_to(CHEF_HOME)
 	_prep_panel = PrepPanel.new()
 	add_child(_prep_panel)
-	_prep_panel.open(cfg, needs())
+	_prep_panel.open(needs())
 	if focus != "":
 		_prep_panel.select(focus)
 	_prep_panel.prepped.connect(func(_id: String): _chef.work(0.4, "chop"))
+	_prep_panel.step_done.connect(func(): _chef.work(0.3, "chop"))
 	_prep_panel.closed.connect(func():
 		_prep_panel = null
 		_refresh_cards())
@@ -539,7 +622,7 @@ func _wrap_up() -> void:
 		if slot.progress() >= cfg.keep_ratio_on_leave:
 			_finish_stove(slot)
 		else:
-			GameState.refund_prepped(slot.taken)
+			GameState.refund_cook(slot.taken)
 			slot.clear()
 
 

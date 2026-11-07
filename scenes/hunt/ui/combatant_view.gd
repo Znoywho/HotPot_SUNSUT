@@ -187,6 +187,8 @@ func play_hurt(heavy := false) -> void:
 
 
 ## Ngã xuống: đổ nghiêng về phía sau, xám và mờ dần.
+## Quái: sau khi ngã thì teo lại và biến mất hẳn (giữ chỗ để đội hình không xô lệch, không chọn được nữa).
+## Phe mình vẫn nằm lại (đầu bếp có thể hồi sinh).
 func play_death() -> void:
 	_dead = true
 	if _idle_tween != null:
@@ -198,6 +200,13 @@ func play_death() -> void:
 	_action_tween.tween_property(sprite, "rotation", deg_to_rad(80) * away, 0.35).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	_action_tween.tween_property(sprite, "position", _home + Vector2(16 * away, 14), 0.35)
 	_action_tween.tween_property(self, "modulate", Color(0.6, 0.6, 0.6, 0.55), 0.5).set_delay(0.2)
+	if not combatant.is_ally:
+		mouse_filter = MOUSE_FILTER_IGNORE
+		var vanish := create_tween()
+		vanish.tween_interval(0.75)
+		vanish.tween_property(_stage, "scale", Vector2(1.2, 0.0), 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		vanish.parallel().tween_property(self, "modulate:a", 0.0, 0.35)
+		_stage.pivot_offset = Vector2(_stage.size.x / 2.0, _stage.size.y)
 
 
 ## Đứng dậy (Linh hồn đầu bếp hồi sinh).

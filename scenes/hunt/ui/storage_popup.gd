@@ -41,13 +41,13 @@ func _ready() -> void:
 	for id in item_ids:
 		list.add_child(_row(HuntUI.ingredient_texture(id), GameState.item_display_name(id), GameState.item_batch_list(id)))
 	list.add_child(HSeparator.new())
-	list.add_child(HuntUI.label("Đã sơ chế (sẵn sàng nấu)", 22, HuntUI.RUST))
+	list.add_child(HuntUI.label("Đã sơ chế (giữ hạn của lô thô)", 22, HuntUI.RUST))
 	var prepped_ids := GameState.prepped_batches.keys()
 	prepped_ids.sort()
 	if prepped_ids.is_empty():
 		list.add_child(HuntUI.label("(trống)", HuntUI.FONT_SMALL, HuntUI.INK_SOFT))
 	for id in prepped_ids:
-		list.add_child(_row(HuntUI.ingredient_texture(id), GameState.item_display_name(id), GameState.prepped_batch_list(id)))
+		list.add_child(_row(HuntUI.prepped_texture(id), GameState.item_display_name(id), GameState.prepped_batch_list(id), false, true))
 	list.add_child(HSeparator.new())
 	list.add_child(HuntUI.label("Nước cốt đã nấu", 22, HuntUI.RUST))
 	var broth_ids := GameState.broth_batches.keys()
@@ -65,7 +65,7 @@ func _ready() -> void:
 	HuntUI.book_open(panel)
 
 
-func _row(icon: Texture2D, name: String, batches: Array, is_broth := false) -> Control:
+func _row(icon: Texture2D, name: String, batches: Array, is_broth := false, is_prepped := false) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	if icon != null:
@@ -81,14 +81,14 @@ func _row(icon: Texture2D, name: String, batches: Array, is_broth := false) -> C
 	chips.add_theme_constant_override("h_separation", 6)
 	chips.add_theme_constant_override("v_separation", 4)
 	for batch in batches:
-		chips.add_child(batch_chip(batch, is_broth))
+		chips.add_child(batch_chip(batch, is_broth, is_prepped))
 	row.add_child(chips)
 	return row
 
 
 ## Ô lô hàng: số lượng + vòng tròn "!" nhỏ ở góc trên bên phải. Chạm vào ô mới hiện hạn còn lại.
 ## Còn 1 ngày: tự hiện cảnh báo "Sắp hết hạn!" (đỏ). Đã quá hạn (giữ bán tiếp): hiện "Hết hạn" (tím).
-static func batch_chip(batch: Dictionary, is_broth := false) -> Control:
+static func batch_chip(batch: Dictionary, is_broth := false, is_prepped := false) -> Control:
 	var left := GameState.days_left(batch)
 	var expired: bool = batch["expired"] or left <= 0
 	var color := Color("2e7d32")
@@ -106,6 +106,8 @@ static func batch_chip(batch: Dictionary, is_broth := false) -> Control:
 	elif left == 2:
 		color = Color("b8860b")
 	var count_text := "x%d" % int(batch["count"])
+	if is_prepped:
+		count_text += " · %s" % str(GameState.QUALITY_NAMES[clampi(int(batch.get("q", 1)), 0, 2)])
 
 	var chip := Button.new()
 	chip.focus_mode = Control.FOCUS_NONE

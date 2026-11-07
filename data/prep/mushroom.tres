@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="PrepRecipeData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://data/classes/prep_recipe_data.gd" id="1"]
+[ext_resource type="Script" path="res://data/classes/prep_step_data.gd" id="2"]
+
+[sub_resource type="Resource" id="step_1"]
+script = ExtResource("2")
+title = "Lau, rửa nhẹ"
+kind = "hold_wash"
+hint = "Rửa nhẹ tay thôi: giữ rồi thả đúng vùng xanh, ngâm lâu nấm sẽ úng."
+duration = 0.9
+count = 1
+difficulty = 1.3
+penalty = 20
+optional = false
+cut = false
+prop = "sink"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_2"]
+script = ExtResource("2")
+title = "Cắt chân"
+kind = "swipe_cut"
+hint = "Vuốt theo đường chấm để cắt phần chân nấm dính đất."
+duration = 1.5
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = true
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_3"]
+script = ExtResource("2")
+title = "Cắt đôi"
+kind = "swipe_cut"
+hint = "Vuốt dọc đường chấm để bổ đôi cây nấm."
+duration = 1.5
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = true
+prop = "board"
+pattern = "slices"
+
+[resource]
+script = ExtResource("1")
+ingredient_id = "mushroom"
+steps = Array[ExtResource("2")]([SubResource("step_1"), SubResource("step_2"), SubResource("step_3")])

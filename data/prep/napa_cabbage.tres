@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="PrepRecipeData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://data/classes/prep_recipe_data.gd" id="1"]
+[ext_resource type="Script" path="res://data/classes/prep_step_data.gd" id="2"]
+
+[sub_resource type="Resource" id="step_1"]
+script = ExtResource("2")
+title = "Bóc lá ngoài"
+kind = "drag_pull"
+hint = "Kéo theo mũi tên để bóc lớp lá già bên ngoài."
+duration = 1.5
+count = 2
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_2"]
+script = ExtResource("2")
+title = "Rửa từng lớp"
+kind = "hold_wash"
+hint = "Giữ để rửa sạch từng lớp lá."
+duration = 1.3
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "sink"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_3"]
+script = ExtResource("2")
+title = "Cắt khúc"
+kind = "swipe_cut"
+hint = "Vuốt theo các đường chấm để cắt khúc vừa ăn."
+duration = 1.5
+count = 3
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = true
+prop = "board"
+pattern = "slices"
+
+[resource]
+script = ExtResource("1")
+ingredient_id = "napa_cabbage"
+steps = Array[ExtResource("2")]([SubResource("step_1"), SubResource("step_2"), SubResource("step_3")])

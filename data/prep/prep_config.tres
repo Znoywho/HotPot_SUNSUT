@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="PrepConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/prep_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+perfect_score = 85
+ok_score = 50
+premium_average = 1.6
+normal_average = 0.9
+ruin_fails = 3
+optional_skip_grade = 1
+session_max = 5
+quick_quality = 0
+quick_seconds_per_unit = 0.35
+quick_max_seconds = 6.0
+cook_time_by_quality = PackedFloat32Array(1.1, 1, 0.85)
+raw_cook_time = 1.25
+raw_star_risk = 0.2
+raw_star_loss = 0.5
+dipping_price_by_quality = PackedFloat32Array(0.85, 1, 1.2)
+raw_dipping_price = 0.7
+knife_ease_per_level = 0.12
+knife_ease_max = 0.5
+hold_zone = 0.35
+tap_radius = 42.0
+pull_distance = 150.0
+pull_max_speed = 1100.0
+swipe_tolerance = 30.0
+stage_zone = 0.22
+stage_max_misses = 3
