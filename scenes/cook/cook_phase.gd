@@ -147,6 +147,9 @@ func _build_stage() -> void:
 	_stage.add_child(light)
 	light.add_lamp(Vector2(534, 100), 230.0, 1.0, 1.25)
 	light.add_lamp(Vector2(894, 100), 230.0, 1.0, 1.25)
+	var windows := WindowSky.new()
+	_stage.add_child(windows)
+	windows.setup(light)
 	# Thẻ trạng thái bếp nằm trên nhân vật để không bị che.
 	var chips := Control.new()
 	chips.mouse_filter = MOUSE_FILTER_IGNORE
@@ -448,7 +451,10 @@ func _cook(broth: BrothData, actor: KitchenActor, on_slot: StoveSlot = null) -> 
 func _send_to_stove(actor: KitchenActor, slot: StoveSlot) -> void:
 	var x := slot.position.x + STOVE_W * 0.5 - 44.0
 	var t := actor.walk_to(x)
-	t.tween_callback(func(): actor.face(true); actor.work(0.8, "stir"))
+	t.tween_callback(func():
+		actor.face(true)
+		actor.ninja_slash(0.8, slot.global_position + Vector2(STOVE_W * 0.5, 40.0))
+		_sfx("slice", -10.0))
 	t.tween_interval(0.9)
 	t.tween_callback(func():
 		if _prep_panel != null and actor == _chef:
@@ -517,7 +523,8 @@ func _staff_tick(delta: float) -> void:
 			continue
 		if GameState.prep_items(id, 1, Database.prep_config.quick_quality) > 0:
 			var a := _prep_staff[i]
-			a.work(0.6, "chop")
+			a.ninja_slash(0.6)
+			_sfx("slice", -14.0)
 			a.say("+1 " + GameState.item_display_name(id), Color("c8e6c9"))
 
 
