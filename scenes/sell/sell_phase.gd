@@ -52,16 +52,35 @@ func _process(delta: float) -> void:
 		elif table.state == TableNode.State.EATING:
 			if table.eating_remaining() <= 0.0:
 				_finish_eating(table)
+	_events.tick(delta, tables, self)
 	_update_ui()
 
 
 func _build_ui() -> void:
-	add_child(HuntUI.background())
+	# Nền quán: tường trên, sàn dưới
+	var wall := ColorRect.new()
+	wall.color = Color("#4a2c1b")
+	wall.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wall.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(wall)
+	var floor := ColorRect.new()
+	floor.color = Color("#8b5329")
+	floor.anchor_top = 0.5
+	floor.anchor_bottom = 1.0
+	floor.anchor_left = 0.0
+	floor.anchor_right = 1.0
+	add_child(floor)
+
+	# HUD spacer
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 90)
+	add_child(spacer)
+
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 20)
 	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_top", 100)
 	margin.add_theme_constant_override("margin_bottom", 20)
 	add_child(margin)
 
@@ -81,13 +100,28 @@ func _build_ui() -> void:
 	_timer_label = HuntUI.outlined_label("", 18, HuntUI.GOLD)
 	header.add_child(_timer_label)
 
+	# Quầy bếp trang trí
+	var kitchen := HBoxContainer.new()
+	root.add_child(kitchen)
+	var chef := TextureRect.new()
+	var chef_tex = load("res://assets/sprites/characters/player.png")
+	chef.texture = chef_tex
+	chef.custom_minimum_size = Vector2(48, 48)
+	chef.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	kitchen.add_child(chef)
+	var flame := TextureRect.new()
+	var flame_tex = load("res://assets/sprites/fx/flame.png")
+	flame.texture = flame_tex
+	flame.custom_minimum_size = Vector2(32, 32)
+	kitchen.add_child(flame)
+
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(scroll)
 	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 24)
+	grid.add_theme_constant_override("v_separation", 24)
 	scroll.add_child(grid)
 	grid.set_meta("grid", true)
 	set_meta("grid", grid)
@@ -121,28 +155,48 @@ func _setup() -> void:
 		table.eating_finished.connect(_on_eating_finished)
 
 		var card := PanelContainer.new()
-		card.custom_minimum_size = Vector2(240, 180)
+		card.custom_minimum_size = Vector2(260, 200)
 		card.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_card"))
 		var vbox := VBoxContainer.new()
 		card.add_child(vbox)
 
+		var char_rect := TextureRect.new()
+		char_rect.custom_minimum_size = Vector2(48, 48)
+		char_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		char_rect.visible = false
+		vbox.add_child(char_rect)
+
 		var status := HuntUI.label("", 18, HuntUI.INK)
 		vbox.add_child(status)
 
-		var order_lbl := HuntUI.label("", 16, HuntUI.INK_SOFT)
-		vbox.add_child(order_lbl)
+		var bubble := HuntUI.label("", 16, HuntUI.INK_SOFT)
+		bubble.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vbox.add_child(bubble)
+
+		var vip_badge := HuntUI.label("", 16, HuntUI.GOLD)
+		vbox.add_child(vip_badge)
 
 		var wait_bar := ProgressBar.new()
-		wait_bar.custom_minimum_size = Vector2(0, 20)
+		wait_bar.custom_minimum_size = Vector2(0, 16)
 		vbox.add_child(wait_bar)
-		var wait_time_lbl := HuntUI.label("", 16, HuntUI.INK_SOFT)
+		var wait_time_lbl := HuntUI.label("", 14, HuntUI.INK_SOFT)
 		vbox.add_child(wait_time_lbl)
 
 		var eat_bar := ProgressBar.new()
-		eat_bar.custom_minimum_size = Vector2(0, 20)
+		eat_bar.custom_minimum_size = Vector2(0, 16)
 		vbox.add_child(eat_bar)
-		var eat_time_lbl := HuntUI.label("", 16, HuntUI.INK_SOFT)
+		var eat_time_lbl := HuntUI.label("", 14, HuntUI.INK_SOFT)
 		vbox.add_child(eat_time_lbl)
+
+		var pot_rect := TextureRect.new()
+		pot_rect.custom_minimum_size = Vector2(32, 32)
+		pot_rect.visible = false
+		vbox.add_child(pot_rect)
+
+		var smoke_rect := TextureRect.new()
+		smoke_rect.custom_minimum_size = Vector2(32, 32)
+		smoke_rect.visible = false
+		vbox.add_child(smoke_rect)
 
 		var serve_btn := HuntUI.button("Giao món đến bàn")
 		serve_btn.pressed.connect(_serve_table.bind(table))
@@ -152,12 +206,16 @@ func _setup() -> void:
 		_table_ui.append({
 			"table": table,
 			"status": status,
-			"order": order_lbl,
+			"order": bubble,
 			"wait_bar": wait_bar,
 			"wait_time": wait_time_lbl,
 			"eat_bar": eat_bar,
 			"eat_time": eat_time_lbl,
 			"serve": serve_btn,
+			"char": char_rect,
+			"pot": pot_rect,
+			"smoke": smoke_rect,
+			"vip": vip_badge,
 		})
 	log_line_safe("Quán có %d bàn." % GameState.tables_floor1)
 	var expired := GameState.expired_stock_count()
@@ -359,6 +417,10 @@ func _update_ui() -> void:
 		var eat_bar: ProgressBar = ui["eat_bar"]
 		var eat_time_lbl: Label = ui["eat_time"]
 		var serve_btn: Button = ui["serve"]
+		var char_rect: TextureRect = ui["char"]
+		var pot_rect: TextureRect = ui["pot"]
+		var smoke_rect: TextureRect = ui["smoke"]
+		var vip: Label = ui["vip"]
 		if table.state == TableNode.State.EMPTY:
 			status.text = "Bàn: Trống - Đang chờ khách"
 			order_lbl.text = ""
@@ -368,6 +430,10 @@ func _update_ui() -> void:
 			eat_time_lbl.text = ""
 			serve_btn.disabled = true
 			serve_btn.text = "Giao món"
+			char_rect.visible = false
+			pot_rect.visible = false
+			smoke_rect.visible = false
+			vip.text = ""
 		elif table.state == TableNode.State.WAITING_ORDER:
 			var broth := Database.get_broth(table.order_broth_id)
 			status.text = "Khách đang ngồi"
@@ -382,6 +448,11 @@ func _update_ui() -> void:
 			eat_time_lbl.text = ""
 			serve_btn.disabled = false
 			serve_btn.text = "Giao món đến bàn"
+			char_rect.visible = true
+			char_rect.modulate = Color(1, 1, 1)
+			pot_rect.visible = false
+			smoke_rect.visible = false
+			vip.text = preload("res://scenes/sell/sell_events.gd").tag(table.special) if table.special != "" else ""
 		elif table.state == TableNode.State.EATING:
 			var broth := Database.get_broth(table.order_broth_id)
 			status.text = "Khách đang thưởng thức lẩu..."
@@ -393,6 +464,10 @@ func _update_ui() -> void:
 			eat_time_lbl.text = "%.0fs còn lại" % erem
 			serve_btn.disabled = true
 			serve_btn.text = "Đang ăn"
+			char_rect.visible = true
+			pot_rect.visible = true
+			smoke_rect.visible = true
+			vip.text = ""
 		else:
 			status.text = "Trạng thái khác"
 			serve_btn.disabled = true

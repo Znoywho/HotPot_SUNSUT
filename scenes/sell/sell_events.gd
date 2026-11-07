@@ -35,6 +35,10 @@ func setup(sell: Node) -> void:
 			_schedule.append({"kind": kind, "at": total * (1.0 - randf_range(EARLIEST, LATEST))})
 
 
+func tick(delta: float, _tables: Array, _sell: Node) -> void:
+	_process(delta)
+
+
 func _process(_delta: float) -> void:
 	if not DayManager.timer_running:
 		return
