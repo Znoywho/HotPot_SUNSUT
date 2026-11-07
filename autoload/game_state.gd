@@ -171,7 +171,7 @@ func describe_items(items: Dictionary) -> String:
 
 # --- Nước cốt ---------------------------------------------------------------
 
-## from_day: ngày tính hạn (= ngày nhập nguyên liệu cũ nhất đã nấu). expired: nấu từ đồ hết hạn.
+## from_day: ngày tính hạn (mặc định hôm nay = ngày nấu). expired: nấu từ đồ hết hạn / quá hạn giữ bán tiếp.
 func add_broth(id: String, count := 1, from_day := -1, expired := false) -> void:
 	_batch_add(broth_batches, id, count, from_day, expired)
 	_sync_totals()

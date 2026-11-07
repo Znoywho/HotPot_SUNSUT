@@ -28,7 +28,8 @@ func _process(delta: float) -> void:
 
 
 func _add_cooked(pot: Dictionary) -> void:
-	GameState.add_broth(str(pot["broth_id"]), 1, int(pot.get("from_day", -1)), bool(pot.get("expired", false)))
+	# Hạn của nồi tính từ ngày nấu; nấu từ nguyên liệu hết hạn thì nồi vẫn mang rủi ro bị phát hiện.
+	GameState.add_broth(str(pot["broth_id"]), 1, -1, bool(pot.get("expired", false)))
 
 
 ## Hết giờ nấu: nồi đang nấu dở vẫn được tính xong rồi mới sang bán hàng.
