@@ -29,7 +29,7 @@ extends Resource
 
 @export_group("Đồ rơi")
 @export var drop_chance := 0.9 ## Tỷ lệ rơi mỗi loại nguyên liệu của quái thường (boss luôn rơi).
-@export var drop_amount_multiplier := 10.0 ## Nhân lượng rơi của mọi quái (2 -> 20, 1 -> 10). Cốt lẩu nấu 1 mẻ ra nhiều nồi + đồ nhúng nên cần nhiều.
+@export var drop_amount_multiplier := 3.0 ## Nhân lượng rơi của mọi quái (2 -> 6, 1 -> 3). Mỗi nồi lẩu tốn 2–3 nguyên liệu.
 @export var knife_drop_bonus := 0.03 ## + tỷ lệ rơi mỗi cấp Dao bén.
 @export var milestone_amount_bonus := 0.25 ## + lượng rơi mỗi mốc ngày (x1.25, x1.5...).
 @export var golden_chance := 0.03 ## Quái thường: tỷ lệ 1 nguyên liệu biến thành bản hoàng kim.

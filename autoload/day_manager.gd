@@ -8,8 +8,10 @@ signal phase_time_up
 
 enum Phase { NONE, HUNT, COOK, SELL, DAY_END, SHOP, GAME_OVER }
 
-const HUNT_DURATION := 150.0 ## Sáng đi săn: 2–3 phút.
-const SELL_DURATION := 240.0 ## Chiều tối bán hàng: 4 phút.
+## Một ngày chơi = 7 phút: săn 2:30 + nấu 1:15 + bán 3:15.
+const HUNT_DURATION := 150.0 ## Sáng đi săn: 2:30.
+const COOK_DURATION := 75.0 ## Trưa nấu nước cốt: 1:15.
+const SELL_DURATION := 195.0 ## Chiều tối bán hàng: 3:15.
 
 const SCENES := {
 	Phase.HUNT: "res://scenes/hunt/hunt_phase.tscn",
@@ -80,6 +82,8 @@ func go_to(phase: Phase) -> void:
 	match phase:
 		Phase.HUNT:
 			_start_timer(HUNT_DURATION)
+		Phase.COOK:
+			_start_timer(COOK_DURATION)
 		Phase.SELL:
 			_start_timer(SELL_DURATION)
 	get_tree().change_scene_to_file(SCENES[phase])

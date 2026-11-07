@@ -7,6 +7,9 @@ var customer: Customer = null
 var order_broth_id := ""
 var side_items: Array[String] = []
 var is_served := false
+var served_expired := false ## Món đã bưng ra là đồ hết hạn.
+var served_fast := false ## Giao trước khi khách chờ quá nửa thời gian.
+var special := "" ## Khách đặc biệt: "" / "critic" (nhà phê bình) / "michelin" (giám khảo ẩn danh).
 var eating_time := 0.0
 var _eating_remaining := 0.0
 
@@ -59,5 +62,8 @@ func clear() -> void:
 	order_broth_id = ""
 	side_items.clear()
 	is_served = false
+	served_expired = false
+	served_fast = false
+	special = ""
 	state = State.EMPTY
 	customer_left.emit(self)

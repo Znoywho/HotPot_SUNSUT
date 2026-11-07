@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1")
 id = "spicy_broth"
-display_name = "Lẩu cay"
-ingredients = {"beef": 1, "tomato": 1, "greens": 1}
+display_name = "Lẩu Mala"
+ingredients = {"beef": 1, "chili": 1, "greens": 1}
 cook_time = 9.0
 price = 180000
 unlock_day = 5
