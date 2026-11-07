@@ -22,6 +22,7 @@ const SCENES := {
 	Phase.GAME_OVER: "res://scenes/game_over/game_over.tscn",
 }
 const MAIN_MENU_SCENE := "res://scenes/main_menu/main_menu.tscn"
+const DAY_END_LAYER := 100 ## Sổ tổng kết nằm trên mọi giao diện khác, kể cả HUD.
 
 var current_phase: Phase = Phase.NONE
 var time_left := 0.0
@@ -79,6 +80,7 @@ func next_phase() -> void:
 func go_to(phase: Phase) -> void:
 	current_phase = phase
 	timer_running = false
+	get_tree().paused = false
 	match phase:
 		Phase.HUNT:
 			_start_timer(HUNT_DURATION)
@@ -86,7 +88,10 @@ func go_to(phase: Phase) -> void:
 			_start_timer(COOK_DURATION)
 		Phase.SELL:
 			_start_timer(SELL_DURATION)
-	get_tree().change_scene_to_file(SCENES[phase])
+	if phase == Phase.DAY_END:
+		_show_day_end_over_current_scene()
+	else:
+		get_tree().change_scene_to_file(SCENES[phase])
 	phase_changed.emit(phase)
 
 
@@ -94,6 +99,21 @@ func go_to_main_menu() -> void:
 	current_phase = Phase.NONE
 	timer_running = false
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+
+
+## Đặt sổ tổng kết đè lên màn hiện tại và tạm dừng màn đó.
+## Sổ là con của màn hiện tại nên tự biến mất khi go_to() đổi sang màn tiếp theo.
+func _show_day_end_over_current_scene() -> void:
+	var current_scene := get_tree().current_scene
+	if current_scene == null:
+		get_tree().change_scene_to_file(SCENES[Phase.DAY_END])
+		return
+	var layer := CanvasLayer.new()
+	layer.layer = DAY_END_LAYER
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	layer.add_child(load(SCENES[Phase.DAY_END]).instantiate())
+	current_scene.add_child(layer)
+	get_tree().paused = true
 
 
 func time_left_text() -> String:

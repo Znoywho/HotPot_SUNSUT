@@ -6,6 +6,9 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/ui/book/page_left.png" id="4_left"]
 [ext_resource type="Texture2D" path="res://assets/sprites/ui/book/page_right.png" id="5_right"]
 [ext_resource type="Texture2D" path="res://assets/sprites/ui/book/hotpot.png" id="6_hotpot"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/book/bar_under.png" id="7_under"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/book/bar_fill_pass.png" id="8_pass"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/book/bar_fill_over.png" id="9_over"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_stamp"]
 bg_color = Color(1, 1, 1, 0)
@@ -32,7 +35,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.16862746, 0.101960786, 0.078431375, 1)
+color = Color(0.101960786, 0.05882353, 0.043137256, 0.65)
 
 [node name="Center" type="CenterContainer" parent="."]
 layout_mode = 1
@@ -43,21 +46,21 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Book" type="Control" parent="Center"]
-custom_minimum_size = Vector2(960, 702)
+custom_minimum_size = Vector2(864, 600)
 layout_mode = 2
 
 [node name="Cover" type="TextureRect" parent="Center/Book"]
 layout_mode = 0
-offset_right = 960.0
-offset_bottom = 702.0
+offset_right = 864.0
+offset_bottom = 600.0
 texture = ExtResource("3_cover")
 
 [node name="LeftPage" type="TextureRect" parent="Center/Book"]
 layout_mode = 0
 offset_left = 24.0
-offset_top = 24.0
-offset_right = 468.0
-offset_bottom = 660.0
+offset_top = 18.0
+offset_right = 420.0
+offset_bottom = 552.0
 texture = ExtResource("4_left")
 
 [node name="Margin" type="MarginContainer" parent="Center/Book/LeftPage"]
@@ -67,159 +70,193 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 52
-theme_override_constants/margin_top = 30
-theme_override_constants/margin_right = 22
-theme_override_constants/margin_bottom = 24
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 25
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 20
 
 [node name="Content" type="VBoxContainer" parent="Center/Book/LeftPage/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 0
 
 [node name="TitleLabel" type="Label" parent="Center/Book/LeftPage/Margin/Content"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 52)
+custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 0
+size_flags_vertical = 0
 theme_type_variation = &"HeadingLabel"
 text = "Tổng kết ngày 5"
 vertical_alignment = 1
 
-[node name="RevenueRow" type="PanelContainer" parent="Center/Book/LeftPage/Margin/Content"]
-custom_minimum_size = Vector2(0, 46)
-layout_mode = 2
-theme_type_variation = &"PillRow"
-
-[node name="Items" type="HBoxContainer" parent="Center/Book/LeftPage/Margin/Content/RevenueRow"]
+[node name="RevenueRow" type="HBoxContainer" parent="Center/Book/LeftPage/Margin/Content"]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 
-[node name="RevenueTitle" type="Label" parent="Center/Book/LeftPage/Margin/Content/RevenueRow/Items"]
+[node name="RevenueTitle" type="Label" parent="Center/Book/LeftPage/Margin/Content/RevenueRow"]
 layout_mode = 2
+size_flags_vertical = 1
 size_flags_horizontal = 3
 text = "Doanh thu hôm nay"
-vertical_alignment = 1
+vertical_alignment = 2
 
-[node name="RevenueValue" type="Label" parent="Center/Book/LeftPage/Margin/Content/RevenueRow/Items"]
+[node name="RevenueValue" type="Label" parent="Center/Book/LeftPage/Margin/Content/RevenueRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 1
 theme_type_variation = &"ValueLabel"
 text = "1.250.000đ"
-vertical_alignment = 1
+vertical_alignment = 2
 
-[node name="KpiRow" type="PanelContainer" parent="Center/Book/LeftPage/Margin/Content"]
-custom_minimum_size = Vector2(0, 46)
-layout_mode = 2
-theme_type_variation = &"PillRow"
-
-[node name="Items" type="HBoxContainer" parent="Center/Book/LeftPage/Margin/Content/KpiRow"]
+[node name="KpiRow" type="HBoxContainer" parent="Center/Book/LeftPage/Margin/Content"]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 
-[node name="KpiTitle" type="Label" parent="Center/Book/LeftPage/Margin/Content/KpiRow/Items"]
+[node name="KpiTitle" type="Label" parent="Center/Book/LeftPage/Margin/Content/KpiRow"]
 layout_mode = 2
+size_flags_vertical = 1
 size_flags_horizontal = 3
 text = "KPI hôm nay"
-vertical_alignment = 1
+vertical_alignment = 2
 
-[node name="KpiValue" type="Label" parent="Center/Book/LeftPage/Margin/Content/KpiRow/Items"]
+[node name="KpiValue" type="Label" parent="Center/Book/LeftPage/Margin/Content/KpiRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 1
 theme_type_variation = &"ValueLabel"
 text = "1.000.000đ"
-vertical_alignment = 1
+vertical_alignment = 2
 
-[node name="KpiBarRow" type="PanelContainer" parent="Center/Book/LeftPage/Margin/Content"]
-custom_minimum_size = Vector2(0, 46)
-layout_mode = 2
-theme_type_variation = &"PillRow"
-
-[node name="Items" type="HBoxContainer" parent="Center/Book/LeftPage/Margin/Content/KpiBarRow"]
+[node name="KpiBarRow" type="HBoxContainer" parent="Center/Book/LeftPage/Margin/Content"]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="KpiBar" type="ProgressBar" parent="Center/Book/LeftPage/Margin/Content/KpiBarRow/Items"]
+[node name="KpiBar" type="TextureProgressBar" parent="Center/Book/LeftPage/Margin/Content/KpiBarRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 value = 100.0
-show_percentage = false
+nine_patch_stretch = true
+stretch_margin_left = 20
+stretch_margin_right = 16
+texture_under = ExtResource("7_under")
+texture_progress = ExtResource("8_pass")
 
-[node name="KpiPercent" type="Label" parent="Center/Book/LeftPage/Margin/Content/KpiBarRow/Items"]
+[node name="ShadowWide" type="ColorRect" parent="Center/Book/LeftPage/Margin/Content/KpiBarRow/KpiBar"]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 6.0
+offset_top = 20.0
+offset_right = -6.0
+offset_bottom = 23.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.25)
+
+[node name="ShadowNarrow" type="ColorRect" parent="Center/Book/LeftPage/Margin/Content/KpiBarRow/KpiBar"]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 30.0
+offset_top = 23.0
+offset_right = -30.0
+offset_bottom = 25.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.25)
+
+[node name="KpiOverBar" type="TextureProgressBar" parent="Center/Book/LeftPage/Margin/Content/KpiBarRow/KpiBar"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+fill_mode = 1
+value = 20.0
+nine_patch_stretch = true
+stretch_margin_left = 20
+stretch_margin_right = 16
+texture_progress = ExtResource("9_over")
+
+[node name="KpiPercent" type="Label" parent="Center/Book/LeftPage/Margin/Content/KpiBarRow"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ValueLabel"
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 20
 text = "125%"
 vertical_alignment = 1
 
-[node name="DifferenceRow" type="PanelContainer" parent="Center/Book/LeftPage/Margin/Content"]
-custom_minimum_size = Vector2(0, 46)
-layout_mode = 2
-theme_type_variation = &"PillRow"
-
-[node name="Items" type="HBoxContainer" parent="Center/Book/LeftPage/Margin/Content/DifferenceRow"]
+[node name="DifferenceRow" type="HBoxContainer" parent="Center/Book/LeftPage/Margin/Content"]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 
-[node name="DifferenceTitle" type="Label" parent="Center/Book/LeftPage/Margin/Content/DifferenceRow/Items"]
+[node name="DifferenceTitle" type="Label" parent="Center/Book/LeftPage/Margin/Content/DifferenceRow"]
 layout_mode = 2
+size_flags_vertical = 1
 size_flags_horizontal = 3
 text = "Chênh lệch"
-vertical_alignment = 1
+vertical_alignment = 2
 
-[node name="DifferenceValue" type="Label" parent="Center/Book/LeftPage/Margin/Content/DifferenceRow/Items"]
+[node name="DifferenceValue" type="Label" parent="Center/Book/LeftPage/Margin/Content/DifferenceRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 1
 theme_type_variation = &"ValueLabel"
 text = "+250.000đ"
-vertical_alignment = 1
+vertical_alignment = 2
 
-[node name="StarsRow" type="PanelContainer" parent="Center/Book/LeftPage/Margin/Content"]
-custom_minimum_size = Vector2(0, 46)
-layout_mode = 2
-theme_type_variation = &"PillRow"
-
-[node name="Items" type="HBoxContainer" parent="Center/Book/LeftPage/Margin/Content/StarsRow"]
+[node name="StarsRow" type="HBoxContainer" parent="Center/Book/LeftPage/Margin/Content"]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 
-[node name="StarsTitle" type="Label" parent="Center/Book/LeftPage/Margin/Content/StarsRow/Items"]
+[node name="StarsTitle" type="Label" parent="Center/Book/LeftPage/Margin/Content/StarsRow"]
 layout_mode = 2
+size_flags_vertical = 1
 size_flags_horizontal = 3
 text = "Sao của quán"
-vertical_alignment = 1
+vertical_alignment = 2
 
-[node name="StarsValue" type="Label" parent="Center/Book/LeftPage/Margin/Content/StarsRow/Items"]
+[node name="StarsValue" type="Label" parent="Center/Book/LeftPage/Margin/Content/StarsRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 1
 theme_type_variation = &"ValueLabel"
 text = "2,5 / 5"
-vertical_alignment = 1
+vertical_alignment = 2
 
 [node name="StarNote" type="Label" parent="Center/Book/LeftPage/Margin/Content"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 46)
+custom_minimum_size = Vector2(0, 84)
 layout_mode = 2
-theme_type_variation = &"NoteLabel"
-theme_override_constants/line_spacing = 0
+theme_override_constants/line_spacing = 19
 text = "Bị trừ sao 1 lần, ngày mai khách sẽ giảm."
-vertical_alignment = 1
+vertical_alignment = 2
 autowrap_mode = 3
 
 [node name="Hotpot" type="TextureRect" parent="Center/Book/LeftPage"]
 layout_mode = 0
-offset_left = 292.0
-offset_top = 500.0
-offset_right = 424.0
-offset_bottom = 620.0
+offset_left = 254.0
+offset_top = 408.0
+offset_right = 386.0
+offset_bottom = 528.0
 mouse_filter = 2
 texture = ExtResource("6_hotpot")
 
 [node name="RightPage" type="TextureRect" parent="Center/Book"]
 layout_mode = 0
-offset_left = 492.0
-offset_top = 24.0
-offset_right = 936.0
-offset_bottom = 660.0
+offset_left = 444.0
+offset_top = 18.0
+offset_right = 840.0
+offset_bottom = 552.0
 texture = ExtResource("5_right")
 
 [node name="Margin" type="MarginContainer" parent="Center/Book/RightPage"]
@@ -229,25 +266,26 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 52
-theme_override_constants/margin_top = 30
-theme_override_constants/margin_right = 22
-theme_override_constants/margin_bottom = 24
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 25
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 20
 
 [node name="Content" type="VBoxContainer" parent="Center/Book/RightPage/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 0
 
 [node name="ResultHeading" type="Label" parent="Center/Book/RightPage/Margin/Content"]
-custom_minimum_size = Vector2(0, 52)
+custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 0
+size_flags_vertical = 0
 theme_type_variation = &"HeadingLabel"
 text = "Kết quả"
 vertical_alignment = 1
 
 [node name="StampHolder" type="Control" parent="Center/Book/RightPage/Margin/Content"]
-custom_minimum_size = Vector2(0, 136)
+custom_minimum_size = Vector2(0, 126)
 layout_mode = 2
 
 [node name="StampLabel" type="Label" parent="Center/Book/RightPage/Margin/Content/StampHolder"]
@@ -259,14 +297,15 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -140.0
-offset_top = -44.0
-offset_right = 140.0
-offset_bottom = 44.0
+offset_left = -130.0
+offset_top = -42.0
+offset_right = 130.0
+offset_bottom = 42.0
 rotation = -0.12
-pivot_offset = Vector2(140, 44)
+pivot_offset = Vector2(130, 42)
+theme_type_variation = &"ValueLabel"
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 58
+theme_override_font_sizes/font_size = 38
 theme_override_styles/normal = SubResource("StyleBox_stamp")
 text = "ĐẠT KPI"
 horizontal_alignment = 1
@@ -274,56 +313,51 @@ vertical_alignment = 1
 
 [node name="ResultMessage" type="Label" parent="Center/Book/RightPage/Margin/Content"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 46)
+custom_minimum_size = Vector2(0, 84)
 layout_mode = 2
-theme_type_variation = &"NoteLabel"
-theme_override_constants/line_spacing = 0
+theme_override_constants/line_spacing = 19
 text = "Quán vẫn sôi sùng sục, tiếp tục nào!"
-vertical_alignment = 1
+vertical_alignment = 2
 autowrap_mode = 3
 
-[node name="NextKpiRow" type="PanelContainer" parent="Center/Book/RightPage/Margin/Content"]
+[node name="NextKpiRow" type="HBoxContainer" parent="Center/Book/RightPage/Margin/Content"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 46)
-layout_mode = 2
-theme_type_variation = &"PillRow"
-
-[node name="Items" type="HBoxContainer" parent="Center/Book/RightPage/Margin/Content/NextKpiRow"]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 
-[node name="NextKpiTitle" type="Label" parent="Center/Book/RightPage/Margin/Content/NextKpiRow/Items"]
+[node name="NextKpiTitle" type="Label" parent="Center/Book/RightPage/Margin/Content/NextKpiRow"]
 layout_mode = 2
+size_flags_vertical = 1
 size_flags_horizontal = 3
 text = "KPI ngày mai"
-vertical_alignment = 1
+vertical_alignment = 2
 
-[node name="NextKpiValue" type="Label" parent="Center/Book/RightPage/Margin/Content/NextKpiRow/Items"]
+[node name="NextKpiValue" type="Label" parent="Center/Book/RightPage/Margin/Content/NextKpiRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 1
 theme_type_variation = &"ValueLabel"
 text = "1.375.000đ"
-vertical_alignment = 1
+vertical_alignment = 2
 
-[node name="MoneyRow" type="PanelContainer" parent="Center/Book/RightPage/Margin/Content"]
-custom_minimum_size = Vector2(0, 46)
-layout_mode = 2
-theme_type_variation = &"PillRow"
-
-[node name="Items" type="HBoxContainer" parent="Center/Book/RightPage/Margin/Content/MoneyRow"]
+[node name="MoneyRow" type="HBoxContainer" parent="Center/Book/RightPage/Margin/Content"]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 
-[node name="MoneyTitle" type="Label" parent="Center/Book/RightPage/Margin/Content/MoneyRow/Items"]
+[node name="MoneyTitle" type="Label" parent="Center/Book/RightPage/Margin/Content/MoneyRow"]
 layout_mode = 2
+size_flags_vertical = 1
 size_flags_horizontal = 3
 text = "Tiền hiện có"
-vertical_alignment = 1
+vertical_alignment = 2
 
-[node name="MoneyValue" type="Label" parent="Center/Book/RightPage/Margin/Content/MoneyRow/Items"]
+[node name="MoneyValue" type="Label" parent="Center/Book/RightPage/Margin/Content/MoneyRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 1
 theme_type_variation = &"ValueLabel"
 text = "1.750.000đ"
-vertical_alignment = 1
+vertical_alignment = 2
 
 [node name="Spacer" type="Control" parent="Center/Book/RightPage/Margin/Content"]
 layout_mode = 2
@@ -331,7 +365,7 @@ size_flags_vertical = 3
 
 [node name="ContinueButton" type="Button" parent="Center/Book/RightPage/Margin/Content"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 64)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 text = "Đến cửa hàng »"
 
@@ -354,7 +388,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_colors/font_color = Color(0.9490196, 0.6392157, 0.22745098, 1)
-theme_override_font_sizes/font_size = 64
+theme_override_font_sizes/font_size = 56
 text = "Xoay ngang điện thoại
 để chơi nhé!"
 horizontal_alignment = 1
