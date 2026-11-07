@@ -1,0 +1,129 @@
+[gd_resource type="Theme" format=3]
+
+[ext_resource type="FontFile" path="res://assets/fonts/Handjet-SemiBold.ttf" id="1_font"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_pill_row"]
+bg_color = Color(0.95686275, 0.9098039, 0.8, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5411765, 0.3529412, 0.23529412, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+content_margin_left = 18.0
+content_margin_top = 2.0
+content_margin_right = 18.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_pill_heading"]
+bg_color = Color(0.6392157, 0.27450982, 0.101960786, 1)
+corner_radius_top_left = 26
+corner_radius_top_right = 26
+corner_radius_bottom_right = 26
+corner_radius_bottom_left = 26
+content_margin_left = 20.0
+content_margin_top = 2.0
+content_margin_right = 20.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_pill_note"]
+bg_color = Color(0.8627451, 0.7764706, 0.6117647, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+content_margin_left = 18.0
+content_margin_top = 4.0
+content_margin_right = 18.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_button_normal"]
+bg_color = Color(0.6392157, 0.27450982, 0.101960786, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.2901961, 0.18431373, 0.13333334, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+content_margin_left = 20.0
+content_margin_top = 4.0
+content_margin_right = 20.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_button_pressed"]
+bg_color = Color(0.45882353, 0.19607843, 0.07450981, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.2901961, 0.18431373, 0.13333334, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+content_margin_left = 20.0
+content_margin_top = 4.0
+content_margin_right = 20.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBox_focus"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_bar_background"]
+bg_color = Color(0.16862746, 0.101960786, 0.078431375, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.101960786, 0.05882353, 0.043137256, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_bar_pass"]
+bg_color = Color(0.4, 0.73333335, 0.41568628, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_bar_fail"]
+bg_color = Color(0.9372549, 0.3254902, 0.3137255, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[resource]
+default_font = ExtResource("1_font")
+Button/colors/font_color = Color(0.95686275, 0.9098039, 0.8, 1)
+Button/colors/font_hover_color = Color(0.95686275, 0.9098039, 0.8, 1)
+Button/colors/font_pressed_color = Color(0.95686275, 0.9098039, 0.8, 1)
+Button/colors/font_focus_color = Color(0.95686275, 0.9098039, 0.8, 1)
+Button/font_sizes/font_size = 32
+Button/styles/focus = SubResource("StyleBox_focus")
+Button/styles/hover = SubResource("StyleBox_button_normal")
+Button/styles/normal = SubResource("StyleBox_button_normal")
+Button/styles/pressed = SubResource("StyleBox_button_pressed")
+HeadingLabel/base_type = &"Label"
+HeadingLabel/colors/font_color = Color(0.95686275, 0.9098039, 0.8, 1)
+HeadingLabel/font_sizes/font_size = 38
+HeadingLabel/styles/normal = SubResource("StyleBox_pill_heading")
+KpiBarFail/base_type = &"ProgressBar"
+KpiBarFail/styles/fill = SubResource("StyleBox_bar_fail")
+Label/colors/font_color = Color(0.23137255, 0.14117648, 0.08627451, 1)
+Label/font_sizes/font_size = 26
+NoteLabel/base_type = &"Label"
+NoteLabel/styles/normal = SubResource("StyleBox_pill_note")
+PillRow/base_type = &"PanelContainer"
+PillRow/styles/panel = SubResource("StyleBox_pill_row")
+ProgressBar/styles/background = SubResource("StyleBox_bar_background")
+ProgressBar/styles/fill = SubResource("StyleBox_bar_pass")
+ValueLabel/base_type = &"Label"
+ValueLabel/font_sizes/font_size = 30
