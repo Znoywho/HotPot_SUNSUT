@@ -8,6 +8,11 @@ signal closed(result: BattleController.Result)
 signal _action_chosen(choice: Dictionary)
 
 const ORDER_PREVIEW := 7
+const ORDER_SLOT := 56 ## Kích thước 1 ô trên thanh lượt.
+const ORDER_BIG := 68 ## Ô của người đang đánh (to hơn).
+const ORDER_GAP := 6
+const ORDER_ARROW := 28 ## Chỗ cho dấu » sau ô đang đánh.
+const ORDER_SLIDE := 0.28 ## Thời gian trượt 1 ô (giây).
 const SFX_DIR := "res://assets/audio/sfx/"
 
 var session: HuntSession
@@ -23,7 +28,10 @@ var _log_index := 0
 
 var _allies_box: HBoxContainer
 var _enemies_box: HBoxContainer
-var _order_box: HBoxContainer
+var _order_box: Control ## Thanh lượt: các ô đặt tay để trượt mượt.
+var _order_slots: Array[Dictionary] = [] ## {c: Combatant, node: PanelContainer}
+var _order_arrow: Label
+var _order_current: Combatant ## Người đang/vừa đánh, giữ ở ô đầu tới lượt sau.
 var _log: RichTextLabel
 var _turn_label: Label
 var _skill_buttons: Array[Button] = []
@@ -53,7 +61,7 @@ func start(p_session: HuntSession, p_encounter: Encounter) -> void:
 
 func _process(_delta: float) -> void:
 	if timer_label != null:
-		timer_label.visible = DayManager.timer_running
+		timer_label.visible = DayManager.timer_running and get_tree().get_first_node_in_group("hud") == null
 		timer_label.text = "Còn lại " + DayManager.time_left_text()
 
 
@@ -450,9 +458,12 @@ func _build() -> void:
 	order_row.add_theme_constant_override("separation", 8)
 	order_panel.add_child(order_row)
 	order_row.add_child(HuntUI.label("Lượt tiếp:", HuntUI.FONT_SMALL))
-	_order_box = HBoxContainer.new()
-	_order_box.add_theme_constant_override("separation", 4)
+	_order_box = Control.new()
+	_order_box.custom_minimum_size = Vector2(ORDER_BIG + ORDER_ARROW + (ORDER_PREVIEW - 1) * (ORDER_SLOT + ORDER_GAP), ORDER_BIG)
 	order_row.add_child(_order_box)
+	_order_arrow = HuntUI.label("»", 24)
+	_order_arrow.position = Vector2(ORDER_BIG + 3, (ORDER_BIG - 34) / 2.0)
+	_order_box.add_child(_order_arrow)
 	_turn_label = HuntUI.label("", HuntUI.FONT_SMALL, HuntUI.RUST)
 	_turn_label.size_flags_horizontal = SIZE_EXPAND_FILL
 	_turn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -518,7 +529,13 @@ func _refresh_all() -> void:
 	for c in views:
 		views[c].refresh()
 	_refresh_selection()
-	_update_order()
+	# Thanh lượt chỉ trượt khi sang lượt mới; ở đây chỉ dựng lần đầu hoặc khi có ai bị hạ.
+	var someone_down := false
+	for slot in _order_slots:
+		if not (slot["c"] as Combatant).is_alive():
+			someone_down = true
+	if _order_slots.is_empty() or someone_down:
+		_update_order(_order_current)
 
 
 func _refresh_selection() -> void:
@@ -533,28 +550,110 @@ func _set_acting(actor: Combatant) -> void:
 		views[c].set_acting(c == actor)
 
 
-## Thanh thứ tự lượt: người đang hành động (viền trắng, to hơn) rồi các lượt dự đoán.
+## Thanh thứ tự lượt: người đang hành động (viền trắng) rồi các lượt dự đoán.
+## Qua lượt mới thì các ô trượt sang trái từng ô, ô vừa đánh trượt ra và mờ đi, lượt mới hiện dần ở cuối.
 func _update_order(current: Combatant = null) -> void:
-	for child in _order_box.get_children():
-		child.queue_free()
+	_order_current = current
 	var order: Array[Combatant] = []
 	if current != null and current.is_alive():
 		order.append(current)
 	order.append_array(controller.predict_order(ORDER_PREVIEW - order.size()))
+	var has_current := current != null and not order.is_empty() and order[0] == current
+	_order_arrow.visible = has_current
+	var duration := ORDER_SLIDE / (2.0 if fast_mode else 1.0)
+
+	# Ghép ô cũ với lượt mới theo đúng thứ tự trái -> phải (không ô nào trượt chéo qua ô khác).
+	var used: Array[bool] = []
+	used.resize(_order_slots.size())
+	used.fill(false)
+	var new_slots: Array[Dictionary] = []
+	var cursor := 0
 	for i in order.size():
 		var c := order[i]
-		var border := Color(0, 0, 0, 0)
-		if i == 0 and current != null:
-			border = Color.WHITE
-		elif c == controller.player:
-			border = HuntUI.GOLD
-		var holder := PanelContainer.new()
-		holder.add_theme_stylebox_override("panel", HuntUI.panel_style(
-			Color(0.2, 0.35, 0.2, 0.9) if c.is_ally else Color(0.4, 0.15, 0.12, 0.9), border, 6, 3 if i == 0 else 2))
-		holder.add_child(HuntUI.texture_rect(HuntUI.combatant_texture(c.data), 48 if i == 0 and current != null else 40))
-		_order_box.add_child(holder)
-		if i == 0 and current != null:
-			_order_box.add_child(HuntUI.label("»", 24))
+		var pick := -1
+		for j in range(cursor, _order_slots.size()):
+			if _order_slots[j]["c"] == c:
+				pick = j
+				break
+		if pick >= 0:
+			cursor = pick + 1
+		var slot: Dictionary
+		if pick >= 0:
+			used[pick] = true
+			slot = _order_slots[pick]
+		else:
+			slot = _make_order_slot(c)
+			var node: Control = slot["node"]
+			node.modulate.a = 0.0
+			if cursor >= _order_slots.size() or i == order.size() - 1:
+				# Lượt mới ở cuối hàng: hiện dần, trượt nhẹ từ bên phải vào.
+				node.position = _order_slot_rect(i + 1, has_current).position
+			else:
+				# Chen vào giữa hàng (vd được đẩy lượt lên): rơi từ trên xuống đúng chỗ, các ô khác dạt ra.
+				node.position = _order_slot_rect(i, has_current).position + Vector2(0, -ORDER_SLOT * 0.8)
+			_order_box.add_child(node)
+		new_slots.append(slot)
+		var is_current := i == 0 and has_current
+		_style_order_slot(slot, is_current)
+		var rect := _order_slot_rect(i, has_current)
+		var n: Control = slot["node"]
+		var t := n.create_tween().set_parallel().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.tween_property(n, "position", rect.position, duration)
+		t.tween_property(n, "size", rect.size, duration)
+		t.tween_property(n, "modulate:a", 1.0, duration)
+		var icon: Control = slot["icon"]
+		t.tween_property(icon, "custom_minimum_size", Vector2.ONE * (52.0 if is_current else 40.0), duration)
+	# Ô không còn trong hàng. Người vừa đánh: lóe trắng rồi trượt ra trái; ô khác: mờ dần tại chỗ.
+	for j in _order_slots.size():
+		if used[j]:
+			continue
+		var gone: Control = _order_slots[j]["node"]
+		var t := gone.create_tween()
+		if j == 0:
+			t.tween_property(gone, "modulate", Color(2.0, 2.0, 2.0, 1.0), duration * 0.3)
+			t.set_parallel().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			t.chain().tween_property(gone, "position", gone.position + Vector2(-ORDER_SLOT * 0.6, -10), duration)
+			t.tween_property(gone, "modulate", Color(2.0, 2.0, 2.0, 0.0), duration)
+		else:
+			t.tween_property(gone, "modulate:a", 0.0, duration)
+		t.chain().tween_callback(gone.queue_free)
+	_order_slots = new_slots
+
+
+## Vị trí + kích thước ô thứ index. Ô đầu (người đang đánh) to hơn, sau nó là dấu ».
+func _order_slot_rect(index: int, has_current: bool) -> Rect2:
+	var small_y := (ORDER_BIG - ORDER_SLOT) / 2.0
+	if not has_current:
+		return Rect2(index * (ORDER_SLOT + ORDER_GAP), small_y, ORDER_SLOT, ORDER_SLOT)
+	if index == 0:
+		return Rect2(0, 0, ORDER_BIG, ORDER_BIG)
+	var x := ORDER_BIG + ORDER_ARROW + (index - 1) * (ORDER_SLOT + ORDER_GAP)
+	return Rect2(x, small_y, ORDER_SLOT, ORDER_SLOT)
+
+
+func _make_order_slot(c: Combatant) -> Dictionary:
+	var holder := PanelContainer.new()
+	holder.size = Vector2(ORDER_SLOT, ORDER_SLOT)
+	holder.mouse_filter = MOUSE_FILTER_IGNORE
+	var center := CenterContainer.new()
+	center.mouse_filter = MOUSE_FILTER_IGNORE
+	var icon := HuntUI.texture_rect(HuntUI.combatant_texture(c.data), 40)
+	center.add_child(icon)
+	holder.add_child(center)
+	return {"c": c, "node": holder, "icon": icon}
+
+
+func _style_order_slot(slot: Dictionary, is_current: bool) -> void:
+	var c: Combatant = slot["c"]
+	var border := Color(0, 0, 0, 0)
+	if is_current:
+		border = Color.WHITE
+	elif c == controller.player:
+		border = HuntUI.GOLD
+	var style := HuntUI.panel_style(Color(0.2, 0.35, 0.2, 0.9) if c.is_ally else Color(0.4, 0.15, 0.12, 0.9), border, 6, 3 if is_current else 2)
+	style.set_content_margin_all(0)
+	var node: PanelContainer = slot["node"]
+	node.add_theme_stylebox_override("panel", style)
 
 
 func _flush_log() -> void:

@@ -12,6 +12,20 @@ var monsters: Array[CombatantData] = [
 	preload("res://data/combatants/greens_mage.tres"),
 	preload("res://data/combatants/enoki_archer.tres"),
 	preload("res://data/combatants/boss_tomato_king.tres"),
+	# Quái chủ đề lẩu (Hải).
+	preload("res://data/combatants/water_spinach_vine.tres"),
+	preload("res://data/combatants/cherry_tomato_swarm.tres"),
+	preload("res://data/combatants/bouncy_beef_ball.tres"),
+	preload("res://data/combatants/armored_lobster.tres"),
+	preload("res://data/combatants/splitting_mushroom.tres"),
+	preload("res://data/combatants/angry_chili.tres"),
+	preload("res://data/combatants/tentacle_squid.tres"),
+	preload("res://data/combatants/shy_clam.tres"),
+	preload("res://data/combatants/napa_cabbage.tres"),
+	preload("res://data/combatants/sleepy_shiitake.tres"),
+	preload("res://data/combatants/beef_enoki_roll.tres"),
+	preload("res://data/combatants/boss_beef_lord.tres"),
+	preload("res://data/combatants/boss_hotpot_golem.tres"),
 ]
 
 var broths: Array[BrothData] = [
