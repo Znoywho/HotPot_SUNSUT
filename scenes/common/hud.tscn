@@ -1,0 +1,66 @@
+[gd_scene format=3 uid="uid://d1faq4lq7n452"]
+
+[ext_resource type="Script" uid="uid://c3d1v0m2f7rs" path="res://scenes/common/hud.gd" id="1_pcol3"]
+[ext_resource type="StyleBox" path="res://scenes/common/hud_box.tres" id="2_box"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_ynscc"]
+
+[node name="Hud" type="CanvasLayer" unique_id=1164983042]
+script = ExtResource("1_pcol3")
+
+[node name="TopBar" type="PanelContainer" parent="." unique_id=631558162]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 21.0
+grow_horizontal = 2
+theme_override_styles/panel = ExtResource("2_box")
+
+[node name="Row" type="HBoxContainer" parent="TopBar" unique_id=1687317081]
+layout_mode = 2
+theme_override_constants/separation = 32
+
+[node name="DayLabel" type="Label" parent="TopBar/Row" unique_id=918274651]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.23137255, 0.14117648, 0.08627451, 1)
+theme_override_font_sizes/font_size = 20
+text = "Ngày 1"
+
+[node name="KpiLabel" type="Label" parent="TopBar/Row" unique_id=402761938]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.23137255, 0.14117648, 0.08627451, 1)
+theme_override_font_sizes/font_size = 20
+text = "KPI: 300.000đ"
+
+[node name="Spacer" type="Control" parent="TopBar/Row" unique_id=775120364]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StarsLabel" type="Label" parent="TopBar/Row" unique_id=1540382716]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.23137255, 0.14117648, 0.08627451, 1)
+theme_override_font_sizes/font_size = 20
+text = "Sao: 3.0"
+
+[node name="TimerLabel" type="Label" parent="TopBar/Row" unique_id=266490183]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.23137255, 0.14117648, 0.08627451, 1)
+theme_override_font_sizes/font_size = 20
+text = "2:30"
+
+[node name="BoxContainer" type="BoxContainer" parent="TopBar/Row" unique_id=500810568]
+layout_mode = 2
+
+[node name="MoneyGroup" type="HBoxContainer" parent="TopBar/Row" unique_id=368815833]
+layout_mode = 2
+
+[node name="MoneyLabel" type="Label" parent="TopBar/Row/MoneyGroup" unique_id=1315370894]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.23137255, 0.14117648, 0.08627451, 1)
+theme_override_font_sizes/font_size = 20
+text = "500.000"
+
+[node name="MoneyIcon" type="Control" parent="TopBar/Row/MoneyGroup" unique_id=553962953]
+layout_mode = 2
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="TopBar/Row/MoneyGroup/MoneyIcon" unique_id=785366903]
+sprite_frames = SubResource("SpriteFrames_ynscc")
