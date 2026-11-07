@@ -35,7 +35,8 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	var window_size := DisplayServer.window_get_size()
 	_rotate_hint.visible = window_size.y > window_size.x
-	timer_label.visible = DayManager.timer_running
+	# Có HUD (đã hiện giờ trong game) thì ẩn dòng đếm ngược.
+	timer_label.visible = DayManager.timer_running and get_tree().get_first_node_in_group("hud") == null
 	if DayManager.timer_running:
 		timer_label.text = "Còn lại " + DayManager.time_left_text()
 
