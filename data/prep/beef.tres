@@ -1,0 +1,65 @@
+[gd_resource type="Resource" script_class="PrepRecipeData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://data/classes/prep_recipe_data.gd" id="1"]
+[ext_resource type="Script" path="res://data/classes/prep_step_data.gd" id="2"]
+
+[sub_resource type="Resource" id="step_1"]
+script = ExtResource("2")
+title = "Rửa"
+kind = "hold_wash"
+hint = "Giữ để rửa sạch miếng thịt."
+duration = 1.0
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "sink"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_2"]
+script = ExtResource("2")
+title = "Lọc gân và mỡ"
+kind = "tap_targets"
+hint = "Chạm vào các chỗ gân trắng và mỡ thừa để lọc bỏ."
+duration = 1.5
+count = 4
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_3"]
+script = ExtResource("2")
+title = "Thái lát mỏng ngược thớ"
+kind = "swipe_cut"
+hint = "Vuốt theo các đường chấm, cắt ngang thớ để thịt mềm."
+duration = 1.5
+count = 4
+difficulty = 1.2
+penalty = 20
+optional = false
+cut = true
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_4"]
+script = ExtResource("2")
+title = "Ướp"
+kind = "timed_stage"
+hint = "Bấm \"Xong!\" khi kim vào vùng xanh: ướp vừa thấm."
+duration = 1.8
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "bowl"
+pattern = "slices"
+
+[resource]
+script = ExtResource("1")
+ingredient_id = "beef"
+steps = Array[ExtResource("2")]([SubResource("step_1"), SubResource("step_2"), SubResource("step_3"), SubResource("step_4")])

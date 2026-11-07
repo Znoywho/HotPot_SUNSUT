@@ -1,0 +1,79 @@
+[gd_resource type="Resource" script_class="PrepRecipeData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://data/classes/prep_recipe_data.gd" id="1"]
+[ext_resource type="Script" path="res://data/classes/prep_step_data.gd" id="2"]
+
+[sub_resource type="Resource" id="step_1"]
+script = ExtResource("2")
+title = "Rửa"
+kind = "hold_wash"
+hint = "Giữ để rửa sạch tôm."
+duration = 1.0
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "sink"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_2"]
+script = ExtResource("2")
+title = "Cắt râu và chân"
+kind = "tap_targets"
+hint = "Chạm vào râu và chân tôm để cắt bỏ."
+duration = 1.5
+count = 4
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_3"]
+script = ExtResource("2")
+title = "Rút chỉ lưng"
+kind = "drag_pull"
+hint = "Kéo thật chậm theo mũi tên để rút chỉ đen ở lưng, kéo nhanh là đứt."
+duration = 1.5
+count = 1
+difficulty = 1.4
+penalty = 25
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_4"]
+script = ExtResource("2")
+title = "Lột vỏ"
+kind = "drag_pull"
+hint = "Kéo theo mũi tên để lột vỏ (có thể bỏ qua nếu nhúng cả vỏ)."
+duration = 1.5
+count = 2
+difficulty = 1.0
+penalty = 20
+optional = true
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_5"]
+script = ExtResource("2")
+title = "Khử tanh"
+kind = "timed_stage"
+hint = "Bấm \"Xong!\" khi kim vào vùng xanh: ngâm gừng, rượu vừa đủ."
+duration = 1.5
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "bowl"
+pattern = "slices"
+
+[resource]
+script = ExtResource("1")
+ingredient_id = "shrimp"
+steps = Array[ExtResource("2")]([SubResource("step_1"), SubResource("step_2"), SubResource("step_3"), SubResource("step_4"), SubResource("step_5")])

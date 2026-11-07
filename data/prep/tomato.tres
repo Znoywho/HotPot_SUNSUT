@@ -1,0 +1,93 @@
+[gd_resource type="Resource" script_class="PrepRecipeData" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://data/classes/prep_recipe_data.gd" id="1"]
+[ext_resource type="Script" path="res://data/classes/prep_step_data.gd" id="2"]
+
+[sub_resource type="Resource" id="step_1"]
+script = ExtResource("2")
+title = "Rửa"
+kind = "hold_wash"
+hint = "Giữ ngón tay trong bồn để rửa, thả ra khi kim vào vùng xanh."
+duration = 1.3
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "sink"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_2"]
+script = ExtResource("2")
+title = "Khía chữ thập"
+kind = "swipe_cut"
+hint = "Vuốt theo 2 đường chấm để khía hình chữ thập ở đáy quả."
+duration = 1.5
+count = 2
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = true
+prop = "board"
+pattern = "cross"
+
+[sub_resource type="Resource" id="step_3"]
+script = ExtResource("2")
+title = "Chần nước sôi"
+kind = "timed_stage"
+hint = "Bấm \"Xong!\" khi kim vào vùng xanh: chần vừa tới thì vỏ dễ bóc."
+duration = 1.6
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "pot"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_4"]
+script = ExtResource("2")
+title = "Lột vỏ"
+kind = "drag_pull"
+hint = "Kéo từ từ theo mũi tên để lột vỏ. Kéo mạnh quá là rách thịt cà."
+duration = 1.5
+count = 2
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_5"]
+script = ExtResource("2")
+title = "Bỏ cuống"
+kind = "tap_targets"
+hint = "Chạm đúng vào cuống để khoét bỏ."
+duration = 1.5
+count = 1
+difficulty = 1.0
+penalty = 25
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_6"]
+script = ExtResource("2")
+title = "Cắt múi"
+kind = "swipe_cut"
+hint = "Vuốt theo các đường chấm để cắt múi cau."
+duration = 1.5
+count = 3
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = true
+prop = "board"
+pattern = "slices"
+
+[resource]
+script = ExtResource("1")
+ingredient_id = "tomato"
+steps = Array[ExtResource("2")]([SubResource("step_1"), SubResource("step_2"), SubResource("step_3"), SubResource("step_4"), SubResource("step_5"), SubResource("step_6")])

@@ -189,8 +189,17 @@ static func combatant_texture(data: CombatantData) -> Texture2D:
 
 
 static func ingredient_texture(id: String) -> Texture2D:
+	if id.begins_with(GameState.PREPPED_PREFIX):
+		return prepped_texture(id.trim_prefix(GameState.PREPPED_PREFIX))
 	var path := "res://assets/sprites/ingredients/%s.png" % id
 	return load(path) if ResourceLoader.exists(path) else load(FALLBACK_SPRITE)
+
+
+## Icon nguyên liệu ĐÃ SƠ CHẾ (bày trên đĩa: bò thái lát, mực khoanh...). id thô, có thể có tiền tố golden_.
+## Chưa có icon riêng thì dùng icon thô.
+static func prepped_texture(id: String) -> Texture2D:
+	var path := "res://assets/sprites/ingredients/prepped/%s.png" % id.trim_prefix(GameState.PREPPED_PREFIX)
+	return load(path) if ResourceLoader.exists(path) else ingredient_texture(id.trim_prefix(GameState.PREPPED_PREFIX))
 
 
 ## Hàng icon nguyên liệu: [icon] x2  [icon] x3 ...

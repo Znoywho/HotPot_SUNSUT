@@ -47,6 +47,35 @@ var upgrades: Array[UpgradeData] = [
 ]
 
 
+## Sơ chế nguyên liệu (data/prep/): quy trình từng nguyên liệu + số liệu chấm điểm / chất lượng.
+var prep_config: PrepConfig = preload("res://data/prep/prep_config.tres")
+var prep_recipes: Array[PrepRecipeData] = [
+	preload("res://data/prep/tomato.tres"),
+	preload("res://data/prep/mushroom.tres"),
+	preload("res://data/prep/shiitake.tres"),
+	preload("res://data/prep/enoki.tres"),
+	preload("res://data/prep/beef.tres"),
+	preload("res://data/prep/beef_ball.tres"),
+	preload("res://data/prep/beef_roll.tres"),
+	preload("res://data/prep/shrimp.tres"),
+	preload("res://data/prep/squid.tres"),
+	preload("res://data/prep/clam.tres"),
+	preload("res://data/prep/greens.tres"),
+	preload("res://data/prep/napa_cabbage.tres"),
+	preload("res://data/prep/water_spinach.tres"),
+	preload("res://data/prep/chili.tres"),
+]
+
+
+## Quy trình sơ chế của 1 nguyên liệu (bỏ tiền tố prepped_ / golden_: bản hoàng kim dùng chung quy trình). null nếu không có.
+func prep_recipe_for(id: String) -> PrepRecipeData:
+	var base := id.trim_prefix(GameState.PREPPED_PREFIX).trim_prefix(GameState.GOLDEN_PREFIX)
+	for r in prep_recipes:
+		if r.ingredient_id == base:
+			return r
+	return null
+
+
 func monsters_for_day(day: int, bosses: bool) -> Array[CombatantData]:
 	var result: Array[CombatantData] = []
 	for m in monsters:

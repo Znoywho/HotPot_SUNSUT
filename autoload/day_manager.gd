@@ -8,9 +8,9 @@ signal phase_time_up
 
 enum Phase { NONE, HUNT, COOK, SELL, DAY_END, SHOP, GAME_OVER }
 
-## Một ngày chơi = 7 phút: săn 2:30 + nấu 1:15 + bán 3:15.
+## Một ngày chơi = 8 phút 15: săn 2:30 + sơ chế, nấu 2:30 + bán 3:15.
 const HUNT_DURATION := 150.0 ## Sáng đi săn: 2:30.
-const COOK_DURATION := 75.0 ## Trưa nấu nước cốt: 1:15.
+const COOK_DURATION := 150.0 ## Trưa sơ chế + nấu nước cốt: 2:30 (sơ chế nhiều bước nên cần dài hơn).
 const SELL_DURATION := 195.0 ## Chiều tối bán hàng: 3:15.
 
 const SCENES := {

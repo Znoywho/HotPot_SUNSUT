@@ -1,0 +1,121 @@
+[gd_resource type="Resource" script_class="PrepRecipeData" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://data/classes/prep_recipe_data.gd" id="1"]
+[ext_resource type="Script" path="res://data/classes/prep_step_data.gd" id="2"]
+
+[sub_resource type="Resource" id="step_1"]
+script = ExtResource("2")
+title = "Rửa"
+kind = "hold_wash"
+hint = "Giữ để rửa sạch mực."
+duration = 1.0
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "sink"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_2"]
+script = ExtResource("2")
+title = "Tách đầu khỏi thân"
+kind = "drag_pull"
+hint = "Kéo từ từ theo mũi tên để tách đầu khỏi thân."
+duration = 1.5
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_3"]
+script = ExtResource("2")
+title = "Gỡ túi mực"
+kind = "tap_targets"
+hint = "Chạm thật chuẩn vào túi mực. Chạm trượt dễ làm vỡ túi, bị trừ nhiều điểm."
+duration = 1.5
+count = 1
+difficulty = 1.4
+penalty = 40
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_4"]
+script = ExtResource("2")
+title = "Rút xương sống"
+kind = "drag_pull"
+hint = "Kéo theo mũi tên để rút miếng xương trong suốt."
+duration = 1.5
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_5"]
+script = ExtResource("2")
+title = "Bỏ mắt và mỏ"
+kind = "tap_targets"
+hint = "Chạm vào mắt và mỏ mực để bỏ đi."
+duration = 1.5
+count = 3
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_6"]
+script = ExtResource("2")
+title = "Lột da"
+kind = "drag_pull"
+hint = "Kéo theo mũi tên để lột lớp da tím (có thể bỏ qua)."
+duration = 1.5
+count = 2
+difficulty = 1.0
+penalty = 20
+optional = true
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_7"]
+script = ExtResource("2")
+title = "Khử tanh"
+kind = "timed_stage"
+hint = "Bấm \"Xong!\" khi kim vào vùng xanh."
+duration = 1.5
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "bowl"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_8"]
+script = ExtResource("2")
+title = "Cắt khoanh, khía"
+kind = "swipe_cut"
+hint = "Vuốt theo các đường chấm để cắt khoanh."
+duration = 1.5
+count = 3
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = true
+prop = "board"
+pattern = "slices"
+
+[resource]
+script = ExtResource("1")
+ingredient_id = "squid"
+steps = Array[ExtResource("2")]([SubResource("step_1"), SubResource("step_2"), SubResource("step_3"), SubResource("step_4"), SubResource("step_5"), SubResource("step_6"), SubResource("step_7"), SubResource("step_8")])

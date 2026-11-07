@@ -1,0 +1,65 @@
+[gd_resource type="Resource" script_class="PrepRecipeData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://data/classes/prep_recipe_data.gd" id="1"]
+[ext_resource type="Script" path="res://data/classes/prep_step_data.gd" id="2"]
+
+[sub_resource type="Resource" id="step_1"]
+script = ExtResource("2")
+title = "Trải lát bò"
+kind = "drag_pull"
+hint = "Kéo theo mũi tên để trải lát bò thật phẳng."
+duration = 1.5
+count = 1
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_2"]
+script = ExtResource("2")
+title = "Đặt nấm kim châm"
+kind = "tap_targets"
+hint = "Chạm vào các vị trí để đặt nấm kim châm lên lát bò."
+duration = 1.5
+count = 3
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_3"]
+script = ExtResource("2")
+title = "Cuộn chặt"
+kind = "drag_pull"
+hint = "Kéo từ từ theo mũi tên để cuộn chặt, kéo vội sẽ bung."
+duration = 1.5
+count = 2
+difficulty = 1.2
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[sub_resource type="Resource" id="step_4"]
+script = ExtResource("2")
+title = "Cố định mép cuộn"
+kind = "tap_targets"
+hint = "Chạm vào mép cuộn để ép chặt."
+duration = 1.5
+count = 2
+difficulty = 1.0
+penalty = 20
+optional = false
+cut = false
+prop = "board"
+pattern = "slices"
+
+[resource]
+script = ExtResource("1")
+ingredient_id = "beef_roll"
+steps = Array[ExtResource("2")]([SubResource("step_1"), SubResource("step_2"), SubResource("step_3"), SubResource("step_4")])

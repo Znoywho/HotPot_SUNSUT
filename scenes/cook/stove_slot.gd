@@ -10,7 +10,9 @@ const KIT := "res://assets/sprites/kitchen/"
 const PX := 4 ## 1 điểm ảnh sprite = 4 px màn hình (giống nền).
 const STOVE_Y := 64.0 ## Bếp nằm dưới phần nồi + hơi nước.
 const WIDTH := 136.0
-const HEIGHT := 216.0 ## Nồi (phía trên) + bếp + thẻ trạng thái.
+const HEIGHT := 216.0
+const POT_H := 28 ## Nồi gang 32x28 (điểm ảnh sprite).
+const POT_Y := STOVE_Y + 6 * PX - 27 * PX ## Đáy nồi ngồi trên mặt bếp. ## Nồi (phía trên) + bếp + thẻ trạng thái.
 
 var index := 0
 var gas := false
@@ -44,7 +46,7 @@ func setup(i: int, is_gas: bool) -> void:
 	_stove = _sprite(load(KIT + ("stove_gas" if gas else "stove_stone") + ".png"), Vector2(34, 38), Vector2(0, STOVE_Y))
 	_fire_atlas = _atlas("fire", 16, 12)
 	_fire = _sprite(_fire_atlas, Vector2(16, 12), Vector2(36, STOVE_Y + 21 * PX))
-	_pot = _sprite(load(KIT + "pot_empty.png"), Vector2(32, 24), Vector2((WIDTH - 128) / 2.0, STOVE_Y + 6 * PX - 23 * PX))
+	_pot = _sprite(load(KIT + "pot_empty.png"), Vector2(32, POT_H), Vector2((WIDTH - 128) / 2.0, POT_Y))
 	# Lửa bếp ga liếm đáy nồi (vẽ đè lên mép dưới nồi).
 	_flame_atlas = _atlas("gas_flame", 20, 5)
 	_flame = _sprite(_flame_atlas, Vector2(20, 5), Vector2((WIDTH - 80) / 2.0, STOVE_Y + 3 * PX))
@@ -55,8 +57,21 @@ func setup(i: int, is_gas: bool) -> void:
 	_steam.visible = false
 
 	_chip = PanelContainer.new()
-	_chip.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_card", 6, Vector2(8, 4)))
-	_chip.position = Vector2(4, -36) # Biển nhỏ treo phía trên nồi (không bị nhân vật che).
+	# Biển gỗ phẳng (không có chấm trang trí ở góc nên chữ không bị đè).
+	var cs := StyleBoxFlat.new()
+	cs.bg_color = Color("f3e2c0")
+	cs.border_color = Color("5a3820")
+	cs.set_border_width_all(3)
+	cs.set_corner_radius_all(5)
+	cs.content_margin_left = 6
+	cs.content_margin_right = 6
+	cs.content_margin_top = 2
+	cs.content_margin_bottom = 3
+	cs.shadow_color = Color(0, 0, 0, 0.3)
+	cs.shadow_offset = Vector2(0, 2)
+	cs.shadow_size = 1
+	_chip.add_theme_stylebox_override("panel", cs)
+	_chip.position = Vector2(4, -50) # Biển nhỏ treo phía trên nồi (không bị nhân vật che).
 	_chip.custom_minimum_size = Vector2(WIDTH - 8, 0)
 	_chip.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(_chip)
@@ -67,6 +82,7 @@ func setup(i: int, is_gas: bool) -> void:
 	_chip_label = HuntUI.label("", 14, HuntUI.INK)
 	_chip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_chip_label.clip_text = true
+	_chip_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	box.add_child(_chip_label)
 	_bar = ProgressBar.new()
 	_bar.show_percentage = false
@@ -86,10 +102,13 @@ func setup(i: int, is_gas: bool) -> void:
 
 
 ## Đưa thẻ trạng thái sang lớp khác (nằm trên nhân vật đứng trước bếp), giữ nguyên vị trí trên màn.
+## Bếp có thể bị thu nhỏ (scale): biển giữ cỡ chữ gốc, nằm ngay trên miệng nồi, rộng bằng bếp.
 func detach_chip(layer: Control) -> void:
-	var at := position + _chip.position
+	var at := position + Vector2(3, POT_Y * scale.y - 32)
 	remove_child(_chip)
 	layer.add_child(_chip)
+	_chip.custom_minimum_size.x = WIDTH * scale.x - 6
+	_chip.size = Vector2.ZERO # Co về đúng cỡ tối thiểu mới.
 	_chip.position = at
 
 
@@ -120,7 +139,7 @@ func start(b: BrothData, seconds: float, portions: int, from_expired: bool, take
 	_bar.visible = true
 	_bar.value = 0.0
 	# Nồi được đặt lên bếp: nảy nhẹ.
-	_pot.pivot_offset = Vector2(64, 92)
+	_pot.pivot_offset = Vector2(64, POT_H * PX - 4)
 	_pot.scale = Vector2(1.12, 0.86)
 	create_tween().tween_property(_pot, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 
@@ -131,7 +150,7 @@ func tick(delta: float) -> bool:
 		return false
 	remaining -= delta
 	_bar.value = progress()
-	_chip_label.text = "%s · %ds" % [_short_name(), ceili(maxf(remaining, 0.0))]
+	_chip_label.text = "%ds · %s" % [ceili(maxf(remaining, 0.0)), _short_name()]
 	return remaining <= 0.0
 
 
@@ -154,12 +173,23 @@ func _show_idle() -> void:
 	_fire.visible = false
 	_flame.visible = false
 	_steam.visible = false
-	_chip_label.text = "Bếp %d · Trống" % (index + 1)
+	_chip_label.text = "Bếp %d" % (index + 1)
 	_bar.visible = false
 
 
+## Viền sáng khi bếp đang được chọn để nấu (bảng chọn món đang mở cho bếp này).
+func set_selected(on: bool) -> void:
+	_stove.modulate = Color(1.25, 1.18, 0.95) if on else Color.WHITE
+	_chip.modulate = Color(1.1, 1.05, 0.8) if on else Color.WHITE
+	if on and broth == null:
+		_chip_label.text = "Chọn món..."
+	elif broth == null:
+		_chip_label.text = "Bếp %d" % (index + 1)
+
+
 func _short_name() -> String:
-	return broth.display_name.trim_prefix("Lẩu ")
+	var n := broth.display_name.trim_prefix("Lẩu ")
+	return n.left(1).to_upper() + n.substr(1)
 
 
 func _process(delta: float) -> void:
@@ -172,7 +202,7 @@ func _process(delta: float) -> void:
 		_steam_atlas.region = Rect2(14 * (int(_anim * 7.0) % 6), 0, 14, 18)
 	if broth != null:
 		# Nồi sôi: rung rất nhẹ.
-		_pot.position.y = STOVE_Y + 6 * PX - 23 * PX + (1.0 if int(_anim * 6.0) % 2 == 0 else 0.0)
+		_pot.position.y = POT_Y + (1.0 if int(_anim * 6.0) % 2 == 0 else 0.0)
 
 
 func _sprite(tex: Texture2D, px_size: Vector2, pos: Vector2) -> TextureRect:
