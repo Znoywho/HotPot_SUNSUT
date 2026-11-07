@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = "mushroom_broth"
 display_name = "Lẩu nấm"
-ingredients = {"enoki": 1, "mushroom": 2}
+ingredients = {"enoki": 2, "mushroom": 2}
 cook_time = 8.0
 price = 120000
 unlock_day = 1

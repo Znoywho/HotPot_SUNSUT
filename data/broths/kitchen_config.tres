@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="KitchenConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/cook/kitchen_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+max_stoves = 6
+gas_stove_from = 2
+keep_ratio_on_leave = 0.5
+prep_session_max = 5
+chop_taps_per_unit = 6
+wash_taps_per_unit = 2
+swipe_min_distance = 70.0
+peel_hold_seconds = 0.9
+staff_prep_interval = 3.5
+prep_staff_max = 2
+sous_chef_level = 3
+sous_chef_delay = 1.5
+staff_target_batches = 2

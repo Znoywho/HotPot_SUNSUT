@@ -30,7 +30,7 @@ func _ready() -> void:
 	box.add_theme_constant_override("separation", 10)
 	panel.add_child(box)
 	box.add_child(HuntUI.label("Hết hạn sử dụng!", 28, HuntUI.BAD))
-	var note := HuntUI.label("Các món dưới đây đã để quá %d ngày. Bán tiếp thì mỗi nồi có thể bị khách phát hiện (phải bồi thường, trừ sao), thanh tra tới là bị phạt." % GameState.SHELF_DAYS, HuntUI.FONT_SMALL, HuntUI.INK_SOFT)
+	var note := HuntUI.label("Các món dưới đây đã để quá %d ngày. Bán tiếp thì mỗi nồi có thể bị khách phát hiện (phải bồi thường, trừ sao), thanh tra tới là bị phạt." % GameState.shelf_days(), HuntUI.FONT_SMALL, HuntUI.INK_SOFT)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size = Vector2(720, 0)
 	box.add_child(note)
@@ -64,9 +64,9 @@ func _row(e: Dictionary) -> Control:
 	row.add_theme_constant_override("separation", 10)
 	var icon: Texture2D
 	var name: String
-	if e["kind"] == "item":
+	if e["kind"] == "item" or e["kind"] == "prepped":
 		icon = HuntUI.ingredient_texture(e["id"])
-		name = GameState.item_display_name(e["id"])
+		name = GameState.item_display_name(e["id"]) + (" (đã sơ chế)" if e["kind"] == "prepped" else "")
 	else:
 		icon = load(POT_ICON) if ResourceLoader.exists(POT_ICON) else null
 		var broth := Database.get_broth(e["id"])
