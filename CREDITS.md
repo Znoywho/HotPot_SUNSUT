@@ -17,7 +17,10 @@ Giấy phép thường gặp: CC0 (tự do), CC-BY (ghi tác giả), OFL (font).
 |---|---|---|---|---|
 | `assets/sprites/monsters/*.png` (17 quái + 3 boss, pixel 32×32, bản tạm) | Sprite toàn bộ quái và boss | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/characters/player.png`, `mount_buffalo.png` (pixel 32×32, bản tạm) | Sprite đầu bếp, thú cưỡi Trâu nước | Nhóm tự làm | Của nhóm | — |
-| `assets/sprites/ingredients/*.png` (6 nguyên liệu + 6 bản hoàng kim, pixel 32×32) | Icon nguyên liệu | Nhóm tự làm | Của nhóm | — |
+| `assets/sprites/ingredients/*.png` (14 nguyên liệu + bản hoàng kim, pixel 32×32) | Icon nguyên liệu, đồ nhúng, ớt | Nhóm tự làm | Của nhóm | — |
+| `assets/sprites/ui/broth_pot.png`, `assets/sprites/ui/hud/hud_star.png`, `hud_star_shine.png`, `hud_storage.png` (pixel) | Icon nồi lẩu, ngôi sao đánh giá (vẽ lại theo phong cách sao pixel tròn, không dùng ảnh gốc), nút kho trên HUD | Nhóm tự làm | Của nhóm | — |
+| `assets/sprites/ui/hud/hud_coin.png`, `hud_calendar.png`, `hud_target.png`, `hud_clock.png` | Icon động trên HUD | **Chưa rõ nguồn** (Hạo thêm ở commit 6c7c34a) – cần Hạo bổ sung tác giả/giấy phép | ? | ? |
+| `assets/sprites/Eris Esra's Character Template 4.1/` | Mẫu nhân vật pixel (template) | Eris Esra | Miễn phí dùng trong game; game miễn phí **bắt buộc** ghi tác giả + link | https://erisesra.itch.io/character-templates-pack |
 | `assets/sprites/backgrounds/hunt_background.png` (pixel 320×180) | Nền khu săn | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/fx/burst.png`, `explosion_fire.png`, `explosion_big.png`, `smoke.png`, `splash_broth.png` (đổi màu từ "water blob") | Hiệu ứng nổ, chí mạng, khói, nước lẩu trong trận | Ansimuz (Luis Zuno) | CC0 | https://ansimuz.itch.io/explosion-animations-pack |
 | `assets/sprites/fx/slash.png`, `flame.png`, `poison.png`, `heal.png`, `shield.png` (16×16) | Hiệu ứng chém, đốt, độc, hồi máu, giáp (tự vẽ, lấy cảm hứng phong cách từ "Free Effect and Bullet 16x16" của BDragon1727, không dùng file gốc) | Nhóm tự làm | Của nhóm | — |

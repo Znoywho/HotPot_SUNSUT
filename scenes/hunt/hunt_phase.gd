@@ -25,12 +25,16 @@ func _ready() -> void:
 	_build_map()
 	_build_rotate_hint()
 	_refresh()
+	# Đầu ngày: đồ trong kho quá hạn -> hỏi bán tiếp hay bỏ (giờ săn tạm dừng trong lúc hỏi).
+	if not GameState.newly_expired().is_empty():
+		add_child(ExpiredPopup.new())
 
 
 func _process(_delta: float) -> void:
 	var window_size := DisplayServer.window_get_size()
 	_rotate_hint.visible = window_size.y > window_size.x
-	_timer_label.visible = DayManager.timer_running
+	# Có HUD (đã hiện giờ trong game) thì ẩn dòng đếm ngược.
+	_timer_label.visible = DayManager.timer_running and get_tree().get_first_node_in_group("hud") == null
 	_timer_label.text = "Còn lại " + DayManager.time_left_text()
 
 
@@ -122,7 +126,7 @@ func _build_map() -> void:
 	# Cột trái: đầu bếp, thú cưỡi, thu hoạch, gợi ý công thức.
 	var left := PanelContainer.new()
 	left.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_panel", 8, Vector2(22, 18)))
-	left.custom_minimum_size = Vector2(390, 0)
+	left.custom_minimum_size = Vector2(330, 0)
 	body.add_child(left)
 	HuntUI.pop_in(left)
 	var left_scroll := ScrollContainer.new()
@@ -143,8 +147,10 @@ func _build_map() -> void:
 	right.add_child(head)
 	var pick := HuntUI.outlined_label("Chọn bụi cỏ để săn:", 24)
 	pick.size_flags_horizontal = SIZE_EXPAND_FILL
+	pick.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pick.custom_minimum_size = Vector2(120, 0)
 	head.add_child(pick)
-	_reroll_button = HuntUI.button("", 330)
+	_reroll_button = HuntUI.button("", 280)
 	_reroll_button.custom_minimum_size.y = 56
 	_reroll_button.add_theme_font_size_override("font_size", HuntUI.FONT_SMALL)
 	_reroll_button.pressed.connect(_on_reroll)
@@ -199,7 +205,7 @@ func _refresh_status() -> void:
 	for hint in session.recipe_hints():
 		var l := HuntUI.label(hint, HuntUI.FONT_SMALL)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.custom_minimum_size = Vector2(340, 0)
+		l.custom_minimum_size = Vector2(280, 0)
 		_status_box.add_child(l)
 	if not session.can_fight():
 		var l := HuntUI.label("Đầu bếp đã kiệt sức, hãy về bếp.", HuntUI.FONT, HuntUI.BAD)
@@ -255,13 +261,13 @@ func _make_card(enc: Encounter, index: int) -> Button:
 	sprites.alignment = BoxContainer.ALIGNMENT_CENTER
 	sprites.add_theme_constant_override("separation", -10)
 	box.add_child(sprites)
-	var size := 128.0 if enc.monsters.size() == 1 else (96.0 if enc.monsters.size() == 2 else 72.0)
+	var size := 112.0 if enc.monsters.size() == 1 else (80.0 if enc.monsters.size() == 2 else 60.0)
 	for m in enc.monsters:
 		sprites.add_child(HuntUI.texture_rect(HuntUI.combatant_texture(m), size))
 	var names := HuntUI.label(enc.names(), HuntUI.FONT_SMALL)
 	names.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	names.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	names.custom_minimum_size = Vector2(180, 0)
+	names.custom_minimum_size = Vector2(140, 0)
 	box.add_child(names)
 	var diff := enc.difficulty(session.player)
 	var diff_color: Color = [HuntUI.GOOD, HuntUI.WARN, HuntUI.BAD][diff]
