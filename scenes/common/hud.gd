@@ -10,15 +10,19 @@ const ICON_SCALE := 2
 const STAR_FRAME := 18
 const STAR_SCALE := 2
 const MAX_STARS := 5
+const WIDEST_MONEY_TEXT := "9.999.999đ" ## Chữ rộng nhất ô Tiền cần chứa; từ FULL_MONEY_LIMIT trở lên thì viết gọn.
+const FULL_MONEY_LIMIT := 10_000_000 ## Từ mức này ô Tiền đổi sang dạng "12,5trđ" để không tràn ô.
+const WIDEST_DAY_TEXT := "Ngày 99" ## Chữ rộng nhất ô Ngày cần chứa.
+const PART_OF_DAY_TEXTS: Array[String] = ["Sáng", "Trưa", "Chiều", "Tối", "Đêm"]
 
-const BAR_BG := Color("1f2a2e")
-const BAR_EDGE := Color("0d1316")
-const PANEL_BG := Color("34464d")
-const PANEL_BORDER := Color("8aa3a8")
-const VALUE_BG := Color("162026")
-const VALUE_BORDER := Color("0d1316")
-const TITLE_COLOR := Color("f3e6c4")
-const OUTLINE := Color("10171a")
+const BAR_BG := Color("2b1a14")
+const BAR_EDGE := Color("1a0f0a")
+const PANEL_BG := Color("4a2e20")
+const PANEL_BORDER := Color("a8764a")
+const VALUE_BG := Color("1f120c")
+const VALUE_BORDER := Color("1a0f0a")
+const TITLE_COLOR := Color("f3e2c0")
+const OUTLINE := Color("1a0f0a")
 const MONEY_COLOR := Color("ffd34e")
 const TEXT_COLOR := Color("f5f1e6")
 const BAR_FILL := Color("4cc552")
@@ -41,6 +45,7 @@ var _storage_alert: Label ## Dấu "!" trên nút Kho khi có món sắp/đã h�
 
 func _ready() -> void:
 	add_to_group("hud") # Các màn dựa vào nhóm này để ẩn dòng "Còn lại".
+	DayManager.phase_changed.connect(_close_storage_popups)
 	var bar := PanelContainer.new()
 	bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	bar.custom_minimum_size = Vector2(0, HEIGHT)
@@ -61,8 +66,10 @@ func _ready() -> void:
 	bar.add_child(row)
 
 	_money_label = _value_label(MONEY_COLOR)
+	_reserve_label_width(_money_label, [WIDEST_MONEY_TEXT])
 	row.add_child(_section(_icon("hud_coin", 8, 10.0, 0.0), "TIỀN", _value_box(_money_label), 1.2))
 	_day_label = _value_label(TEXT_COLOR)
+	_reserve_label_width(_day_label, [WIDEST_DAY_TEXT])
 	row.add_child(_section(_icon("hud_calendar", 6, 10.0, 3.0), "NGÀY", _value_box(_day_label), 0.9))
 	row.add_child(_section(_icon("hud_target", 8, 12.0, 2.2), "KPI", _kpi_widget(), 1.3))
 	row.add_child(_stars_section())
@@ -81,7 +88,7 @@ func _process(delta: float) -> void:
 func _refresh(force: bool) -> void:
 	if force or GameState.money != _shown_money:
 		_shown_money = GameState.money
-		_money_label.text = GameState.format_money(GameState.money)
+		_money_label.text = _money_text(GameState.money)
 		if not force:
 			_play_icon(0)
 	if force or GameState.day != _shown_day:
@@ -161,6 +168,13 @@ static func _part_of_day(hour: int) -> String:
 	return "Đêm"
 
 
+## Chữ trong ô Tiền: đủ số khi còn vừa ô, số lớn thì viết gọn.
+func _money_text(value: int) -> String:
+	if absi(value) < FULL_MONEY_LIMIT:
+		return GameState.format_money(value)
+	return _short_money(value) + "đ"
+
+
 ## 1.250.000đ -> "1,25tr", 300.000đ -> "300k" để thanh KPI gọn.
 func _short_money(value: int) -> String:
 	if absi(value) >= 1_000_000:
@@ -234,6 +248,25 @@ func _value_label(color: Color) -> Label:
 	return l
 
 
+## Giữ Label ở độ rộng cố định bằng chuỗi mẫu rộng nhất, để đổi chữ không đẩy các ô bên cạnh.
+func _reserve_label_width(label: Label, samples: Array[String]) -> void:
+	var font := label.get_theme_font("font")
+	var font_size := label.get_theme_font_size("font_size")
+	var widest := 0.0
+	for sample in samples:
+		widest = maxf(widest, font.get_string_size(sample, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+	label.custom_minimum_size.x = ceilf(widest)
+	label.clip_text = true
+
+
+## Mẫu giờ dùng mỗi chữ số (font có chữ số rộng hẹp khác nhau): "00:00", "11:11", ...
+func _all_digit_clock_texts() -> Array[String]:
+	var texts: Array[String] = []
+	for digit in 10:
+		texts.append("%d%d:%d%d" % [digit, digit, digit, digit])
+	return texts
+
+
 func _value_box(content: Control) -> Control:
 	var box := PanelContainer.new()
 	box.add_theme_stylebox_override("panel", _value_style())
@@ -245,7 +278,7 @@ func _value_box(content: Control) -> Control:
 func _kpi_widget() -> Control:
 	_kpi_bar = ProgressBar.new()
 	_kpi_bar.show_percentage = false
-	_kpi_bar.custom_minimum_size = Vector2(140, 30)
+	_kpi_bar.custom_minimum_size = Vector2(116, 30)
 	_kpi_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_kpi_bar.add_theme_stylebox_override("background", _value_style())
 	var fill := StyleBoxFlat.new()
@@ -298,7 +331,7 @@ func _star_rect(tex: Texture2D, scale: int) -> TextureRect:
 
 func _time_section() -> Control:
 	_sun = HudSunDial.new()
-	_sun.custom_minimum_size = Vector2(150, 60)
+	_sun.custom_minimum_size = Vector2(140, 60)
 	_sun.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_phase_label = _title_label("")
 	_time_label = Label.new()
@@ -308,6 +341,8 @@ func _time_section() -> Control:
 	info.alignment = BoxContainer.ALIGNMENT_CENTER
 	info.custom_minimum_size = Vector2(70, 0)
 	info.add_theme_constant_override("separation", 0)
+	_reserve_label_width(_phase_label, PART_OF_DAY_TEXTS)
+	_reserve_label_width(_time_label, _all_digit_clock_texts())
 	info.add_child(_phase_label)
 	info.add_child(_time_label)
 	var line := HBoxContainer.new()
@@ -359,6 +394,13 @@ func _storage_section() -> Control:
 	_storage_alert.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(_storage_alert)
 	return button
+
+
+## Đóng bảng Kho đang mở khi đổi giai đoạn (HUD sống qua các màn nên bảng không tự mất).
+func _close_storage_popups(_phase: int) -> void:
+	for child in get_children():
+		if child is StoragePopup:
+			child.queue_free()
 
 
 ## Có lô nào đang ở ngày cuối hoặc đã hết hạn thì nhấp nháy dấu "!".
