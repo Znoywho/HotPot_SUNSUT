@@ -62,7 +62,7 @@ func setup(c: Combatant) -> void:
 	hp_bar = HuntUI.hp_bar(c.is_ally)
 	hp_bar.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	bar_holder.add_child(hp_bar)
-	hp_label = HuntUI.outlined_label("", 16)
+	hp_label = HuntUI.outlined_label("", 14)
 	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hp_label.set_anchors_and_offsets_preset(PRESET_FULL_RECT)

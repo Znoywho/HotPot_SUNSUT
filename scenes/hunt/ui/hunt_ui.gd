@@ -217,18 +217,42 @@ static func background() -> TextureRect:
 	return bg
 
 
+## Thanh máu có viền giống khung bảng giấy: ngoài nâu đậm, đường kem mảnh, trong xanh ngọc.
 static func hp_bar(ally: bool) -> ProgressBar:
 	var bar := ProgressBar.new()
 	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0, 20)
+	bar.custom_minimum_size = Vector2(0, 24)
 	var bg := StyleBoxFlat.new()
 	bg.bg_color = Color("2b1a14")
-	bg.set_corner_radius_all(6)
-	bg.border_color = Color("1a0f0b")
+	bg.border_color = Color("4a2c1c")
 	bg.set_border_width_all(2)
+	bg.set_corner_radius_all(5)
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = Color("66bb6a") if ally else Color("ef5350")
-	fill.set_corner_radius_all(6)
+	fill.set_corner_radius_all(3)
+	# Phần máu nằm lọt trong viền (co vào 4px mỗi cạnh).
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		fill.set_expand_margin(side, -4)
 	bar.add_theme_stylebox_override("background", bg)
 	bar.add_theme_stylebox_override("fill", fill)
+	_bar_ring(bar, 2, 1, Color("f3e3c3"), 4) # đường kem
+	_bar_ring(bar, 3, 1, TEAL, 3) # viền trong xanh ngọc
 	return bar
+
+
+## Vẽ 1 vòng viền (chỉ nét, không nền) lùi vào `inset` px bên trong thanh.
+static func _bar_ring(bar: Control, inset: int, width: int, color: Color, radius: int) -> void:
+	var ring := Panel.new()
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var st := StyleBoxFlat.new()
+	st.draw_center = false
+	st.border_color = color
+	st.set_border_width_all(width)
+	st.set_corner_radius_all(radius)
+	ring.add_theme_stylebox_override("panel", st)
+	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ring.offset_left = inset
+	ring.offset_top = inset
+	ring.offset_right = -inset
+	ring.offset_bottom = -inset
+	bar.add_child(ring)
