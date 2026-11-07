@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = "stove"
 display_name = "Bếp xịn"
-description = "Hệ số thời gian nấu (càng nhỏ càng nhanh)."
+description = "Mỗi cấp mở thêm 1 bếp nấu (tối đa 6 bếp) và nấu nhanh hơn 10%."
 category = 0
 costs = Array[int]([150000, 300000, 600000, 1200000, 2400000])
 values = Array[float]([1.0, 0.9, 0.8, 0.7, 0.6, 0.5])

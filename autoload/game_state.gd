@@ -37,7 +37,7 @@ const INGREDIENT_NAMES := {
 }
 const GOLDEN_PREFIX := "golden_" ## vd "golden_tomato" = cà chua hoàng kim.
 const GOLDEN_PRICE_MULTIPLIER := 3.0
-const SHELF_DAYS := 3 ## Nguyên liệu / nước cốt giữ được tối đa 3 ngày (tính cả ngày nhập).
+const SHELF_DAYS := 3 ## Nguyên liệu / nước cốt giữ được tối đa 3 ngày (tính cả ngày nhập), chưa tính Kho lạnh.
 
 var money: int
 var day: int
@@ -52,6 +52,9 @@ var broths: Dictionary ## id nước cốt (String) -> tổng số nồi (chỉ 
 ## expired = lô đã quá hạn nhưng chủ quán chọn "bán tiếp".
 var item_batches: Dictionary
 var broth_batches: Dictionary
+## Nguyên liệu đã sơ chế (thái, rửa, bóc vỏ...), cùng cấu trúc lô. Chỉ nấu được bằng đồ đã sơ chế.
+var prepped: Dictionary ## id -> tổng số phần đã sơ chế (chỉ đọc; tính từ prepped_batches)
+var prepped_batches: Dictionary
 var upgrades: Dictionary ## id nâng cấp (String) -> cấp hiện tại
 var tables_floor1: int
 var tables_floor2: int
@@ -73,6 +76,8 @@ func reset_new_game() -> void:
 	broths = {}
 	item_batches = {}
 	broth_batches = {}
+	prepped = {}
+	prepped_batches = {}
 	upgrades = {}
 	tables_floor1 = START_TABLES_FLOOR1
 	tables_floor2 = 0
@@ -169,6 +174,71 @@ func describe_items(items: Dictionary) -> String:
 	return ", ".join(parts)
 
 
+# --- Nguyên liệu đã sơ chế ---------------------------------------------------
+
+func get_prepped_count(id: String) -> int:
+	return prepped.get(id, 0)
+
+
+func prepped_batch_list(id: String) -> Array:
+	return prepped_batches.get(id, [])
+
+
+## Sơ chế count phần: chuyển từ kho thô sang kho đã sơ chế (giữ ngày nhập và trạng thái hết hạn).
+## Trả về số phần thực sự sơ chế được (ít hơn count nếu kho thô không đủ).
+func prep_items(id: String, count := 1) -> int:
+	var n := mini(count, get_item_count(id))
+	if n <= 0:
+		return 0
+	var r := _batch_take(item_batches, id, n)
+	for piece in r["pieces"]:
+		_batch_add(prepped_batches, id, int(piece["count"]), int(piece["day"]), bool(piece["expired"]))
+	_sync_totals()
+	inventory_changed.emit()
+	return n
+
+
+## Trả đồ đã sơ chế vào kho (vd nồi chưa chín bị nhấc ra thì hoàn nguyên liệu).
+func add_prepped(id: String, count := 1, from_day := -1, expired := false) -> void:
+	_batch_add(prepped_batches, id, count, from_day, expired)
+	_sync_totals()
+	inventory_changed.emit()
+
+
+func has_prepped(requirements: Dictionary) -> bool:
+	for id in requirements:
+		if get_prepped_count(id) < int(requirements[id]):
+			return false
+	return true
+
+
+## Trừ đồ đã sơ chế theo công thức (lô cũ nhất trước). Thiếu thì không trừ gì.
+## Trả về {ok, oldest_day, expired, taken}; taken = {id: [{day, count, expired}]} để hoàn lại nếu cần.
+func consume_prepped_info(requirements: Dictionary) -> Dictionary:
+	if not has_prepped(requirements):
+		return {"ok": false, "oldest_day": day, "expired": false, "taken": {}}
+	var oldest := day
+	var any_expired := false
+	var taken := {}
+	for id in requirements:
+		var r := _batch_take(prepped_batches, id, int(requirements[id]))
+		oldest = mini(oldest, int(r["oldest_day"]))
+		any_expired = any_expired or bool(r["expired"])
+		taken[id] = r["pieces"]
+	_sync_totals()
+	inventory_changed.emit()
+	return {"ok": true, "oldest_day": oldest, "expired": any_expired, "taken": taken}
+
+
+## Hoàn lại đúng các phần đã lấy bằng consume_prepped_info().
+func refund_prepped(taken: Dictionary) -> void:
+	for id in taken:
+		for piece in taken[id]:
+			_batch_add(prepped_batches, id, int(piece["count"]), int(piece["day"]), bool(piece["expired"]))
+	_sync_totals()
+	inventory_changed.emit()
+
+
 # --- Nước cốt ---------------------------------------------------------------
 
 ## from_day: ngày tính hạn (mặc định hôm nay = ngày nấu). expired: nấu từ đồ hết hạn / quá hạn giữ bán tiếp.
@@ -198,9 +268,14 @@ func take_broth_info(id: String) -> Dictionary:
 
 # --- Hạn sử dụng ------------------------------------------------------------
 
-## Số ngày còn dùng được của 1 lô (3 = nhập hôm nay, 1 = hôm nay là ngày cuối, <= 0 = quá hạn).
+## Số ngày giữ được đồ: 3 ngày + số ngày cộng thêm từ nâng cấp Kho lạnh.
+func shelf_days() -> int:
+	return SHELF_DAYS + int(Database.upgrade_value("cold_storage"))
+
+
+## Số ngày còn dùng được của 1 lô (shelf_days() = nhập hôm nay, 1 = hôm nay là ngày cuối, <= 0 = quá hạn).
 func days_left(batch: Dictionary) -> int:
-	return int(batch["day"]) + SHELF_DAYS - day
+	return int(batch["day"]) + shelf_days() - day
 
 
 func item_batch_list(id: String) -> Array:
@@ -211,11 +286,11 @@ func broth_batch_list(id: String) -> Array:
 	return broth_batches.get(id, [])
 
 
-## Các lô vừa quá hạn mà chủ quán chưa quyết định: [{kind: "item"/"broth", id, day, count}].
+## Các lô vừa quá hạn mà chủ quán chưa quyết định: [{kind: "item"/"prepped"/"broth", id, day, count}].
 func newly_expired() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	for kind in ["item", "broth"]:
-		var store: Dictionary = item_batches if kind == "item" else broth_batches
+	for kind in ["item", "prepped", "broth"]:
+		var store := _store_of(kind)
 		for id in store:
 			for batch in store[id]:
 				if not batch["expired"] and days_left(batch) <= 0:
@@ -225,7 +300,7 @@ func newly_expired() -> Array[Dictionary]:
 
 ## keep = true: giữ lại bán tiếp (có rủi ro bị khách phát hiện); false: bỏ đi.
 func resolve_expired(kind: String, id: String, from_day: int, keep: bool) -> void:
-	var store: Dictionary = item_batches if kind == "item" else broth_batches
+	var store := _store_of(kind)
 	var list: Array = store.get(id, [])
 	for i in range(list.size() - 1, -1, -1):
 		var batch: Dictionary = list[i]
@@ -241,10 +316,10 @@ func resolve_expired(kind: String, id: String, from_day: int, keep: bool) -> voi
 	inventory_changed.emit()
 
 
-## Số lượng đồ hết hạn đang giữ trong kho (nguyên liệu + nồi).
+## Số lượng đồ hết hạn đang giữ trong kho (nguyên liệu thô, đã sơ chế và nồi).
 func expired_stock_count() -> int:
 	var n := 0
-	for store in [item_batches, broth_batches]:
+	for store in [item_batches, prepped_batches, broth_batches]:
 		for id in store:
 			for batch in store[id]:
 				if batch["expired"]:
@@ -255,7 +330,7 @@ func expired_stock_count() -> int:
 ## Tiêu hủy toàn bộ đồ hết hạn (vd bị thanh tra tịch thu). Trả về số lượng đã hủy.
 func discard_expired_stock() -> int:
 	var n := 0
-	for store in [item_batches, broth_batches]:
+	for store in [item_batches, prepped_batches, broth_batches]:
 		for id in store.keys():
 			var list: Array = store[id]
 			for i in range(list.size() - 1, -1, -1):
@@ -269,6 +344,15 @@ func discard_expired_stock() -> int:
 	return n
 
 
+func _store_of(kind: String) -> Dictionary:
+	match kind:
+		"prepped":
+			return prepped_batches
+		"broth":
+			return broth_batches
+	return item_batches
+
+
 func _batch_add(store: Dictionary, id: String, count: int, from_day: int, expired: bool) -> void:
 	if count <= 0:
 		return
@@ -279,24 +363,27 @@ func _batch_add(store: Dictionary, id: String, count: int, from_day: int, expire
 	store[id] = list
 
 
-## Lấy count đơn vị: lô hết hạn / cũ nhất trước. Trả về {oldest_day, expired}.
+## Lấy count đơn vị: lô hết hạn / cũ nhất trước. Trả về {oldest_day, expired, pieces}.
+## pieces = các phần đã lấy theo lô [{day, count, expired}] (dùng để chuyển kho hoặc hoàn lại).
 func _batch_take(store: Dictionary, id: String, count: int) -> Dictionary:
 	var list: Array = store.get(id, [])
 	var oldest := day
 	var any_expired := false
+	var pieces: Array = []
 	var need := count
 	while need > 0 and not list.is_empty():
 		var batch: Dictionary = list[0]
 		var used := mini(need, int(batch["count"]))
 		oldest = mini(oldest, int(batch["day"]))
 		any_expired = any_expired or bool(batch["expired"])
+		pieces.append({"day": int(batch["day"]), "count": used, "expired": bool(batch["expired"])})
 		batch["count"] = int(batch["count"]) - used
 		need -= used
 		if int(batch["count"]) <= 0:
 			list.remove_at(0)
 	if list.is_empty():
 		store.erase(id)
-	return {"oldest_day": oldest, "expired": any_expired}
+	return {"oldest_day": oldest, "expired": any_expired, "pieces": pieces}
 
 
 ## Gộp lô cùng ngày + cùng trạng thái, sắp xếp: hết hạn trước, rồi ngày cũ trước.
@@ -318,6 +405,7 @@ func _merge_batches(list: Array) -> void:
 
 func _sync_totals() -> void:
 	inventory = _totals(item_batches)
+	prepped = _totals(prepped_batches)
 	broths = _totals(broth_batches)
 
 
@@ -402,6 +490,7 @@ func to_dict() -> Dictionary:
 		"inventory": inventory,
 		"broths": broths,
 		"item_batches": item_batches,
+		"prepped_batches": prepped_batches,
 		"broth_batches": broth_batches,
 		"upgrades": upgrades,
 		"tables_floor1": tables_floor1,
@@ -419,6 +508,7 @@ func load_from_dict(data: Dictionary) -> void:
 	# Save mới có lô theo ngày; save cũ chỉ có tổng số -> coi như nhập hôm nay.
 	item_batches = _to_batches(data.get("item_batches", null), data.get("inventory", {}))
 	broth_batches = _to_batches(data.get("broth_batches", null), data.get("broths", {}))
+	prepped_batches = _to_batches(data.get("prepped_batches", null), {})
 	_sync_totals()
 	upgrades = _to_int_dict(data.get("upgrades", {}))
 	tables_floor1 = int(data.get("tables_floor1", START_TABLES_FLOOR1))

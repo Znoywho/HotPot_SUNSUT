@@ -6,8 +6,8 @@
 script = ExtResource("1")
 id = "pot"
 display_name = "Nồi"
-description = "Số món nồi chứa được. TODO(nhóm): doc ghi 15 -> 20 nhưng lại ghi mỗi bậc +10, cần chốt."
+description = "Mỗi lần nấu ra nhiều phần lẩu hơn: 4 phần ở cấp 0, +1 mỗi cấp, cấp 5 ra 10 phần."
 category = 0
 costs = Array[int]([100000, 200000, 400000, 800000, 1600000])
-values = Array[float]([15.0, 25.0, 35.0, 45.0, 55.0, 70.0])
+values = Array[float]([4.0, 5.0, 6.0, 7.0, 8.0, 10.0])
 evolves_into = "thach_sanh_pot"
