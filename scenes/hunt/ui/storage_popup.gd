@@ -23,7 +23,7 @@ func _ready() -> void:
 	box.add_theme_constant_override("separation", 10)
 	panel.add_child(box)
 	box.add_child(HuntUI.label("Kho của quán", 28, HuntUI.RUST))
-	box.add_child(HuntUI.label("Đồ giữ được %d ngày. Nấu và bán luôn lấy lô cũ nhất trước." % GameState.SHELF_DAYS, HuntUI.FONT_SMALL, HuntUI.INK_SOFT))
+	box.add_child(HuntUI.label("Đồ giữ được %d ngày (nâng Kho lạnh để giữ lâu hơn). Sơ chế, nấu và bán luôn lấy lô cũ nhất trước." % GameState.shelf_days(), HuntUI.FONT_SMALL, HuntUI.INK_SOFT))
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(760, 400)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -40,6 +40,14 @@ func _ready() -> void:
 		list.add_child(HuntUI.label("(trống)", HuntUI.FONT_SMALL, HuntUI.INK_SOFT))
 	for id in item_ids:
 		list.add_child(_row(HuntUI.ingredient_texture(id), GameState.item_display_name(id), GameState.item_batch_list(id)))
+	list.add_child(HSeparator.new())
+	list.add_child(HuntUI.label("Đã sơ chế (sẵn sàng nấu)", 22, HuntUI.RUST))
+	var prepped_ids := GameState.prepped_batches.keys()
+	prepped_ids.sort()
+	if prepped_ids.is_empty():
+		list.add_child(HuntUI.label("(trống)", HuntUI.FONT_SMALL, HuntUI.INK_SOFT))
+	for id in prepped_ids:
+		list.add_child(_row(HuntUI.ingredient_texture(id), GameState.item_display_name(id), GameState.prepped_batch_list(id)))
 	list.add_child(HSeparator.new())
 	list.add_child(HuntUI.label("Nước cốt đã nấu", 22, HuntUI.RUST))
 	var broth_ids := GameState.broth_batches.keys()

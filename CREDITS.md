@@ -17,6 +17,8 @@ Giấy phép thường gặp: CC0 (tự do), CC-BY (ghi tác giả), OFL (font).
 |---|---|---|---|---|
 | `assets/sprites/monsters/*.png` (17 quái + 3 boss, pixel 32×32, bản tạm) | Sprite toàn bộ quái và boss | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/characters/player.png`, `mount_buffalo.png` (pixel 32×32, bản tạm) | Sprite đầu bếp, thú cưỡi Trâu nước | Nhóm tự làm | Của nhóm | — |
+| `assets/sprites/characters/staff_lan.png`, `staff_tung.png`, `staff_minh.png` (pixel 32×32) | Nhân viên bếp: 2 phụ bếp + bếp phó | Nhóm tự làm | Của nhóm | — |
+| `assets/sprites/kitchen/*.png` (nền bếp 320×180, kho lạnh, bàn sơ chế, bếp lò đá, bếp ga, lửa, nồi lẩu theo món, hơi nước, thớt, dao, bồn rửa, rổ, khay, đồ đã sơ chế) | Khu bếp và các trò sơ chế | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/ingredients/*.png` (14 nguyên liệu + bản hoàng kim, pixel 32×32) | Icon nguyên liệu, đồ nhúng, ớt | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/ui/broth_pot.png`, `assets/sprites/ui/hud/hud_star.png`, `hud_star_shine.png`, `hud_storage.png` (pixel) | Icon nồi lẩu, ngôi sao đánh giá (vẽ lại theo phong cách sao pixel tròn, không dùng ảnh gốc), nút kho trên HUD | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/ui/hud/hud_coin.png`, `hud_calendar.png`, `hud_target.png`, `hud_clock.png` | Icon động trên HUD | **Chưa rõ nguồn** (Hạo thêm ở commit 6c7c34a) – cần Hạo bổ sung tác giả/giấy phép | ? | ? |
