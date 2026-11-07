@@ -27,6 +27,7 @@ var _action_tween: Tween
 var _dead := false
 var _selected := false
 var _acting := false
+var _frames: SpriteFrameLayer ## Động tác tung chiêu; null nếu nhân vật chưa có sheet.
 
 
 func setup(c: Combatant) -> void:
@@ -55,6 +56,7 @@ func setup(c: Combatant) -> void:
 	sprite.pivot_offset = Vector2(size / 2.0, size * 0.9) # Chân nhân vật.
 	_stage.add_child(sprite)
 	_stage.resized.connect(_place_sprite)
+	_frames = SpriteFrameLayer.attach_to(sprite)
 
 	var bar_holder := Control.new()
 	bar_holder.custom_minimum_size = Vector2(0, 24)
@@ -156,11 +158,13 @@ func _blink() -> void:
 	_schedule_blink()
 
 
-## Lao tới mục tiêu: lùi lấy đà rồi phóng lên trước.
-func play_attack(direction: float) -> void:
+## Lao tới mục tiêu: lùi lấy đà rồi phóng lên trước; đầu bếp phát thêm động tác của chiêu.
+func play_attack(direction: float, animation_name := "attack") -> void:
 	if _dead:
 		return
 	_kill_action()
+	if _frames != null:
+		_frames.play(animation_name)
 	_action_tween = create_tween()
 	_action_tween.tween_property(sprite, "position", _home + Vector2(-10 * direction, 2), 0.08)
 	_action_tween.tween_property(sprite, "position", _home + Vector2(46 * direction, -6), 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -224,6 +228,8 @@ func play_revive() -> void:
 func _kill_action() -> void:
 	if _action_tween != null and _action_tween.is_running():
 		_action_tween.kill()
+	if _frames != null:
+		_frames.stop()
 	sprite.position = _home
 	sprite.modulate = Color.WHITE
 
