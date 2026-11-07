@@ -45,26 +45,29 @@ func _process(delta: float) -> void:
 
 
 func _build_ui() -> void:
+	add_child(HuntUI.background())
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_bottom", 20)
+	add_child(margin)
+
 	var root := VBoxContainer.new()
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_theme_constant_override("separation", 10)
-	add_child(root)
+	margin.add_child(root)
+
+	var title := HuntUI.outlined_label("Chiều tối · Bán hàng", 26, HuntUI.GOLD)
+	root.add_child(title)
 
 	var header := HBoxContainer.new()
 	root.add_child(header)
-	var title := Label.new()
-	title.text = "Chiều tối – Bán hàng"
-	title.add_theme_font_size_override("font_size", 28)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-	_revenue_label = Label.new()
-	_revenue_label.add_theme_font_size_override("font_size", 18)
+	_revenue_label = HuntUI.outlined_label("", 18, HuntUI.GOLD)
 	header.add_child(_revenue_label)
-	_stars_label = Label.new()
-	_stars_label.add_theme_font_size_override("font_size", 18)
+	_stars_label = HuntUI.outlined_label("", 18, HuntUI.GOLD)
 	header.add_child(_stars_label)
-	_timer_label = Label.new()
-	_timer_label.add_theme_font_size_override("font_size", 18)
+	_timer_label = HuntUI.outlined_label("", 18, HuntUI.GOLD)
 	header.add_child(_timer_label)
 
 	var scroll := ScrollContainer.new()
@@ -80,25 +83,18 @@ func _build_ui() -> void:
 
 	var cart_bar := HBoxContainer.new()
 	root.add_child(cart_bar)
-	var inv_label := Label.new()
-	inv_label.text = "Kho nước cốt:"
-	inv_label.add_theme_font_size_override("font_size", 18)
+	var inv_label := HuntUI.label("Kho nước cốt:", 18, HuntUI.INK)
 	cart_bar.add_child(inv_label)
 	_inventory_box = HBoxContainer.new()
 	cart_bar.add_child(_inventory_box)
-	_cart_label = Label.new()
-	_cart_label.text = "Xe đẩy: [Trống]"
-	_cart_label.add_theme_font_size_override("font_size", 18)
+	_cart_label = HuntUI.label("Xe đẩy: [Trống]", 18, HuntUI.INK)
 	cart_bar.add_child(_cart_label)
 
-	_notification_label = Label.new()
-	_notification_label.add_theme_font_size_override("font_size", 20)
+	_notification_label = HuntUI.label("", 20, HuntUI.RUST)
 	_notification_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(_notification_label)
 
-	var footer := Button.new()
-	footer.text = "Đóng cửa, tổng kết »"
-	footer.custom_minimum_size = Vector2(0, 56)
+	var footer := HuntUI.button("Đóng cửa, tổng kết »")
 	footer.pressed.connect(DayManager.next_phase)
 	root.add_child(footer)
 
@@ -115,34 +111,29 @@ func _setup() -> void:
 
 		var card := PanelContainer.new()
 		card.custom_minimum_size = Vector2(240, 180)
+		card.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_card"))
 		var vbox := VBoxContainer.new()
 		card.add_child(vbox)
 
-		var status := Label.new()
-		status.add_theme_font_size_override("font_size", 18)
+		var status := HuntUI.label("", 18, HuntUI.INK)
 		vbox.add_child(status)
 
-		var order_lbl := Label.new()
-		order_lbl.add_theme_font_size_override("font_size", 16)
+		var order_lbl := HuntUI.label("", 16, HuntUI.INK_SOFT)
 		vbox.add_child(order_lbl)
 
 		var wait_bar := ProgressBar.new()
 		wait_bar.custom_minimum_size = Vector2(0, 20)
 		vbox.add_child(wait_bar)
-		var wait_time_lbl := Label.new()
-		wait_time_lbl.add_theme_font_size_override("font_size", 16)
+		var wait_time_lbl := HuntUI.label("", 16, HuntUI.INK_SOFT)
 		vbox.add_child(wait_time_lbl)
 
 		var eat_bar := ProgressBar.new()
 		eat_bar.custom_minimum_size = Vector2(0, 20)
 		vbox.add_child(eat_bar)
-		var eat_time_lbl := Label.new()
-		eat_time_lbl.add_theme_font_size_override("font_size", 16)
+		var eat_time_lbl := HuntUI.label("", 16, HuntUI.INK_SOFT)
 		vbox.add_child(eat_time_lbl)
 
-		var serve_btn := Button.new()
-		serve_btn.text = "Giao món"
-		serve_btn.custom_minimum_size = Vector2(0, 56)
+		var serve_btn := HuntUI.button("Giao món đến bàn")
 		serve_btn.pressed.connect(_serve_table.bind(table))
 		vbox.add_child(serve_btn)
 
@@ -159,8 +150,8 @@ func _setup() -> void:
 		})
 	log_line_safe("Quán có %d bàn." % GameState.tables_floor1)
 	for broth in Database.broths_for_day(GameState.day):
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(0, 40)
+		var btn := HuntUI.button(broth.display_name)
+		btn.custom_minimum_size = Vector2(120, 40)
 		btn.pressed.connect(_pick_to_cart.bind(broth.id))
 		_inventory_box.add_child(btn)
 		_inventory_buttons.append(btn)
@@ -271,7 +262,8 @@ func _update_ui() -> void:
 	for i in _inventory_ids.size():
 		var id := _inventory_ids[i]
 		var btn := _inventory_buttons[i]
-		btn.text = "%s: x%d" % [id, GameState.get_broth_count(id)]
+		var broth := Database.get_broth(id)
+		btn.text = "%s: x%d" % [broth.display_name if broth else id, GameState.get_broth_count(id)]
 	for ui in _table_ui:
 		var table: TableNode = ui["table"]
 		var status: Label = ui["status"]
@@ -291,8 +283,12 @@ func _update_ui() -> void:
 			serve_btn.disabled = true
 			serve_btn.text = "Giao món"
 		elif table.state == TableNode.State.WAITING_ORDER:
+			var broth := Database.get_broth(table.order_broth_id)
 			status.text = "Khách đang ngồi"
-			order_lbl.text = "Gọi: %s | Nhúng: %s" % [table.order_broth_id, ", ".join(table.side_items)]
+			var side_names: Array[String] = []
+			for id in table.side_items:
+				side_names.append(GameState.item_display_name(id))
+			order_lbl.text = "Gọi: %s | Nhúng: %s" % [broth.display_name if broth else table.order_broth_id, ", ".join(side_names)]
 			var rem := table.customer.remaining_time() if table.customer else 0.0
 			wait_bar.value = 100.0 * (1.0 - rem / CUSTOMER_WAIT)
 			wait_time_lbl.text = "%.0fs còn lại" % rem
@@ -301,8 +297,9 @@ func _update_ui() -> void:
 			serve_btn.disabled = false
 			serve_btn.text = "Giao món đến bàn"
 		elif table.state == TableNode.State.EATING:
+			var broth := Database.get_broth(table.order_broth_id)
 			status.text = "Khách đang thưởng thức lẩu..."
-			order_lbl.text = table.order_broth_id
+			order_lbl.text = broth.display_name if broth else table.order_broth_id
 			wait_bar.value = 100
 			wait_time_lbl.text = ""
 			var erem := table.eating_remaining()
