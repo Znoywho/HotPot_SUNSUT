@@ -23,10 +23,24 @@ const SCENES := {
 }
 const MAIN_MENU_SCENE := "res://scenes/main_menu/main_menu.tscn"
 const DAY_END_LAYER := 100 ## Sổ tổng kết nằm trên mọi giao diện khác, kể cả HUD.
+const HUD_SCENE := preload("res://scenes/common/hud.tscn")
+const HUD_SCRIPT := preload("res://scenes/common/hud.gd")
+const PHASES_WITH_HUD: Array[Phase] = [Phase.HUNT, Phase.COOK, Phase.SELL, Phase.DAY_END, Phase.SHOP]
+## Các màn đã tự chừa chỗ phía trên cho HUD; màn còn lại được DayManager đẩy xuống dưới thanh HUD.
+const PHASES_RESERVING_HUD_SPACE: Array[Phase] = [Phase.COOK, Phase.SELL]
 
 var current_phase: Phase = Phase.NONE
 var time_left := 0.0
 var timer_running := false
+var _hud: CanvasLayer ## Một HUD duy nhất sống qua các màn để đồng hồ mặt trời trượt mượt khi đổi giai đoạn.
+
+
+## Tạo HUD (ẩn sẵn) và theo dõi việc đổi màn để đặt màn mới nằm dưới thanh HUD.
+func _ready() -> void:
+	_hud = HUD_SCENE.instantiate()
+	_hud.visible = false
+	add_child(_hud)
+	get_tree().scene_changed.connect(_fit_current_scene_below_hud)
 
 
 func _process(delta: float) -> void:
@@ -88,6 +102,7 @@ func go_to(phase: Phase) -> void:
 			_start_timer(COOK_DURATION)
 		Phase.SELL:
 			_start_timer(SELL_DURATION)
+	_update_hud_visibility()
 	if phase == Phase.DAY_END:
 		_show_day_end_over_current_scene()
 	else:
@@ -98,6 +113,7 @@ func go_to(phase: Phase) -> void:
 func go_to_main_menu() -> void:
 	current_phase = Phase.NONE
 	timer_running = false
+	_update_hud_visibility()
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 
 
@@ -119,6 +135,18 @@ func _show_day_end_over_current_scene() -> void:
 func time_left_text() -> String:
 	var seconds := ceili(time_left)
 	return "%d:%02d" % [seconds / 60, seconds % 60]
+
+
+## Chỉ hiện HUD ở các giai đoạn trong ngày chơi (ẩn ở menu chính và Game Over).
+func _update_hud_visibility() -> void:
+	_hud.visible = current_phase in PHASES_WITH_HUD
+
+
+## Đẩy màn vừa mở xuống dưới thanh HUD nếu màn đó chưa tự chừa chỗ.
+func _fit_current_scene_below_hud() -> void:
+	var scene := get_tree().current_scene as Control
+	if scene != null and _hud.visible and current_phase not in PHASES_RESERVING_HUD_SPACE:
+		scene.offset_top = HUD_SCRIPT.HEIGHT
 
 
 func _start_timer(duration: float) -> void:
