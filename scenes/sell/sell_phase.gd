@@ -15,6 +15,11 @@ var _table_ui: Array[Dictionary] = []
 var _revenue_label: Label
 var _stars_label: Label
 var _timer_label: Label
+var _cart_label: Label
+var _inventory_box: HBoxContainer
+var _notification_label: Label
+var _inventory_buttons: Array[Button] = []
+var _inventory_ids: Array[String] = []
 
 
 func _ready() -> void:
@@ -79,6 +84,24 @@ func _build_ui() -> void:
 	footer.pressed.connect(DayManager.next_phase)
 	root.add_child(footer)
 
+	var cart_bar := HBoxContainer.new()
+	root.add_child(cart_bar)
+	var inv_label := Label.new()
+	inv_label.text = "Kho nước cốt:"
+	inv_label.add_theme_font_size_override("font_size", 18)
+	cart_bar.add_child(inv_label)
+	_inventory_box = HBoxContainer.new()
+	cart_bar.add_child(_inventory_box)
+	_cart_label = Label.new()
+	_cart_label.text = "Xe đẩy: [Trống]"
+	_cart_label.add_theme_font_size_override("font_size", 18)
+	cart_bar.add_child(_cart_label)
+
+	_notification_label = Label.new()
+	_notification_label.add_theme_font_size_override("font_size", 20)
+	_notification_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	root.add_child(_notification_label)
+
 
 func _setup() -> void:
 	var grid: GridContainer = get_meta("grid")
@@ -135,6 +158,13 @@ func _setup() -> void:
 			"serve": serve_btn,
 		})
 	log_line_safe("Quán có %d bàn." % GameState.tables_floor1)
+	for broth in Database.broths_for_day(GameState.day):
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(0, 40)
+		btn.pressed.connect(_pick_to_cart.bind(broth.id))
+		_inventory_box.add_child(btn)
+		_inventory_buttons.append(btn)
+		_inventory_ids.append(broth.id)
 
 
 func _try_spawn_customer() -> void:
@@ -176,6 +206,17 @@ func _random_side_items() -> Array[String]:
 	return result
 
 
+func _pick_to_cart(broth_id: String) -> void:
+	if cart.carrying_broth_id != "":
+		_notification_label.text = "Xe đẩy đang chở món khác."
+		return
+	if not cart.pick_broth(broth_id):
+		var broth := Database.get_broth(broth_id)
+		_notification_label.text = "Kho chưa có món %s!" % (broth.display_name if broth else broth_id)
+		return
+	_notification_label.text = "Đã bốc %s lên xe đẩy." % broth_id
+
+
 func _serve_table(table: TableNode) -> void:
 	if table.state != TableNode.State.WAITING_ORDER:
 		return
@@ -185,6 +226,7 @@ func _serve_table(table: TableNode) -> void:
 		return
 	if cart.serve_to(table):
 		log_line_safe("Đã giao %s đến bàn." % table.order_broth_id)
+		_notification_label.text = "Đã phục vụ bàn thành công."
 
 
 func _finish_eating(table: TableNode) -> void:
@@ -194,6 +236,7 @@ func _finish_eating(table: TableNode) -> void:
 		var tip := roundi(broth.price * tip_rate / 1000.0) * 1000
 		GameState.add_money(broth.price + tip)
 		log_line_safe("Khách thanh toán %s: %s + tip %s" % [broth.display_name, GameState.format_money(broth.price), GameState.format_money(tip)])
+		_notification_label.text = "Bàn thanh toán: +%s (Tip: +%s)" % [GameState.format_money(broth.price), GameState.format_money(tip)]
 	table.clear()
 
 
@@ -202,6 +245,7 @@ func _customer_timeout(table: TableNode) -> void:
 		return
 	GameState.lose_star()
 	log_line_safe("[color=red]Khách bỏ về, quán bị trừ sao.[/color]")
+	_notification_label.text = "Khách hết kiên nhẫn bỏ về! Bị trừ 1 sao."
 	table.clear()
 
 
@@ -216,6 +260,14 @@ func _on_eating_finished(table: TableNode) -> void:
 func _update_ui() -> void:
 	_revenue_label.text = "Doanh thu: %s / %s" % [GameState.format_money(GameState.today_revenue), GameState.format_money(GameState.kpi_target)]
 	_stars_label.text = "Sao: %.1f" % GameState.stars
+	if cart.carrying_broth_id == "":
+		_cart_label.text = "Xe đẩy: [Trống]"
+	else:
+		_cart_label.text = "Xe đẩy: [Đang chở: %s]" % cart.carrying_broth_id
+	for i in _inventory_ids.size():
+		var id := _inventory_ids[i]
+		var btn := _inventory_buttons[i]
+		btn.text = "%s: x%d" % [id, GameState.get_broth_count(id)]
 	for ui in _table_ui:
 		var table: TableNode = ui["table"]
 		var status: Label = ui["status"]
