@@ -160,11 +160,31 @@ func _setup() -> void:
 		var vbox := VBoxContainer.new()
 		card.add_child(vbox)
 
+		var table_art_row := HBoxContainer.new()
+		table_art_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		table_art_row.add_theme_constant_override("separation", 8)
+		vbox.add_child(table_art_row)
+
 		var char_rect := TextureRect.new()
 		char_rect.custom_minimum_size = Vector2(48, 48)
+		char_rect.texture = load("res://assets/sprites/characters/player.png")
 		char_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		char_rect.visible = false
-		vbox.add_child(char_rect)
+		table_art_row.add_child(char_rect)
+
+		var pot_rect := TextureRect.new()
+		pot_rect.custom_minimum_size = Vector2(36, 36)
+		pot_rect.texture = load("res://assets/sprites/ui/broth_pot.png")
+		pot_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pot_rect.visible = false
+		table_art_row.add_child(pot_rect)
+
+		var smoke_rect := TextureRect.new()
+		smoke_rect.custom_minimum_size = Vector2(28, 28)
+		smoke_rect.texture = load("res://assets/sprites/fx/smoke.png")
+		smoke_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		smoke_rect.visible = false
+		table_art_row.add_child(smoke_rect)
 
 		var status := HuntUI.label("", 18, HuntUI.INK)
 		vbox.add_child(status)
@@ -187,16 +207,6 @@ func _setup() -> void:
 		vbox.add_child(eat_bar)
 		var eat_time_lbl := HuntUI.label("", 14, HuntUI.INK_SOFT)
 		vbox.add_child(eat_time_lbl)
-
-		var pot_rect := TextureRect.new()
-		pot_rect.custom_minimum_size = Vector2(32, 32)
-		pot_rect.visible = false
-		vbox.add_child(pot_rect)
-
-		var smoke_rect := TextureRect.new()
-		smoke_rect.custom_minimum_size = Vector2(32, 32)
-		smoke_rect.visible = false
-		vbox.add_child(smoke_rect)
 
 		var serve_btn := HuntUI.button("Giao món đến bàn")
 		serve_btn.pressed.connect(_serve_table.bind(table))
@@ -408,7 +418,8 @@ func _update_ui() -> void:
 		var btn := _inventory_buttons[i]
 		var broth := Database.get_broth(id)
 		btn.text = "%s: x%d" % [broth.display_name if broth else id, GameState.get_broth_count(id)]
-	for ui in _table_ui:
+	for i in _table_ui.size():
+		var ui = _table_ui[i]
 		var table: TableNode = ui["table"]
 		var status: Label = ui["status"]
 		var order_lbl: Label = ui["order"]
@@ -421,8 +432,9 @@ func _update_ui() -> void:
 		var pot_rect: TextureRect = ui["pot"]
 		var smoke_rect: TextureRect = ui["smoke"]
 		var vip: Label = ui["vip"]
+		var customer_colors := [Color("5fa8d3"), Color("f28482"), Color("84a59d"), Color("f6bd60")]
 		if table.state == TableNode.State.EMPTY:
-			status.text = "Bàn: Trống - Đang chờ khách"
+			status.text = "Bàn %d: Trống - Đang chờ khách" % (i + 1)
 			order_lbl.text = ""
 			wait_bar.value = 0
 			wait_time_lbl.text = ""
@@ -436,7 +448,7 @@ func _update_ui() -> void:
 			vip.text = ""
 		elif table.state == TableNode.State.WAITING_ORDER:
 			var broth := Database.get_broth(table.order_broth_id)
-			status.text = "Khách đang ngồi"
+			status.text = "Bàn %d: Khách đang ngồi" % (i + 1)
 			var side_names: Array[String] = []
 			for id in table.side_items:
 				side_names.append(GameState.item_display_name(id))
@@ -447,15 +459,24 @@ func _update_ui() -> void:
 			eat_bar.value = 0
 			eat_time_lbl.text = ""
 			serve_btn.disabled = false
-			serve_btn.text = "Giao món đến bàn"
+			var has_stock := GameState.get_broth_count(table.order_broth_id) > 0 or cart.carrying_broth_id == table.order_broth_id
+			if not has_stock and table.customer and not table.customer.has_meta("negotiated"):
+				serve_btn.text = "Thương lượng đổi món 🎲"
+			else:
+				serve_btn.text = "Giao món đến bàn"
 			char_rect.visible = true
-			char_rect.modulate = Color(1, 1, 1)
+			if table.special == "critic":
+				char_rect.modulate = Color("c77dff")
+			elif table.special == "michelin":
+				char_rect.modulate = Color("ffd166")
+			else:
+				char_rect.modulate = customer_colors[i % customer_colors.size()]
 			pot_rect.visible = false
 			smoke_rect.visible = false
 			vip.text = preload("res://scenes/sell/sell_events.gd").tag(table.special) if table.special != "" else ""
 		elif table.state == TableNode.State.EATING:
 			var broth := Database.get_broth(table.order_broth_id)
-			status.text = "Khách đang thưởng thức lẩu..."
+			status.text = "Bàn %d: Khách đang ăn lẩu..." % (i + 1)
 			order_lbl.text = broth.display_name if broth else table.order_broth_id
 			wait_bar.value = 100
 			wait_time_lbl.text = ""
