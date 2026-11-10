@@ -14,6 +14,7 @@ const KIT := "res://assets/sprites/kitchen/"
 const CHAR_DIR := "res://assets/sprites/characters/"
 const STAGE := Vector2(1280, 720)
 const PX := 4.0 ## 1 điểm ảnh nền = 4 px màn hình.
+const SIDE_WALL_PX := 160.0 ## Bề rộng ảnh tường nối (điểm ảnh nền), đủ lấp màn rất rộng.
 const FEET_Y := 452.0
 const STOVE_X0 := 388.0
 const STOVE_SCALE := 0.8 ## Thu nhỏ hàng bếp cho gọn, dồn vào giữa.
@@ -109,6 +110,7 @@ func _build_stage() -> void:
 	_stage.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(_stage)
 	_kit_sprite("kitchen_bg", Vector2(320, 180), Vector2.ZERO)
+	_build_side_walls()
 
 	_fridge = _kit_sprite("fridge_closed", Vector2(36, 56), Vector2(16, 148))
 	_fridge.mouse_filter = MOUSE_FILTER_STOP
@@ -145,12 +147,22 @@ func _build_stage() -> void:
 	_stage.add_child(light)
 	light.add_lamp(Vector2(534, 100), 230.0, 1.0, 1.25)
 	light.add_lamp(Vector2(894, 100), 230.0, 1.0, 1.25)
+	var windows := WindowSky.new()
+	_stage.add_child(windows)
+	windows.setup(light)
 	# Thẻ trạng thái bếp nằm trên nhân vật để không bị che.
 	var chips := Control.new()
 	chips.mouse_filter = MOUSE_FILTER_IGNORE
 	_stage.add_child(chips)
 	for slot in _stoves:
 		slot.detach_chip(chips)
+
+
+## Nối tường và sàn sang hai bên nền bếp để màn rộng hơn 16:9 không bị dải trống.
+func _build_side_walls() -> void:
+	var side_size := Vector2(SIDE_WALL_PX, 180)
+	_kit_sprite("kitchen_bg_side", side_size, Vector2(-SIDE_WALL_PX * PX, 0))
+	_kit_sprite("kitchen_bg_side", side_size, Vector2(STAGE.x, 0))
 
 
 ## Dàn các bếp (kể cả ô "nâng cấp") ra giữa khu bếp nấu cho cân đối.
@@ -439,7 +451,10 @@ func _cook(broth: BrothData, actor: KitchenActor, on_slot: StoveSlot = null) -> 
 func _send_to_stove(actor: KitchenActor, slot: StoveSlot) -> void:
 	var x := slot.position.x + STOVE_W * 0.5 - 44.0
 	var t := actor.walk_to(x)
-	t.tween_callback(func(): actor.face(true); actor.work(0.8, "stir"))
+	t.tween_callback(func():
+		actor.face(true)
+		actor.ninja_slash(0.8, slot.global_position + Vector2(STOVE_W * 0.5, 40.0))
+		_sfx("slice", -10.0))
 	t.tween_interval(0.9)
 	t.tween_callback(func():
 		if _prep_panel != null and actor == _chef:
@@ -508,7 +523,8 @@ func _staff_tick(delta: float) -> void:
 			continue
 		if GameState.prep_items(id, 1, Database.prep_config.quick_quality) > 0:
 			var a := _prep_staff[i]
-			a.work(0.6, "chop")
+			a.ninja_slash(0.6)
+			_sfx("slice", -14.0)
 			a.say("+1 " + GameState.item_display_name(id), Color("c8e6c9"))
 
 

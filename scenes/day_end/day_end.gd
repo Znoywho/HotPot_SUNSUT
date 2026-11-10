@@ -1,10 +1,16 @@
 extends Control
 ## Màn tổng kết cuối ngày dạng cuốn sổ, DayManager đặt đè lên màn bán đang tạm dừng.
-## Phần giao diện nằm trong day_end.tscn. Chữ đang hiện là SỐ MẪU để xem bố cục.
-## TODO(Hạo): viết logic vào các hàm bên dưới, mỗi node đã có sẵn tên %... để gọi.
+## Phần giao diện nằm trong day_end.tscn; chữ mẫu trong scene được thay bằng số thật khi mở sổ.
 
 const NEXT_SHOP_TEXT := "Đến cửa hàng »"
 const NEXT_RESULT_TEXT := "Xem kết quả »"
+const STAMP_PASS_TEXT := "ĐẠT KPI"
+const STAMP_FAIL_TEXT := "TRƯỢT KPI"
+const MESSAGE_PASS := "Quán vẫn sôi sùng sục, tiếp tục nào!"
+const MESSAGE_FAIL := "Thiếu %s nữa là đạt KPI, quán đành đóng cửa."
+const STAR_NOTE_PASS := "Bị trừ sao %d lần, ngày mai khách sẽ giảm."
+const STAR_NOTE_FAIL := "Bị trừ sao %d lần trong ngày."
+const MAX_STARS := 5
 const FILL_FAIL := preload("res://assets/sprites/ui/book/bar_fill_fail.png") ## Thanh đỏ khi trượt, mặc định thanh xanh.
 const MAX_BAR_PERCENT := 200.0 ## Vượt nhiều hơn mức này thì thanh không vẽ thêm, số % vẫn hiện đúng.
 const STAMP_PASS_COLOR := Color("2e7d32")
@@ -47,35 +53,82 @@ func _process(_delta: float) -> void:
 
 ## Điền trang trái: tiêu đề, doanh thu, KPI, thanh tiến độ, chênh lệch, sao.
 func _show_day_summary() -> void:
-	var money = GameState.money
-	var today_renevue = GameState.today_revenue
-	var kpi_target = GameState.kpi_target
-	var starts = GameState.stars
-	var starts_lost_day = GameState.stars_lost_today
-	GameState.format_money(money)
-	_update_kpi_bar(today_renevue)
-	
-	# TODO(Hạo): lấy số từ GameState (day, today_revenue, kpi_target, stars, stars_lost_today).
-	# Tiền hiển thị bằng GameState.format_money().
-	# Thanh tiến độ: gọi _update_kpi_bar(phần trăm), phần vượt 100% tự tô màu vàng.
-	# Không bị trừ sao thì ẩn star_note.
-	pass
+	var revenue := GameState.today_revenue
+	var target := GameState.kpi_target
+	var percent := kpi_progress_percent(revenue, target)
+	title_label.text = "Tổng kết ngày %d" % GameState.day
+	revenue_value.text = GameState.format_money(revenue)
+	kpi_value.text = GameState.format_money(target)
+	_show_kpi_percent(percent)
+	_update_kpi_bar(percent)
+	difference_value.text = _signed_money(revenue - target)
+	stars_value.text = "%s / %d" % [_stars_text(GameState.stars), MAX_STARS]
+	_show_star_note()
+
+
+## Hiện số lần bị trừ sao; không bị trừ thì ẩn hẳn dòng ghi chú.
+func _show_star_note() -> void:
+	var lost := GameState.stars_lost_today
+	star_note.visible = lost > 0
+	star_note.text = (STAR_NOTE_PASS if GameState.is_kpi_reached() else STAR_NOTE_FAIL) % lost
 
 
 ## Điền trang phải: con dấu, lời nhắn, KPI ngày mai, tiền hiện có, chữ trên nút.
 func _show_result() -> void:
-	# TODO(Hạo): rẽ nhánh theo GameState.is_kpi_reached().
-	# Đạt: stamp_label.modulate = STAMP_PASS_COLOR,
-	#       nút hiện NEXT_SHOP_TEXT, KPI ngày mai lấy từ GameState.next_kpi().
-	# Trượt: kpi_bar.texture_progress = FILL_FAIL, STAMP_FAIL_COLOR,
-	#       NEXT_RESULT_TEXT, ẩn next_kpi_row (ẩn cả dòng KPI ngày mai).
-	pass
+	money_value.text = GameState.format_money(GameState.money)
+	if GameState.is_kpi_reached():
+		_show_passed_result()
+	else:
+		_show_failed_result()
+
+
+## Trang kết quả khi đạt KPI: dấu xanh, KPI ngày mai, nút sang cửa hàng.
+func _show_passed_result() -> void:
+	stamp_label.text = STAMP_PASS_TEXT
+	stamp_label.modulate = STAMP_PASS_COLOR
+	result_message.text = MESSAGE_PASS
+	next_kpi_value.text = GameState.format_money(GameState.next_kpi())
+	next_kpi_row.visible = true
+	continue_button.text = NEXT_SHOP_TEXT
+
+
+## Trang kết quả khi trượt KPI: thanh và dấu đỏ, số tiền còn thiếu, nút sang Game Over.
+func _show_failed_result() -> void:
+	kpi_bar.texture_progress = FILL_FAIL
+	stamp_label.text = STAMP_FAIL_TEXT
+	stamp_label.modulate = STAMP_FAIL_COLOR
+	result_message.text = MESSAGE_FAIL % GameState.format_money(GameState.kpi_target - GameState.today_revenue)
+	next_kpi_row.visible = false
+	continue_button.text = NEXT_RESULT_TEXT
+
+
+## Làm tròn xuống để chưa đạt KPI thì không bao giờ hiện "100%".
+func _show_kpi_percent(percent: float) -> void:
+	kpi_percent.text = "%d%%" % floori(percent)
+
+
+## Chênh lệch có dấu: +250.000đ, -40.000đ, 0đ.
+func _signed_money(value: int) -> String:
+	return ("+" if value > 0 else "") + GameState.format_money(value)
+
+
+## Số sao gọn và dùng dấu phẩy: 3.0 -> "3", 2.5 -> "2,5", 3.15 -> "3,15".
+func _stars_text(value: float) -> String:
+	var text := ("%.2f" % value).rstrip("0").rstrip(".")
+	return text.replace(".", ",")
 
 
 ## Vẽ thanh KPI: dưới 100% tô một màu, trên 100% thêm đoạn vàng ở cuối thanh.
 func _update_kpi_bar(percent: float) -> void:
 	kpi_bar.value = minf(percent, 100.0)
 	kpi_over_bar.value = overflow_share_percent(percent)
+
+
+## Tiến độ KPI: percent = revenue / target × 100. KPI <= 0 thì coi như đã đạt đủ (100%).
+static func kpi_progress_percent(revenue: int, target: int) -> float:
+	if target <= 0:
+		return 100.0
+	return revenue / float(target) * 100.0
 
 
 ## Tỉ lệ đoạn vượt mức trên thanh: share = (p - 100) / p × 100, với p = min(percent, MAX_BAR_PERCENT).
@@ -87,7 +140,7 @@ static func overflow_share_percent(percent: float) -> float:
 	return (shown_percent - 100.0) / shown_percent * 100.0
 
 
-## Chuyển sang màn tiếp theo khi bấm nút.
+## Chuyển sang màn tiếp theo khi bấm nút; khoá nút để bấm nhanh hai lần không bị nhảy qua cửa hàng.
 func _on_continue_pressed() -> void:
-	# TODO(Hạo): gọi DayManager.next_phase(). Chưa có dòng này thì game dừng ở màn này.
-	pass
+	continue_button.disabled = true
+	DayManager.next_phase()

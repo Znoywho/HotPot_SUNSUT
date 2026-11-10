@@ -96,7 +96,7 @@ func _run() -> void:
 			if choice.has("auto"):
 				controller.ai_action(actor)
 			else:
-				_bump(actor)
+				_bump(actor, _skill_animation(choice.skill))
 				_play_skill_sfx(choice.skill)
 				controller.player_action(choice.skill, selected_target)
 		else:
@@ -104,7 +104,7 @@ func _run() -> void:
 			if _timed_out:
 				break
 			before = controller.snapshot()
-			_bump(actor)
+			_bump(actor, _skill_animation(controller.auto_skill()) if controller.is_player(actor) else "attack")
 			controller.ai_action(actor)
 		await _show_changes(before)
 		await _wait(session.config.action_delay * 0.5)
@@ -271,10 +271,19 @@ func _play_skill_sfx(skill: ChefSkill) -> void:
 		_sfx("slice")
 
 
-func _bump(actor: Combatant) -> void:
+func _bump(actor: Combatant, animation_name := "attack") -> void:
 	var view: CombatantView = views.get(actor)
 	if view != null:
-		view.play_attack(1.0 if actor.is_ally else -1.0)
+		view.play_attack(1.0 if actor.is_ally else -1.0, animation_name)
+
+
+## Động tác của đầu bếp ứng với từng chiêu.
+func _skill_animation(skill: ChefSkill) -> String:
+	if skill is HotSplashSkill:
+		return "splash"
+	if skill is SliceSkill:
+		return "slice"
+	return "attack"
 
 
 # --- Chọn mục tiêu / hành động ---------------------------------------------

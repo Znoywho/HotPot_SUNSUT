@@ -4,7 +4,14 @@ extends Control
 ## Cùng kiểu animation với nhân vật màn săn (co giãn quanh chân, chớp mắt).
 
 const SIZE := 128.0
-const WALK_SPEED := 460.0 ## px / giây.
+const WALK_SPEED := 300.0 ## px / giây.
+const MAX_WALK_SECONDS := 4.0 ## Quãng dài nhất trong bếp vẫn đi đúng tốc độ, không bị ép nhanh hơn.
+const NINJA_LEAP_HEIGHT := 110.0 ## Độ cao bay lên khi chém (px).
+const NINJA_RISE_SECONDS := 0.13
+const NINJA_FALL_SECONDS := 0.12
+const NINJA_SLASH_EVERY := 0.11 ## Khoảng cách giữa các vệt chém (giây).
+const NINJA_SLASH_SPREAD := 34.0 ## Vệt chém rải quanh điểm chém (px).
+const NINJA_REACH := 90.0 ## Không có điểm chém thì chém phía trước mặt cách chừng này (px).
 
 var display_name := ""
 var sprite: TextureRect
@@ -16,6 +23,7 @@ var _idle_tween: Tween
 var _move_tween: Tween
 var _hop_tween: Tween
 var _work_tween: Tween
+var _frames: SpriteFrameLayer ## Chân chạy, tay đưa theo; null nếu nhân vật chưa có sheet.
 
 
 func setup(texture: Texture2D, x: float, feet: float, name_text := "", facing_right := true) -> void:
@@ -29,6 +37,7 @@ func setup(texture: Texture2D, x: float, feet: float, name_text := "", facing_ri
 	sprite.pivot_offset = Vector2(SIZE / 2.0, SIZE * 0.9)
 	sprite.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(sprite)
+	_frames = SpriteFrameLayer.attach_to(sprite)
 	home_x = x
 	feet_y = feet
 	position = Vector2(x - SIZE / 2.0, feet - SIZE)
@@ -47,15 +56,16 @@ func face(right: bool) -> void:
 
 ## Đi tới vị trí x (nhún nhảy theo bước). Trả về tween để chờ nếu cần.
 func walk_to(x: float) -> Tween:
+	_cancel_work_pose()
 	if _move_tween != null and _move_tween.is_running():
 		_move_tween.kill()
 	var dist := absf(x - center_x())
-	var duration := clampf(dist / WALK_SPEED, 0.12, 1.4)
+	var duration := clampf(dist / WALK_SPEED, 0.12, MAX_WALK_SECONDS)
 	if dist > 2.0:
 		face(x > center_x())
 	_move_tween = create_tween()
 	_move_tween.tween_property(self, "position:x", x - SIZE / 2.0, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_hop(duration)
+	_play_walk_motion(duration)
 	return _move_tween
 
 
@@ -65,8 +75,7 @@ func go_home() -> Tween:
 
 ## Làm việc: "chop" = nhịp dao xuống lên, "stir" = khuấy nồi (lắc người).
 func work(duration := 0.6, kind := "chop") -> void:
-	if _work_tween != null and _work_tween.is_running():
-		_work_tween.kill()
+	_cancel_work_pose()
 	_stop_idle()
 	var beats := maxi(1, int(duration / 0.16))
 	_work_tween = create_tween()
@@ -78,6 +87,52 @@ func work(duration := 0.6, kind := "chop") -> void:
 			_work_tween.tween_property(sprite, "scale", Vector2.ONE, 0.1)
 	_work_tween.tween_property(sprite, "rotation", 0.0, 0.08)
 	_work_tween.tween_callback(_start_idle)
+
+
+## Bay lên chém liên tục kiểu ninja rồi đáp xuống. slash_center: điểm chém (toạ độ global), để trống thì chém trước mặt.
+## Nhân vật chưa có sheet thì làm động tác chặt thường.
+func ninja_slash(duration := 0.6, slash_center := Vector2.INF) -> void:
+	if _frames == null or not _frames.has_animation("ninja"):
+		work(duration, "chop")
+		return
+	_cancel_work_pose()
+	_stop_idle()
+	var center := slash_center
+	if center == Vector2.INF:
+		var ahead := -NINJA_REACH if sprite.flip_h else NINJA_REACH
+		center = sprite.get_global_rect().get_center() + Vector2(ahead, -NINJA_LEAP_HEIGHT)
+	_frames.play("ninja")
+	var flurry := maxf(duration - NINJA_RISE_SECONDS - NINJA_FALL_SECONDS, NINJA_SLASH_EVERY)
+	_work_tween = create_tween()
+	_work_tween.tween_property(sprite, "position:y", -NINJA_LEAP_HEIGHT, NINJA_RISE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	for i in maxi(1, int(flurry / NINJA_SLASH_EVERY)):
+		_work_tween.tween_callback(_play_slash.bind(center))
+		_work_tween.tween_interval(NINJA_SLASH_EVERY)
+	_work_tween.tween_callback(_frames.stop)
+	_work_tween.tween_property(sprite, "position:y", 0.0, NINJA_FALL_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_work_tween.tween_property(sprite, "scale", Vector2(1.15, 0.82), 0.05)
+	_work_tween.tween_property(sprite, "scale", Vector2.ONE, 0.1)
+	_work_tween.tween_callback(_start_idle)
+
+
+## Một vệt chém rải ngẫu nhiên quanh điểm chém.
+func _play_slash(center: Vector2) -> void:
+	var offset := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * NINJA_SLASH_SPREAD
+	var slash := HuntFX.play(get_parent(), "slash", center + offset)
+	if slash != null:
+		slash.rotation = randf_range(0.0, TAU)
+
+
+## Huỷ động tác đang làm dở và trả nhân vật về tư thế đứng trên đất.
+func _cancel_work_pose() -> void:
+	if _work_tween != null and _work_tween.is_running():
+		_work_tween.kill()
+		sprite.position.y = 0.0
+		sprite.rotation = 0.0
+		sprite.scale = Vector2.ONE
+		if _frames != null:
+			_frames.stop()
+		_start_idle()
 
 
 ## Chữ nổi trên đầu (vd "+1 Thịt bò").
@@ -100,6 +155,16 @@ func appear(delay := 0.0) -> void:
 	var t := create_tween()
 	t.tween_interval(delay)
 	t.tween_property(self, "modulate:a", 1.0, 0.3)
+
+
+## Có sheet thì phát chân chạy tới khi đến nơi, chưa có thì nhún nhảy như cũ.
+func _play_walk_motion(duration: float) -> void:
+	if _frames == null:
+		_hop(duration)
+		return
+	_frames.play("run")
+	# Dừng chân ngay khi tới nơi: nơi gọi có thể nối thêm việc (khuấy nồi) vào cùng tween này.
+	_move_tween.tween_callback(_frames.stop)
 
 
 func _hop(duration: float) -> void:
