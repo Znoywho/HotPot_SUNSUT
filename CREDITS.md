@@ -19,6 +19,8 @@ Giấy phép thường gặp: CC0 (tự do), CC-BY (ghi tác giả), OFL (font).
 | `assets/sprites/characters/player.png`, `mount_buffalo.png` (pixel 32×32, bản tạm) | Sprite đầu bếp, thú cưỡi Trâu nước | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/characters/staff_lan.png`, `staff_tung.png`, `staff_minh.png` (pixel 32×32) | Nhân viên bếp: 2 phụ bếp + bếp phó | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/kitchen/*.png` (nền bếp 320×180, kho lạnh, bàn sơ chế, bếp lò đá, bếp ga, lửa, nồi lẩu theo món, hơi nước, thớt, dao, bồn rửa, rổ, khay, đồ đã sơ chế) | Khu bếp và các trò sơ chế | Nhóm tự làm | Của nhóm | — |
+| `assets/sprites/restaurant/*.png` (nền nhà hàng 320×180 ghép từ gạch nền bếp, cửa ra vào, đèn lồng, ô cửa bếp, lớp trời cửa sổ) | Màn bán hàng | Nhóm tự làm (`make_restaurant_bg.py`) | Của nhóm | — |
+| `assets/sprites/characters/customer_*.png` (6 khách thường, nhà phê bình, giám khảo Michelin, sheet chạy) | Khách nhà hàng | Nhóm tự làm (`make_customers.py`) | Của nhóm | — |
 | `assets/sprites/ingredients/*.png` (14 nguyên liệu + bản hoàng kim, pixel 32×32) | Icon nguyên liệu, đồ nhúng, ớt | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/ingredients/prepped/*.png` (14 món đã sơ chế + bản hoàng kim, pixel 32×32, bày trên đĩa) | Icon đồ nhúng đã sơ chế (bò thái lát, mực khoanh, nghêu mở vỏ...). Tự vẽ bằng code, chỉ tham khảo ý tưởng bày món, không dùng file của Magnific/Freepik | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/ui/broth_pot.png`, `assets/sprites/ui/hud/hud_star.png`, `hud_star_shine.png`, `hud_storage.png` (pixel) | Icon nồi lẩu, ngôi sao đánh giá (vẽ lại theo phong cách sao pixel tròn, không dùng ảnh gốc), nút kho trên HUD | Nhóm tự làm | Của nhóm | — |
