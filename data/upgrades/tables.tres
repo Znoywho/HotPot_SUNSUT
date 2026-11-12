@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/upgrade_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "tables"
+display_name = "Thêm bàn"
+description = "Mỗi cấp thêm 1 bàn tròn 6 ghế (lúc đầu 4 bàn, tối đa 10 bàn). Đủ 10 bàn thì mở Phí phục vụ."
+category = 2
+costs = Array[int]([50000, 100000, 150000, 200000, 250000, 300000])
+values = Array[float]([4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
+evolves_into = "service"

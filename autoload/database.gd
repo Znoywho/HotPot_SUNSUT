@@ -44,6 +44,8 @@ var upgrades: Array[UpgradeData] = [
 	preload("res://data/upgrades/furniture.tres"),
 	preload("res://data/upgrades/staff.tres"),
 	preload("res://data/upgrades/cold_storage.tres"),
+	preload("res://data/upgrades/tables.tres"),
+	preload("res://data/upgrades/service.tres"),
 ]
 
 

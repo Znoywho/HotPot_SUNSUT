@@ -13,7 +13,7 @@ const CUSTOMER_PENALTY := 0.05 ## Bị trừ sao -> khách ngày sau giảm 5%.
 const MIN_CUSTOMER_MULTIPLIER := 0.2
 const START_STARS := 3.0
 const START_TABLES_FLOOR1 := 4
-const MAX_TABLES_FLOOR1 := 15
+const MAX_TABLES_FLOOR1 := 10 ## Bằng giá trị cao nhất của nâng cấp "Thêm bàn" (data/upgrades/tables.tres).
 const MAX_TABLES_FLOOR2 := 12
 const MILESTONE_EVERY := 5 ## Mốc ngày 5, 10, 15...
 const MAX_MONSTER_BONUS := 1.0 ## Quái mạnh thêm tối đa +100%.
@@ -616,7 +616,10 @@ func load_from_dict(data: Dictionary) -> void:
 	prepped_batches = _to_batches(data.get("prepped_batches", null), {})
 	_sync_totals()
 	upgrades = _to_int_dict(data.get("upgrades", {}))
-	tables_floor1 = int(data.get("tables_floor1", START_TABLES_FLOOR1))
+	tables_floor1 = mini(int(data.get("tables_floor1", START_TABLES_FLOOR1)), MAX_TABLES_FLOOR1)
+	# Save cũ mua bàn kiểu cũ (chưa có nâng cấp "tables"): đổi số bàn đã mua thành cấp nâng cấp.
+	if not upgrades.has("tables") and tables_floor1 > START_TABLES_FLOOR1:
+		upgrades["tables"] = tables_floor1 - START_TABLES_FLOOR1
 	tables_floor2 = int(data.get("tables_floor2", 0))
 	money_changed.emit(money)
 	inventory_changed.emit()

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/upgrade_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "service"
+display_name = "Phí phục vụ"
+description = "Quán đã đủ 10 bàn: mỗi hoá đơn cộng thêm phí phục vụ, +3% mỗi cấp (tối đa 15%)."
+category = 2
+costs = Array[int]([400000, 700000, 1100000, 1600000, 2200000])
+values = Array[float]([0.0, 0.03, 0.06, 0.09, 0.12, 0.15])
+evolves_into = ""
