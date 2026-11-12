@@ -1,11 +1,20 @@
 extends Control
-## Chiều tối – bán hàng: Giao diện quán ăn 2D trực quan (Bàn ăn gỗ, khách ngồi, quầy bếp).
+## Chiều tối – bán hàng trong nhà hàng pixel, cùng phong cách và tỉ lệ với khu bếp (1 điểm ảnh nền = 4 px):
+## - Nhóm khách 1-6 người vào cửa, xếp hàng chờ trước quầy lễ tân (có thanh kiên nhẫn, chờ lâu thì bỏ về).
+## - Bàn tròn 6 ghế (nhìn chéo 2.5D). Chạm một bàn trống để xếp chỗ: nhóm chờ đầu tiên đi tới và ngồi vào ghế.
+##   Có khách chờ thì bàn trống nhấp nháy.
+## - Mỗi bàn gọi 1 nồi lẩu dù đi mấy người; nhóm càng đông thì gọi càng nhiều đĩa đồ nhúng (tính tiền theo đĩa).
+## - Ô cửa bếp: các nồi lẩu đã nấu bày trên quầy kèm số phần; chạm nồi để lấy lên khay, chạm bàn để bưng ra
+##   (khay trống thì tự lấy đúng món; không đủ phần thì thương lượng đổi món).
+## Thanh HUD chung (tiền, ngày, KPI, sao, giờ) do DayManager hiện phía trên; màn này chừa sẵn chỗ cho thanh đó.
 
 const TIP_MIN := 0.03
 const TIP_MAX := 0.07
 const BASE_EATING_TIME := 8.0
-const SPAWN_INTERVAL := 6.0
-const CUSTOMER_WAIT := 20.0
+const SPAWN_INTERVAL := 6.0 ## Giây giữa hai nhóm khách (chia cho customer_multiplier).
+const CUSTOMER_WAIT := 20.0 ## Kiên nhẫn chờ món sau khi đã ngồi.
+const QUEUE_WAIT := 25.0 ## Kiên nhẫn chờ được xếp bàn ở quầy lễ tân.
+const MAX_QUEUE := 2 ## Số nhóm đứng chờ tối đa (chỗ trước quầy + cạnh cửa).
 const STAR_FAST_SERVE := 0.15
 const STAR_SERVE := 0.05
 const STAR_CUSTOMER_LEFT := 0.25
@@ -13,31 +22,68 @@ const NEGOTIATE_CHANCE := 0.5
 const EXPIRED_DETECT_CHANCE := 0.25
 const EXPIRED_COMPENSATION := 2.0
 const EXPIRED_STAR_LOSS := 0.5
+## Giá gốc mỗi đĩa đồ nhúng (mọi loại như nhau), nhân hệ số chất lượng sơ chế (PrepConfig.dipping_price_mult).
+const DIPPING_PRICE := 10_000
+const DIPPING_POOL := ["beef", "mushroom", "greens", "shrimp", "enoki", "tomato", "chili"]
+## TODO(nhóm): cân bằng tỉ lệ số người mỗi nhóm (chỉ số = số người, giá trị = trọng số).
+const GROUP_SIZE_WEIGHTS := [0, 15, 30, 15, 25, 8, 7]
+const TABLE_SEATS := 6 ## Bàn tròn nào cũng 6 ghế (nhóm đông nhất 6 người).
 
-const INGREDIENT_DIR := "res://assets/sprites/ingredients/"
+const ART := "res://assets/sprites/restaurant/"
+const STAGE := Vector2(1280, 720)
+const PX := 4.0
+const SIDE_WALL_PX := 160.0
+const FLOOR_RECT := Rect2(16, 352, 1248, 290) ## Vùng xếp bàn trên sàn.
+const BAR_Y := 650.0
+const MAX_TABLE_SCALE := 1.25 ## Quán ít bàn (1 hàng) thì phóng bàn to cho cân với đầu bếp, lễ tân.
+const ONE_ROW_BOTTOM := 0.86
+const ROW_OVERLAP := 0.4
+const TABLE_GAP := 24.0 ## Khoảng hở giữa hai bàn (ở tỉ lệ 1).
+const WAITER_HOME := Vector2(690, 300) ## Góc trên-trái chỗ Tùng đứng chờ dưới ô cửa bếp.
+const WAITER_SIZE := 96.0
+const WAITER_SPEED := 520.0 ## px/giây, Tùng chạy bàn nhanh.
+const CHAR_DIR := "res://assets/sprites/characters/"
+const GUEST_LOOKS := ["customer_1", "customer_2", "customer_3", "customer_4", "customer_5", "customer_6"]
+const SPECIAL_LOOKS := {"critic": "customer_critic", "michelin": "customer_michelin"}
 
 var tables: Array[TableNode] = []
 var cart := Cart.new()
-var _spawn_timer := 3.0
-var _table_ui: Array[Dictionary] = []
+var _spawn_timer := 2.0
 var _negotiating: TableNode = null
+var _stage: Control
+var _pass: KitchenPass
+var _reception: ReceptionDesk
+var _floor: Control ## Sàn quán, nơi đặt các bàn.
+var _visuals: Array[TableVisual] = []
+var _seats: Array[int] = []
+var _overlay: Control ## Lớp cho khách đang đi và nồi bay ra bàn.
+var _bubbles: Control ## Bong bóng gọi món / nhóm chờ (trên lớp ánh sáng để luôn dễ đọc).
+var _queue: Array[Dictionary] = [] ## Nhóm đang chờ xếp bàn: {size, looks, broth_id, sides, special, wait, walkers, bubble, bar}
+var _reserved: Dictionary = {} ## Bàn đã nhận nhóm đang đi tới.
 var _events = preload("res://scenes/sell/sell_events.gd").new()
+var _leaving := false
+var _waiter: TextureRect = null ## Tùng bưng lẩu (cấp Nhân viên bếp 2+).
+var _waiter_legs: SpriteFrameLayer = null
+var _waiter_pot: TextureRect = null
+var _waiter_busy := false
 
-var _revenue_label: Label
-var _stars_label: Label
-var _cart_label: Label
-var _inventory_box: HBoxContainer
+var _tray_icon: TextureRect
+var _tray_label: Label
 var _notification_label: Label
-var _inventory_buttons: Array[Button] = []
-var _inventory_ids: Array[String] = []
 
 
 func _ready() -> void:
+	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	set_meta("reserves_hud", true) # Đã chừa sẵn chỗ cho thanh HUD phía trên.
+	DayManager.phase_time_up.connect(_close_shop)
 	add_child(cart)
 	add_child(_events)
 	_events.setup(self)
-	_build_ui()
-	_setup()
+	_build_stage()
+	_build_bar()
+	_setup_tables()
+	resized.connect(_center_stage)
+	_center_stage()
 
 
 func _process(delta: float) -> void:
@@ -45,7 +91,8 @@ func _process(delta: float) -> void:
 	_spawn_timer -= delta
 	if _spawn_timer <= 0.0:
 		_spawn_timer = spawn_interval
-		_try_spawn_customer()
+		_try_spawn_group()
+	_tick_queue(delta)
 	for table in tables:
 		if table.state == TableNode.State.WAITING_ORDER and table.customer and table != _negotiating:
 			if table.customer.remaining_time() <= 0.0:
@@ -56,432 +103,386 @@ func _process(delta: float) -> void:
 	_update_ui()
 
 
-func _build_ui() -> void:
-	# 1. NỀN NHÀ HÀNG ẤM CÚNG (Tường ốp gỗ trên + Sàn gỗ phía dưới)
-	var bg_container := Control.new()
-	bg_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg_container)
+# --- Dựng nhà hàng -----------------------------------------------------------------
 
-	# Tường gỗ trên
-	var wall := ColorRect.new()
-	wall.color = Color("#2d180e")
-	wall.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	wall.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg_container.add_child(wall)
+func _build_stage() -> void:
+	var back := ColorRect.new()
+	back.color = Color("2b1a14")
+	back.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	back.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(back)
+	_stage = Control.new()
+	_stage.size = STAGE
+	_stage.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(_stage)
+	_art("restaurant_bg", Vector2(320, 180), Vector2.ZERO)
+	# Nối tường + sàn sang hai bên để màn rộng hơn 16:9 không bị dải trống.
+	_art("restaurant_bg_side", Vector2(SIDE_WALL_PX, 180), Vector2(-SIDE_WALL_PX * PX, 0))
+	_art("restaurant_bg_side", Vector2(SIDE_WALL_PX, 180), Vector2(STAGE.x, 0))
 
-	# Sàn gỗ ấm bên dưới (bắt đầu từ y = 140px)
-	var floor_panel := Panel.new()
-	floor_panel.anchor_top = 0.22
-	floor_panel.anchor_bottom = 1.0
-	floor_panel.anchor_left = 0.0
-	floor_panel.anchor_right = 1.0
-	floor_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var floor_style := StyleBoxFlat.new()
-	floor_style.bg_color = Color("#754324")
-	floor_style.border_width_top = 6
-	floor_style.border_color = Color("#4a2612")
-	floor_style.shadow_color = Color(0, 0, 0, 0.35)
-	floor_style.shadow_size = 12
-	floor_panel.add_theme_stylebox_override("panel", floor_style)
-	bg_container.add_child(floor_panel)
+	_stage.add_child(RoomDecor.new())
+	_pass = KitchenPass.new()
+	_stage.add_child(_pass)
+	_pass.pot_tapped.connect(_pick_to_cart)
+	_reception = ReceptionDesk.new()
+	_stage.add_child(_reception)
 
+	_floor = Control.new()
+	_floor.position = FLOOR_RECT.position
+	_floor.size = FLOOR_RECT.size
+	_floor.mouse_filter = MOUSE_FILTER_IGNORE
+	_stage.add_child(_floor)
 
-	# 2. KHÔNG GIAN CHÍNH (Chừa 92px phía trên cho HUD chung của Hạo)
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 24)
-	margin.add_theme_constant_override("margin_right", 24)
-	margin.add_theme_constant_override("margin_top", 96)
-	margin.add_theme_constant_override("margin_bottom", 16)
-	add_child(margin)
+	_overlay = Control.new()
+	_overlay.size = STAGE
+	_overlay.mouse_filter = MOUSE_FILTER_IGNORE
+	_stage.add_child(_overlay)
+	if RestaurantDecor.has_waiter():
+		_build_waiter()
 
-	var main_vbox := VBoxContainer.new()
-	main_vbox.add_theme_constant_override("separation", 10)
-	margin.add_child(main_vbox)
+	# Ánh sáng theo giờ phủ lên cảnh + nhân vật; đèn treo và ô cửa bếp sáng dần khi trời tối.
+	var light := DayLight.new()
+	_stage.add_child(light)
+	var gold := str(RestaurantDecor.furniture()["lamp"]) == "gold"
+	for p in RoomDecor.lamp_centers():
+		light.add_lamp(p, 220.0 if gold else 200.0, 1.0 if gold else 0.9, 1.2)
+	light.add_lamp(Vector2(1010, 170), 300.0, 0.8, 0.6)
+	var windows := RestaurantWindows.new()
+	_stage.add_child(windows)
+	windows.setup(light)
+	if RestaurantDecor.furniture()["fairy"]:
+		_stage.add_child(RoomDecor.FairyLights.new())
 
-	# Khu vực giữa: Bàn ăn (Trái 72%) + Quầy bếp (Phải 28%)
-	var center_row := HBoxContainer.new()
-	center_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	center_row.add_theme_constant_override("separation", 20)
-	main_vbox.add_child(center_row)
-
-	# --- KHU VỰC PHÒNG ĂN (LEFT) ---
-	var dining_area := VBoxContainer.new()
-	dining_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	dining_area.size_flags_stretch_ratio = 2.4
-	center_row.add_child(dining_area)
-
-	var dining_title := HuntUI.outlined_label("Khu Vực Bàn Ăn Nhà Hàng", 22, HuntUI.GOLD)
-	dining_area.add_child(dining_title)
-
-	var table_grid := GridContainer.new()
-	table_grid.columns = 2
-	table_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	table_grid.add_theme_constant_override("h_separation", 20)
-	table_grid.add_theme_constant_override("v_separation", 16)
-	dining_area.add_child(table_grid)
-	set_meta("table_grid", table_grid)
-
-	# --- KHU VỰC QUẦY BẾP (RIGHT) ---
-	var kitchen_panel := PanelContainer.new()
-	kitchen_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	kitchen_panel.size_flags_stretch_ratio = 1.0
-	kitchen_panel.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_panel"))
-	center_row.add_child(kitchen_panel)
-
-	var kitchen_vbox := VBoxContainer.new()
-	kitchen_vbox.add_theme_constant_override("separation", 10)
-	kitchen_panel.add_child(kitchen_vbox)
-
-	var kitchen_title := HuntUI.label("QUẦY BẾP TRƯỞNG", 20, HuntUI.RUST)
-	kitchen_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	kitchen_vbox.add_child(kitchen_title)
-
-	# Hình ảnh đầu bếp và bếp lò đỏ
-	var kitchen_stage := HBoxContainer.new()
-	kitchen_stage.alignment = BoxContainer.ALIGNMENT_CENTER
-	kitchen_stage.add_theme_constant_override("separation", 12)
-	kitchen_vbox.add_child(kitchen_stage)
-
-	var chef_tex = load("res://assets/sprites/characters/player.png")
-	var chef_rect := TextureRect.new()
-	chef_rect.texture = chef_tex
-	chef_rect.custom_minimum_size = Vector2(56, 56)
-	chef_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	kitchen_stage.add_child(chef_rect)
-
-	var flame_tex = load("res://assets/sprites/fx/flame.png")
-	var flame_rect := TextureRect.new()
-	flame_rect.texture = flame_tex
-	flame_rect.custom_minimum_size = Vector2(40, 40)
-	flame_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	kitchen_stage.add_child(flame_rect)
-
-	var pot_tex = load("res://assets/sprites/ui/broth_pot.png")
-	var pot_stage := TextureRect.new()
-	pot_stage.texture = pot_tex
-	pot_stage.custom_minimum_size = Vector2(40, 40)
-	pot_stage.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	kitchen_stage.add_child(pot_stage)
-
-	var sep := HSeparator.new()
-	kitchen_vbox.add_child(sep)
-
-	_revenue_label = HuntUI.label("Doanh thu: 0đ", 18, HuntUI.INK)
-	kitchen_vbox.add_child(_revenue_label)
-
-	_stars_label = HuntUI.label("Đánh giá: 5.0 ★", 18, HuntUI.GOLD)
-	kitchen_vbox.add_child(_stars_label)
-
-	var hint_lbl := HuntUI.label("Quy tắc phục vụ:\n• Chạm vào Bàn/Bong bóng để bưng món.\n• Giao nhanh còn >50% giờ: +0.15★.\n• Hết món: bấm Thương lượng đổi món.", 14, HuntUI.INK_SOFT)
-	hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	kitchen_vbox.add_child(hint_lbl)
-
-	_notification_label = HuntUI.label("Quán bắt đầu mở cửa đón khách!", 16, HuntUI.RUST)
-	_notification_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_notification_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	kitchen_vbox.add_child(_notification_label)
-
-	# --- 3. THANH KHAY ĐÁY (CARRIER & KHO NƯỚC CỐT) ---
-	var bottom_panel := PanelContainer.new()
-	bottom_panel.custom_minimum_size = Vector2(0, 64)
-	bottom_panel.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_card"))
-	main_vbox.add_child(bottom_panel)
-
-	var bottom_row := HBoxContainer.new()
-	bottom_row.add_theme_constant_override("separation", 16)
-	bottom_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	bottom_panel.add_child(bottom_row)
-
-	var inv_title := HuntUI.label("Kho nước cốt:", 18, HuntUI.INK)
-	bottom_row.add_child(inv_title)
-
-	_inventory_box = HBoxContainer.new()
-	_inventory_box.add_theme_constant_override("separation", 8)
-	bottom_row.add_child(_inventory_box)
-
-	var vsep := VSeparator.new()
-	bottom_row.add_child(vsep)
-
-	_cart_label = HuntUI.outlined_label("Xe đẩy: [Trống]", 18, HuntUI.GOLD)
-	bottom_row.add_child(_cart_label)
-
-	var spacer_end := Control.new()
-	spacer_end.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bottom_row.add_child(spacer_end)
-
-	var close_btn := HuntUI.button("Đóng cửa, tổng kết »")
-	close_btn.custom_minimum_size = Vector2(180, 48)
-	close_btn.pressed.connect(DayManager.next_phase)
-	bottom_row.add_child(close_btn)
-
-	# Ánh sáng theo giờ (13h sáng -> chiều vàng -> 18h tối dần, bật đèn ấm). Phủ lên cả quán ở mức
-	# nhẹ (strength 0.5) để chữ vẫn dễ đọc; bảng thương lượng / sự kiện mở sau sẽ nằm trên lớp này.
-	var day_light := DayLight.new()
-	day_light.strength = 0.5
-	add_child(day_light)
-	for x in [220.0, 640.0, 1060.0]:
-		day_light.add_lamp(Vector2(x, 150.0), 300.0, 0.45, 0.7)
+	_bubbles = Control.new()
+	_bubbles.size = STAGE
+	_bubbles.mouse_filter = MOUSE_FILTER_IGNORE
+	_stage.add_child(_bubbles)
 
 
-func _setup() -> void:
-	var table_grid := get_meta("table_grid") as GridContainer
-	var char_tex = load("res://assets/sprites/characters/player.png")
-	var pot_tex = load("res://assets/sprites/ui/broth_pot.png")
-	var smoke_tex = load("res://assets/sprites/fx/smoke.png")
+func _art(name: String, px_size: Vector2, pos: Vector2) -> TextureRect:
+	var r := TextureRect.new()
+	r.texture = load(ART + name + ".png")
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_SCALE
+	r.size = px_size * PX
+	r.position = pos
+	r.mouse_filter = MOUSE_FILTER_IGNORE
+	_stage.add_child(r)
+	return r
 
-	for i in GameState.tables_floor1:
+
+## Thanh dưới: khay đang bưng gì, thông báo, nút đóng cửa (cùng kiểu dải thông tin + nút cam của màn bếp).
+func _build_bar() -> void:
+	var strip := PanelContainer.new()
+	var ss := StyleBoxFlat.new()
+	ss.bg_color = Color(0.17, 0.1, 0.07, 0.88)
+	ss.border_color = Color("8a5a3c")
+	ss.set_border_width_all(3)
+	ss.set_corner_radius_all(6)
+	ss.content_margin_left = 10
+	ss.content_margin_right = 6
+	ss.content_margin_top = 4
+	ss.content_margin_bottom = 4
+	strip.add_theme_stylebox_override("panel", ss)
+	strip.position = Vector2(16, BAR_Y)
+	strip.size = Vector2(1248, 64)
+	_stage.add_child(strip)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	strip.add_child(row)
+
+	_tray_icon = TextureRect.new()
+	_tray_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_tray_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_tray_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_tray_icon.custom_minimum_size = Vector2(56, 48)
+	_tray_icon.size_flags_vertical = SIZE_SHRINK_CENTER
+	_tray_icon.texture = load("res://assets/sprites/kitchen/tray.png")
+	row.add_child(_tray_icon)
+	_tray_label = HuntUI.outlined_label("", 18, HuntUI.GOLD)
+	_tray_label.custom_minimum_size = Vector2(250, 0)
+	_tray_label.clip_text = true
+	_tray_label.size_flags_vertical = SIZE_SHRINK_CENTER
+	row.add_child(_tray_label)
+
+	_notification_label = HuntUI.outlined_label("Quán mở cửa! Khách tới thì chạm bàn trống đủ ghế để xếp chỗ.", 18, Color("f3e2c0"))
+	_notification_label.size_flags_horizontal = SIZE_EXPAND_FILL
+	_notification_label.size_flags_vertical = SIZE_SHRINK_CENTER
+	_notification_label.clip_text = true
+	row.add_child(_notification_label)
+
+	var close := Button.new()
+	close.text = "Đóng cửa, tổng kết  »"
+	close.focus_mode = Control.FOCUS_NONE
+	close.custom_minimum_size = Vector2(250, 56)
+	close.add_theme_font_size_override("font_size", 20)
+	_style_button(close, Color("f2a33a"), Color("8a5a3c"), HuntUI.INK)
+	close.pressed.connect(_close_shop)
+	row.add_child(close)
+
+
+func _style_button(b: Button, bg: Color, border: Color, font: Color) -> void:
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		var s := StyleBoxFlat.new()
+		s.bg_color = bg.darkened(0.18) if state.ends_with("pressed") else (bg.darkened(0.4) if state == "disabled" else bg)
+		s.border_color = border
+		s.set_border_width_all(3)
+		s.set_corner_radius_all(6)
+		s.shadow_color = Color(0, 0, 0, 0.3)
+		s.shadow_offset = Vector2(0, 3)
+		s.shadow_size = 1
+		b.add_theme_stylebox_override(state, s)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+		b.add_theme_color_override(state, font)
+
+
+func _center_stage() -> void:
+	_stage.position = ((size - STAGE) / 2.0).floor()
+
+
+func _setup_tables() -> void:
+	# Số bàn theo nâng cấp "Thêm bàn" (tối đa GameState.MAX_TABLES_FLOOR1 = 10).
+	var count := clampi(maxi(GameState.tables_floor1, int(Database.upgrade_value("tables"))), 1, GameState.MAX_TABLES_FLOOR1)
+	for i in count:
 		var table := TableNode.new()
 		table.eating_time = BASE_EATING_TIME * Database.upgrade_value("stove")
 		add_child(table)
 		tables.append(table)
-		table.customer_left.connect(_on_table_cleared)
 		table.eating_finished.connect(_on_eating_finished)
-
-		# KHUNG TRẠM BÀN ĂN 2D
-		var station := PanelContainer.new()
-		station.custom_minimum_size = Vector2(370, 200)
-		station.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		station.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		
-		# Style nền bàn ăn nhẹ nhàng, không còn viền hộp thô kệch
-		var st_style := StyleBoxFlat.new()
-		st_style.bg_color = Color(0.2, 0.12, 0.08, 0.45)
-		st_style.border_color = Color(0.5, 0.35, 0.22, 0.6)
-		st_style.border_width_left = 2
-		st_style.border_width_right = 2
-		st_style.border_width_top = 2
-		st_style.border_width_bottom = 2
-		st_style.corner_radius_top_left = 12
-		st_style.corner_radius_top_right = 12
-		st_style.corner_radius_bottom_left = 12
-		st_style.corner_radius_bottom_right = 12
-		st_style.content_margin_left = 10
-		st_style.content_margin_right = 10
-		st_style.content_margin_top = 8
-		st_style.content_margin_bottom = 8
-		station.add_theme_stylebox_override("panel", st_style)
-		table_grid.add_child(station)
-
-		var st_row := HBoxContainer.new()
-		st_row.add_theme_constant_override("separation", 12)
-		station.add_child(st_row)
-
-		# --- CỘT TRÁI: BÀN ĂN GỖ TRÒN & KHÁCH & NỒI LẨU ---
-		var visual_col := Control.new()
-		visual_col.custom_minimum_size = Vector2(130, 180)
-		visual_col.mouse_filter = Control.MOUSE_FILTER_PASS
-		st_row.add_child(visual_col)
-
-		# Ghế bên trái (khách ngồi)
-		var chair_left := Panel.new()
-		chair_left.position = Vector2(4, 70)
-		chair_left.size = Vector2(26, 40)
-		var chair_style := StyleBoxFlat.new()
-		chair_style.bg_color = Color("#593016")
-		chair_style.corner_radius_top_left = 6
-		chair_style.corner_radius_bottom_left = 6
-		chair_left.add_theme_stylebox_override("panel", chair_style)
-		visual_col.add_child(chair_left)
-
-		# Mặt bàn gỗ tròn Oval
-		var wood_table := Panel.new()
-		wood_table.position = Vector2(25, 45)
-		wood_table.size = Vector2(85, 85)
-		var tbl_style := StyleBoxFlat.new()
-		tbl_style.bg_color = Color("#9c572b") # Mặt gỗ nâu đỏ ấm
-		tbl_style.border_color = Color("#4a230d")
-		tbl_style.border_width_left = 4
-		tbl_style.border_width_top = 4
-		tbl_style.border_width_right = 4
-		tbl_style.border_width_bottom = 4
-		tbl_style.corner_radius_top_left = 42
-		tbl_style.corner_radius_top_right = 42
-		tbl_style.corner_radius_bottom_left = 42
-		tbl_style.corner_radius_bottom_right = 42
-		tbl_style.shadow_color = Color(0, 0, 0, 0.4)
-		tbl_style.shadow_size = 6
-		wood_table.add_theme_stylebox_override("panel", tbl_style)
-		visual_col.add_child(wood_table)
-
-		# Bếp âm ở giữa bàn
-		var burner := Panel.new()
-		burner.position = Vector2(24, 24)
-		burner.size = Vector2(37, 37)
-		var burner_style := StyleBoxFlat.new()
-		burner_style.bg_color = Color("#382318")
-		burner_style.corner_radius_top_left = 18
-		burner_style.corner_radius_top_right = 18
-		burner_style.corner_radius_bottom_left = 18
-		burner_style.corner_radius_bottom_right = 18
-		burner.add_theme_stylebox_override("panel", burner_style)
-		wood_table.add_child(burner)
-
-		# Ghế bên phải
-		var chair_right := Panel.new()
-		chair_right.position = Vector2(104, 70)
-		chair_right.size = Vector2(24, 40)
-		var chair_r_style := StyleBoxFlat.new()
-		chair_r_style.bg_color = Color("#593016")
-		chair_r_style.corner_radius_top_right = 6
-		chair_r_style.corner_radius_bottom_right = 6
-		chair_right.add_theme_stylebox_override("panel", chair_r_style)
-		visual_col.add_child(chair_right)
-
-		# Sprite Nhân vật khách ngồi ở ghế
-		var char_rect := TextureRect.new()
-		char_rect.texture = char_tex
-		char_rect.position = Vector2(-2, 55)
-		char_rect.custom_minimum_size = Vector2(46, 46)
-		char_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		char_rect.visible = false
-		visual_col.add_child(char_rect)
-
-		# Sprite Nồi lẩu sôi trên bàn
-		var pot_rect := TextureRect.new()
-		pot_rect.texture = pot_tex
-		pot_rect.position = Vector2(46, 62)
-		pot_rect.custom_minimum_size = Vector2(42, 42)
-		pot_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		pot_rect.visible = false
-		visual_col.add_child(pot_rect)
-
-		# Sprite Khói bốc lên
-		var smoke_rect := TextureRect.new()
-		smoke_rect.texture = smoke_tex
-		smoke_rect.position = Vector2(50, 36)
-		smoke_rect.custom_minimum_size = Vector2(34, 34)
-		smoke_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		smoke_rect.visible = false
-		visual_col.add_child(smoke_rect)
-
-		# Nhãn số bàn dưới chân bàn
-		var table_num_lbl := HuntUI.label("Bàn %d" % (i + 1), 16, HuntUI.GOLD)
-		table_num_lbl.position = Vector2(45, 138)
-		visual_col.add_child(table_num_lbl)
-
-		# --- CỘT PHẢI: BONG BÓNG GỌI MÓN / ĐẾM GIỜ / NÚT PHỤC VỤ ---
-		var info_col := VBoxContainer.new()
-		info_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info_col.add_theme_constant_override("separation", 6)
-		st_row.add_child(info_col)
-
-		var status_lbl := HuntUI.label("Trống - Đang chờ khách", 16, HuntUI.INK_SOFT)
-		info_col.add_child(status_lbl)
-
-		# Bong bóng gọi món
-		var bubble_panel := PanelContainer.new()
-		bubble_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		var bub_style := StyleBoxFlat.new()
-		bub_style.bg_color = Color("#fcf8e8")
-		bub_style.border_color = Color("#a67c52")
-		bub_style.border_width_left = 2
-		bub_style.border_width_top = 2
-		bub_style.border_width_right = 2
-		bub_style.border_width_bottom = 2
-		bub_style.corner_radius_top_left = 10
-		bub_style.corner_radius_top_right = 10
-		bub_style.corner_radius_bottom_left = 10
-		bub_style.corner_radius_bottom_right = 10
-		bub_style.content_margin_left = 8
-		bub_style.content_margin_right = 8
-		bub_style.content_margin_top = 6
-		bub_style.content_margin_bottom = 6
-		bubble_panel.add_theme_stylebox_override("panel", bub_style)
-		info_col.add_child(bubble_panel)
-
-		var bub_vbox := VBoxContainer.new()
-		bub_vbox.add_theme_constant_override("separation", 4)
-		bubble_panel.add_child(bub_vbox)
-
-		var vip_badge := HuntUI.label("", 15, HuntUI.GOLD)
-		bub_vbox.add_child(vip_badge)
-
-		var order_lbl := HuntUI.label("", 16, HuntUI.INK)
-		order_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		bub_vbox.add_child(order_lbl)
-
-		# Hàng icon nguyên liệu nhúng kèm
-		var sides_row := HBoxContainer.new()
-		sides_row.add_theme_constant_override("separation", 4)
-		bub_vbox.add_child(sides_row)
-
-		var wait_bar := ProgressBar.new()
-		wait_bar.custom_minimum_size = Vector2(0, 14)
-		bub_vbox.add_child(wait_bar)
-
-		var wait_time_lbl := HuntUI.label("", 14, HuntUI.INK_SOFT)
-		bub_vbox.add_child(wait_time_lbl)
-
-		var eat_bar := ProgressBar.new()
-		eat_bar.custom_minimum_size = Vector2(0, 14)
-		bub_vbox.add_child(eat_bar)
-
-		var eat_time_lbl := HuntUI.label("", 14, HuntUI.INK_SOFT)
-		bub_vbox.add_child(eat_time_lbl)
-
-		# Nút phục vụ bàn / thương lượng
-		var serve_btn := HuntUI.button("Giao món đến bàn")
-		serve_btn.custom_minimum_size = Vector2(0, 44)
-		serve_btn.pressed.connect(_serve_table.bind(table))
-		info_col.add_child(serve_btn)
-
-		_table_ui.append({
-			"table": table,
-			"status": status_lbl,
-			"order": order_lbl,
-			"sides_row": sides_row,
-			"wait_bar": wait_bar,
-			"wait_time": wait_time_lbl,
-			"eat_bar": eat_bar,
-			"eat_time": eat_time_lbl,
-			"serve": serve_btn,
-			"char": char_rect,
-			"pot": pot_rect,
-			"smoke": smoke_rect,
-			"vip": vip_badge,
-			"bubble": bubble_panel,
-		})
-
-	for broth in Database.broths_for_day(GameState.day):
-		var btn := HuntUI.button(broth.display_name)
-		btn.custom_minimum_size = Vector2(130, 44)
-		btn.pressed.connect(_pick_to_cart.bind(broth.id))
-		_inventory_box.add_child(btn)
-		_inventory_buttons.append(btn)
-		_inventory_ids.append(broth.id)
+		var seats := TABLE_SEATS
+		_seats.append(seats)
+		var visual := TableVisual.new(i + 1, seats)
+		_floor.add_child(visual)
+		visual.attach_bubble(_bubbles)
+		visual.tapped.connect(_on_table_tapped.bind(table))
+		_visuals.append(visual)
+	_layout_tables()
 
 
-func _try_spawn_customer() -> void:
-	var empty_table := _first_empty_table()
-	if empty_table == null:
+## Xếp bàn 1-3 hàng trên sàn, cân đối hai bên: chia đều số bàn cho các hàng (vd 14 -> 5/4/5), hàng nào
+## cũng căn giữa. Các hàng chồng nhau một phần để vừa sàn. Đông bàn thì thu nhỏ bàn.
+func _layout_tables() -> void:
+	var n := _visuals.size()
+	if n == 0:
+		return
+	var area := FLOOR_RECT.size
+	var rows := 1 if n <= 5 else (2 if n <= 10 else 3)
+	var counts := _row_counts(n, rows)
+	# Bề rộng từng hàng (tỉ lệ 1) = tổng bề rộng bàn + khe giữa các bàn.
+	var widths: Array[float] = []
+	var i := 0
+	for r in rows:
+		var w := 0.0
+		for c in counts[r]:
+			w += _visuals[i].size.x
+			i += 1
+		widths.append(w + TABLE_GAP * (counts[r] - 1))
+	var height_units := 1.0 + (rows - 1) * (1.0 - ROW_OVERLAP)
+	var max_scale := MAX_TABLE_SCALE if rows == 1 else 1.0
+	var sc := minf(max_scale, area.y / (TableVisual.HEIGHT * height_units))
+	for w in widths:
+		sc = minf(sc, area.x / w)
+	var table_h := TableVisual.HEIGHT * sc
+	var pitch := table_h * (1.0 - ROW_OVERLAP)
+	# Đáy hàng cuối: quán 1 hàng chừa lối đi phía dưới; đông bàn thì dùng hết sàn.
+	var bottom := area.y * (ONE_ROW_BOTTOM if rows == 1 else 1.0)
+	var top := bottom - table_h - pitch * (rows - 1)
+	i = 0
+	for r in rows:
+		var x := (area.x - widths[r] * sc) * 0.5
+		for c in counts[r]:
+			var v: TableVisual = _visuals[i]
+			v.set_display_scale(sc)
+			v.position = Vector2(x, top + r * pitch).floor()
+			x += (v.size.x + TABLE_GAP) * sc
+			i += 1
+
+
+## Số bàn mỗi hàng, chênh nhau nhiều nhất 1 và đối xứng trên-dưới (vd 14 bàn 3 hàng -> 5/4/5, 13 -> 4/5/4).
+static func _row_counts(n: int, rows: int) -> Array[int]:
+	var base := n / rows
+	var extra := n % rows
+	var counts: Array[int] = []
+	for r in rows:
+		counts.append(base)
+	if rows == 3 and extra == 1:
+		counts[1] += 1
+	elif rows == 3 and extra == 2:
+		counts[0] += 1
+		counts[2] += 1
+	elif extra > 0:
+		counts[0] += 1
+	return counts
+
+
+# --- Nhóm khách tới, xếp hàng chờ ---------------------------------------------------
+
+func _try_spawn_group() -> void:
+	if _queue.size() >= MAX_QUEUE or _seats.is_empty():
 		return
 	var broth := _random_unlocked_broth()
 	if broth == null:
 		return
-	var sides := _random_side_items()
-	var customer := Customer.new()
-	add_child(customer)
-	customer.setup(broth.id, sides, CUSTOMER_WAIT)
-	empty_table.occupy(customer)
-	empty_table.place_order(broth.id, sides)
-	empty_table.special = _events.take_pending_special()
-	if empty_table.special == "critic":
-		log_line_safe("[color=#6a3d9a]Nhà phê bình vào Bàn, gọi %s.[/color]" % broth.display_name)
-		_notification_label.text = "Nhà phê bình ẩm thực vừa vào! Hãy phục vụ thật nhanh!"
-	elif empty_table.special == "michelin":
-		log_line_safe("[color=gold]Giám khảo Michelin ẩn danh vào Bàn, gọi %s.[/color]" % broth.display_name)
-		_notification_label.text = "Có khách lạ vào quán ghi chép... (Nghi là Giám khảo Michelin!)"
+	var special: String = _events.take_pending_special()
+	var count := _random_group_size(_seats.max())
+	if special != "":
+		count = mini(count, 2) # Nhà phê bình / giám khảo đi 1-2 người.
+	var looks: Array[Texture2D] = []
+	for k in count:
+		var look: String = GUEST_LOOKS[randi() % GUEST_LOOKS.size()]
+		if k == 0 and special != "":
+			look = SPECIAL_LOOKS[special]
+		looks.append(load(CHAR_DIR + look + ".png"))
+	var group := {
+		"size": count, "looks": looks, "broth_id": broth.id, "sides": _random_side_items(count),
+		"special": special, "wait": QUEUE_WAIT,
+	}
+	var slot := _queue.size()
+	_queue.append(group)
+	group["walkers"] = _reception.enter_group(looks, slot, _overlay)
+	_make_queue_bubble(group)
+	get_tree().create_timer(1.2).timeout.connect(func() -> void:
+		if is_inside_tree() and not _queue.is_empty() and _queue[0] == group:
+			_reception.greet("Quý khách %d người ạ!" % count))
+	if special == "critic":
+		_notify("Nhà phê bình ẩm thực tới! Xếp bàn và phục vụ thật nhanh!", Color("e0b0ff"))
+	elif special == "michelin":
+		_notify("Có khách lạ vào quán, cứ lặng lẽ ghi chép...", HuntUI.GOLD)
 	else:
-		log_line_safe("Khách vào Bàn, gọi %s." % broth.display_name)
+		_notify("Nhóm %d khách vừa tới. Chạm bàn trống đủ %d ghế để xếp chỗ." % [count, count])
 
 
-func _first_empty_table() -> TableNode:
-	for table in tables:
-		if table.state == TableNode.State.EMPTY:
-			return table
-	return null
+## Số người theo trọng số GROUP_SIZE_WEIGHTS, không quá số ghế của bàn lớn nhất.
+static func _random_group_size(max_seats: int) -> int:
+	var total := 0
+	for s in range(1, mini(max_seats, GROUP_SIZE_WEIGHTS.size() - 1) + 1):
+		total += int(GROUP_SIZE_WEIGHTS[s])
+	var roll := randi() % maxi(total, 1)
+	for s in range(1, mini(max_seats, GROUP_SIZE_WEIGHTS.size() - 1) + 1):
+		roll -= int(GROUP_SIZE_WEIGHTS[s])
+		if roll < 0:
+			return s
+	return 1
+
+
+func _make_queue_bubble(group: Dictionary) -> void:
+	var panel := PanelContainer.new()
+	panel.mouse_filter = MOUSE_FILTER_IGNORE
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color("fcf8e8")
+	st.border_color = Color("a67c52")
+	st.set_border_width_all(3)
+	st.set_corner_radius_all(10)
+	st.content_margin_left = 8
+	st.content_margin_right = 8
+	st.content_margin_top = 2
+	st.content_margin_bottom = 6
+	panel.add_theme_stylebox_override("panel", st)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	box.mouse_filter = MOUSE_FILTER_IGNORE
+	panel.add_child(box)
+	var count: int = group["size"]
+	var text := "%d khách" % count if count == 1 else "Nhóm %d người" % count
+	if group["special"] == "critic":
+		text = "Nhà phê bình"
+	elif group["special"] == "michelin":
+		text = "Khách lạ"
+	var title := HuntUI.label(text, 18, HuntUI.INK)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	var bar := Control.new()
+	bar.custom_minimum_size = TableVisual.BAR_SIZE
+	bar.size_flags_horizontal = SIZE_SHRINK_CENTER
+	bar.mouse_filter = MOUSE_FILTER_IGNORE
+	box.add_child(bar)
+	var back := ColorRect.new()
+	back.color = Color("3b2416")
+	back.size = TableVisual.BAR_SIZE
+	back.mouse_filter = MOUSE_FILTER_IGNORE
+	bar.add_child(back)
+	var fill := ColorRect.new()
+	fill.position = Vector2(2, 2)
+	fill.size = TableVisual.BAR_SIZE - Vector2(4, 4)
+	fill.mouse_filter = MOUSE_FILTER_IGNORE
+	bar.add_child(fill)
+	_bubbles.add_child(panel)
+	group["bubble"] = panel
+	group["bar"] = fill
+
+
+## Đếm ngược kiên nhẫn của các nhóm đang chờ; hết thì cả nhóm bỏ về.
+func _tick_queue(delta: float) -> void:
+	for group in _queue.duplicate():
+		group["wait"] = float(group["wait"]) - delta
+		if float(group["wait"]) <= 0.0:
+			_remove_from_queue(group)
+			_reception.leave_queue(group["walkers"])
+			GameState.lose_star(STAR_CUSTOMER_LEFT)
+			if group["special"] != "":
+				# Khách đặc biệt bỏ về ngay ở cửa vẫn tính là phục vụ kém.
+				var dummy := TableNode.new()
+				dummy.special = group["special"]
+				_events.special_result(dummy, false, 0)
+				dummy.free()
+			_notify("Nhóm %d khách chờ lâu không có bàn nên bỏ về! Bị trừ sao." % int(group["size"]), Color("ff8a80"))
+
+
+func _remove_from_queue(group: Dictionary) -> void:
+	_queue.erase(group)
+	var bubble: Control = group.get("bubble")
+	if is_instance_valid(bubble):
+		bubble.queue_free()
+	# Nhóm phía sau tiến lên chỗ trước quầy.
+	for i in _queue.size():
+		_reception.move_group(_queue[i]["walkers"], i)
+
+
+# --- Xếp bàn -----------------------------------------------------------------------
+
+func _on_table_tapped(table: TableNode) -> void:
+	if table.state == TableNode.State.EMPTY:
+		if not _reserved.has(table):
+			_seat_at(table)
+	else:
+		_serve_table(table)
+
+
+## Xếp nhóm chờ đầu tiên vừa bàn này (đủ ghế) vào bàn.
+func _seat_at(table: TableNode) -> void:
+	var index := tables.find(table)
+	var seats := _seats[index]
+	if _queue.is_empty():
+		_notify("Chưa có khách chờ. Bàn %d còn trống %d ghế." % [index + 1, seats])
+		return
+	var group: Dictionary = {}
+	for g in _queue:
+		if int(g["size"]) <= seats:
+			group = g
+			break
+	if group.is_empty():
+		_notify("Bàn %d chỉ có %d ghế, không đủ cho nhóm đang chờ!" % [index + 1, seats], Color("ffccbc"))
+		return
+	_remove_from_queue(group)
+	_reserved[table] = true
+	var visual := _visuals[index]
+	var count: int = group["size"]
+	_reception.greet("Mời vào Bàn %d!" % (index + 1))
+	await _reception.seat_group(group["walkers"], visual.seat_globals(count), visual.guest_screen_size() / ReceptionDesk.GUEST_SIZE)
+	_reserved.erase(table)
+	if not is_inside_tree() or table.state != TableNode.State.EMPTY:
+		return
+	visual.seat_group(group["looks"])
+	var customer := Customer.new()
+	customer.group_size = count
+	add_child(customer)
+	customer.setup(group["broth_id"], group["sides"], CUSTOMER_WAIT)
+	table.occupy(customer)
+	table.place_order(group["broth_id"], group["sides"])
+	table.special = group["special"]
+	_notify("Bàn %d (%d người) gọi %s + %d đĩa đồ nhúng." % [index + 1, count, _broth_name(group["broth_id"]), (group["sides"] as Array).size()])
 
 
 func _random_unlocked_broth() -> BrothData:
@@ -491,24 +492,59 @@ func _random_unlocked_broth() -> BrothData:
 	return broths[randi() % broths.size()]
 
 
-func _random_side_items() -> Array[String]:
-	var pool := ["beef", "mushroom", "greens", "shrimp", "enoki", "tomato", "chili"]
-	var count := 1 + randi() % 2
+## Đồ nhúng theo số người: 1 người gọi 1-2 đĩa, nhóm 6 người gọi 5-6 đĩa (tối đa 6).
+## Chỉ gọi món kho đang có (đã sơ chế hoặc đồ thô), không gọi quá số lượng còn lại; kho hết thì chỉ gọi lẩu.
+func _random_side_items(people: int) -> Array[String]:
+	var count := clampi(people - 1 + randi() % 2 + (1 if people == 1 else 0), 1, 6)
+	var left := {}
+	for id in DIPPING_POOL:
+		var n := GameState.get_prepped_count(id) + GameState.get_item_count(id)
+		if n > 0:
+			left[id] = n
 	var result: Array[String] = []
 	for i in count:
-		result.append(pool[randi() % pool.size()])
+		if left.is_empty():
+			break
+		var ids := left.keys()
+		var id: String = ids[randi() % ids.size()]
+		result.append(id)
+		left[id] = int(left[id]) - 1
+		if int(left[id]) <= 0:
+			left.erase(id)
 	return result
 
 
+## Lấy đồ nhúng của bàn từ kho khi bưng ra; trả về {total: tiền các đĩa đã bưng, served, missing, expired}.
+func _take_dishes(table: TableNode) -> Dictionary:
+	var total := 0
+	var served := 0
+	var expired := false
+	for id in table.side_items:
+		var r := GameState.take_dipping(id)
+		if not bool(r["ok"]):
+			continue
+		served += 1
+		total += roundi(DIPPING_PRICE * float(r["price_mult"]) / 1000.0) * 1000
+		expired = expired or bool(r["expired"])
+	return {"total": total, "served": served, "missing": table.side_items.size() - served, "expired": expired}
+
+
+# --- Bưng món ----------------------------------------------------------------------
+
 func _pick_to_cart(broth_id: String) -> void:
+	if cart.carrying_broth_id == broth_id:
+		return
 	if cart.carrying_broth_id != "":
-		_notification_label.text = "Xe đẩy đang chở món khác, hãy giao trước!"
+		_notify("Khay đang bưng %s, giao xong đã!" % _broth_name(cart.carrying_broth_id), Color("ffccbc"))
+		_pass.bounce(cart.carrying_broth_id)
 		return
 	if not cart.pick_broth(broth_id):
-		var broth := Database.get_broth(broth_id)
-		_notification_label.text = "Kho chưa có món %s!" % (broth.display_name if broth else broth_id)
+		_notify("Hết %s rồi!" % _broth_name(broth_id), Color("ff8a80"))
+		_pass.bounce(broth_id)
 		return
-	_notification_label.text = "Đã lấy 1 nồi %s lên xe đẩy." % _broth_name(broth_id)
+	_pass.bounce(broth_id)
+	_pass.chef.work(0.3, "stir")
+	_notify("Đã lấy %s lên khay. Chạm bàn gọi món này để bưng ra." % _broth_name(broth_id))
 
 
 func _serve_table(table: TableNode) -> void:
@@ -516,33 +552,124 @@ func _serve_table(table: TableNode) -> void:
 		return
 	if _negotiating != null:
 		return
+	var id := table.order_broth_id
 	if cart.carrying_broth_id == "":
-		if not cart.pick_broth(table.order_broth_id):
+		if not cart.pick_broth(id):
 			_negotiate(table)
 			return
-	elif cart.carrying_broth_id != table.order_broth_id:
-		_notification_label.text = "Xe đẩy đang chở %s, bàn này gọi %s!" % [_broth_name(cart.carrying_broth_id), _broth_name(table.order_broth_id)]
+	elif cart.carrying_broth_id != id:
+		_notify("Khay đang bưng %s, bàn này gọi %s!" % [_broth_name(cart.carrying_broth_id), _broth_name(id)], Color("ffccbc"))
 		return
 	_deliver(table)
 
 
+## Bưng nồi lẩu (1 nồi cho cả bàn) cùng các đĩa đồ nhúng ra bàn.
 func _deliver(table: TableNode) -> void:
 	var fast := table.customer != null and table.customer.remaining_time() > CUSTOMER_WAIT * 0.5
+	var broth_id := cart.carrying_broth_id
 	if cart.serve_to(table):
 		table.served_fast = fast
 		GameState.add_star(STAR_FAST_SERVE if fast else STAR_SERVE)
-		log_line_safe("Đã giao %s đến bàn%s." % [_broth_name(table.order_broth_id), " (nhanh, +sao)" if fast else ""])
-		_notification_label.text = "Đã giao %s ra bàn thành công%s!" % [_broth_name(table.order_broth_id), " (Giao nhanh +Sao)" if fast else ""]
+		# Đồ nhúng lấy từ kho lúc bưng ra; món đã hết (bàn khác dùng mất) thì không bưng, không tính tiền.
+		var dishes := _take_dishes(table)
+		table.set_meta("dish_total", dishes["total"])
+		table.set_meta("dish_count", dishes["served"])
+		table.served_expired = table.served_expired or bool(dishes["expired"])
+		var visual := _visuals[tables.find(table)]
+		visual.delay_pot(_carry_pot(broth_id, visual))
+		var missing_text := " (thiếu %d đĩa, kho hết)" % int(dishes["missing"]) if int(dishes["missing"]) > 0 else ""
+		_notify("Đã bưng %s + %d đĩa đồ nhúng ra bàn%s%s!" % [_broth_name(table.order_broth_id), int(dishes["served"]), missing_text, " (nhanh, +sao)" if fast else ""], Color("c8e6c9"))
 
 
+func _build_waiter() -> void:
+	_waiter = TextureRect.new()
+	_waiter.texture = load(CHAR_DIR + "staff_tung.png")
+	_waiter.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_waiter.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_waiter.stretch_mode = TextureRect.STRETCH_SCALE
+	_waiter.size = Vector2(WAITER_SIZE, WAITER_SIZE)
+	_waiter.position = WAITER_HOME
+	_waiter.mouse_filter = MOUSE_FILTER_IGNORE
+	_overlay.add_child(_waiter)
+	_waiter_legs = SpriteFrameLayer.attach_to(_waiter)
+	_waiter_pot = TextureRect.new()
+	_waiter_pot.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_waiter_pot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_waiter_pot.size = KitchenPass.POT_SIZE
+	_waiter_pot.position = Vector2(40, 34)
+	_waiter_pot.mouse_filter = MOUSE_FILTER_IGNORE
+	_waiter_pot.visible = false
+	_waiter.add_child(_waiter_pot)
+
+
+## Bưng nồi ra bàn: có Tùng (rảnh) thì Tùng chạy ra, không thì nồi bay ra. Trả về số giây tới bàn.
+func _carry_pot(broth_id: String, visual: TableVisual) -> float:
+	if _waiter == null or _waiter_busy:
+		_fly_pot(broth_id, visual)
+		return 0.4
+	_waiter_busy = true
+	var target := visual.pot_global_center() - _overlay.global_position - Vector2(WAITER_SIZE * 0.35, WAITER_SIZE * 0.6)
+	var go := maxf(0.25, _waiter.position.distance_to(target) / WAITER_SPEED)
+	var back := maxf(0.25, target.distance_to(WAITER_HOME) / WAITER_SPEED)
+	_waiter_pot.texture = KitchenPass.pot_texture(broth_id)
+	_waiter_pot.visible = true
+	_waiter.flip_h = target.x < _waiter.position.x
+	_waiter_pot.position.x = 0.0 if _waiter.flip_h else 40.0
+	if _waiter_legs != null:
+		_waiter_legs.play("run")
+	var t := _waiter.create_tween()
+	t.tween_property(_waiter, "position", target, go)
+	t.tween_callback(func() -> void:
+		_waiter_pot.visible = false
+		_waiter.flip_h = WAITER_HOME.x < _waiter.position.x
+		if _waiter_legs != null:
+			_waiter_legs.play("run"))
+	t.tween_property(_waiter, "position", WAITER_HOME, back)
+	t.tween_callback(func() -> void:
+		_waiter_busy = false
+		_waiter.flip_h = false
+		if _waiter_legs != null:
+			_waiter_legs.stop())
+	return go
+
+
+## Cả nhóm rời bàn đi ra cửa (ăn xong vui vẻ / bỏ về đỏ mặt).
+func _guests_leave(visual: TableVisual, happy: bool) -> void:
+	var seat_scale := visual.guest_screen_size() / ReceptionDesk.GUEST_SIZE
+	var k := 0
+	for g in visual.seated_guests():
+		_reception.walk_out(g["texture"], g["global"], seat_scale, happy, _overlay, k * 0.15)
+		k += 1
+
+
+## Nồi bay từ quầy bếp ra bàn (chỉ là hình ảnh, khi chưa có người bưng).
+func _fly_pot(broth_id: String, visual: TableVisual) -> void:
+	var r := TextureRect.new()
+	r.texture = KitchenPass.pot_texture(broth_id)
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.size = KitchenPass.POT_SIZE
+	r.mouse_filter = MOUSE_FILTER_IGNORE
+	_overlay.add_child(r)
+	var from := _pass.pot_global_center(broth_id) - _overlay.global_position - r.size / 2.0
+	var to := visual.pot_global_center() - _overlay.global_position - r.size / 2.0
+	r.position = from
+	var t := r.create_tween()
+	t.tween_method(func(k: float) -> void:
+		r.position = from.lerp(to, k) + Vector2(0, -120.0 * sin(k * PI)), 0.0, 1.0, 0.4).set_trans(Tween.TRANS_SINE)
+	t.tween_callback(r.queue_free)
+	_sfx("splash", -14.0)
+
+
+## Hết món đã gọi: đề nghị đổi sang món khác còn trong kho.
 func _negotiate(table: TableNode) -> void:
 	var missing := _broth_name(table.order_broth_id)
 	var offer := _best_in_stock()
 	if offer == null:
-		_notification_label.text = "Hết %s và kho cũng không còn loại lẩu nào khác!" % missing
+		_notify("Hết %s và kho cũng không còn loại lẩu nào khác!" % missing, Color("ff8a80"))
 		return
 	if table.customer != null and table.customer.has_meta("negotiated"):
-		_notification_label.text = "Khách bàn này đã từ chối đổi món rồi."
+		_notify("Khách bàn này đã từ chối đổi món rồi.", Color("ffccbc"))
 		return
 	_negotiating = table
 	var wheel = preload("res://scenes/sell/negotiation_wheel.gd").new()
@@ -554,18 +681,18 @@ func _negotiate(table: TableNode) -> void:
 		return
 	if table.customer != null:
 		table.customer.set_meta("negotiated", true)
-	if accepted and cart.pick_broth(offer.id):
+	if accepted and cart.carrying_broth_id == "" and cart.pick_broth(offer.id):
 		table.order_broth_id = offer.id
 		if table.customer != null:
 			table.customer.desired_broth_id = offer.id
-		log_line_safe("[color=#4caf50]Khách đồng ý đổi sang %s.[/color]" % offer.display_name)
-		_notification_label.text = "Khách đồng ý đổi sang %s!" % offer.display_name
+		_notify("Khách đồng ý đổi sang %s!" % offer.display_name, Color("c8e6c9"))
 		_deliver(table)
 	else:
-		_notification_label.text = "Khách không đồng ý đổi món!"
+		_notify("Khách không đồng ý đổi món!", Color("ff8a80"))
 		_customer_timeout(table)
 
 
+## Món còn nhiều phần nhất trong kho, bằng nhau thì lấy món đắt hơn.
 func _best_in_stock() -> BrothData:
 	var best: BrothData = null
 	for b in Database.broths:
@@ -582,28 +709,44 @@ func _broth_name(id: String) -> String:
 	return broth.display_name if broth else id
 
 
+# --- Ăn xong / bỏ về ---------------------------------------------------------------
+
 func _finish_eating(table: TableNode) -> void:
 	if table.state != TableNode.State.EATING:
 		return
+	var visual := _visuals[tables.find(table)]
 	var broth := Database.get_broth(table.order_broth_id)
+	var dishes := int(table.get_meta("dish_count", 0))
+	var dish_total := int(table.get_meta("dish_total", 0))
+	for key in ["dish_count", "dish_total"]:
+		if table.has_meta(key):
+			table.remove_meta(key)
 	if broth and table.served_expired and (table.special != "" or randf() < EXPIRED_DETECT_CHANCE):
 		var compensation := roundi(broth.price * EXPIRED_COMPENSATION / 1000.0) * 1000
 		GameState.add_money(-compensation, false)
 		GameState.lose_star(EXPIRED_STAR_LOSS)
-		log_line_safe("[color=red]Khách phát hiện %s đã hết hạn! Bồi thường %s, trừ sao.[/color]" % [broth.display_name, GameState.format_money(compensation)])
-		_notification_label.text = "Khách phát hiện lẩu hết hạn! Phạt bồi thường %s và trừ sao!" % GameState.format_money(compensation)
+		_notify("Khách phát hiện lẩu hết hạn! Bồi thường %s, trừ sao." % GameState.format_money(compensation), Color("ff8a80"))
+		_float_text("-%s" % GameState.format_money(compensation), visual, Color("ff8a80"))
 		if table.special != "":
 			_events.special_result(table, false, broth.price)
+		_guests_leave(visual, false)
 		table.clear()
 		return
 	if broth:
+		# Hoá đơn = 1 nồi lẩu + các đĩa đồ nhúng (nhóm đông gọi nhiều đĩa hơn).
+		var bill := broth.price + dish_total
 		var tip_rate := randf_range(TIP_MIN, TIP_MAX) + Database.upgrade_value("furniture")
-		var tip := roundi(broth.price * tip_rate / 1000.0) * 1000
-		GameState.add_money(broth.price + tip)
-		log_line_safe("Khách thanh toán %s: %s + tip %s" % [broth.display_name, GameState.format_money(broth.price), GameState.format_money(tip)])
-		_notification_label.text = "Bàn thanh toán %s: +%s (Tip: +%s)!" % [broth.display_name, GameState.format_money(broth.price), GameState.format_money(tip)]
+		var tip := roundi(bill * tip_rate / 1000.0) * 1000
+		# Phí phục vụ (nâng cấp mở khi đủ 10 bàn): cộng % vào hoá đơn.
+		var service := roundi(bill * Database.upgrade_value("service") / 1000.0) * 1000
+		GameState.add_money(bill + service + tip)
+		var service_text := ", phí phục vụ %s" % GameState.format_money(service) if service > 0 else ""
+		_notify("Bàn %d thanh toán lẩu + %d đĩa: %s%s, tip %s." % [tables.find(table) + 1, dishes, GameState.format_money(bill), service_text, GameState.format_money(tip)], Color("fff59d"))
+		_float_text("+%s" % GameState.format_money(bill + service + tip), visual, HuntUI.GOLD)
+		_sfx("loot", -12.0)
 		if table.special != "":
-			_events.special_result(table, table.served_fast and not table.served_expired, broth.price)
+			_events.special_result(table, table.served_fast and not table.served_expired, bill)
+	_guests_leave(visual, true)
 	table.clear()
 
 
@@ -611,131 +754,113 @@ func _customer_timeout(table: TableNode) -> void:
 	if table.state != TableNode.State.WAITING_ORDER:
 		return
 	GameState.lose_star(STAR_CUSTOMER_LEFT)
-	log_line_safe("[color=red]Khách bỏ về, quán bị trừ sao.[/color]")
-	_notification_label.text = "Khách chờ quá lâu nên bỏ về! Quán bị trừ 1 sao."
+	_notify("Khách Bàn %d chờ món lâu quá nên bỏ về! Bị trừ sao." % (tables.find(table) + 1), Color("ff8a80"))
+	_float_text("Bỏ về!", _visuals[tables.find(table)], Color("ff8a80"))
 	if table.special != "":
 		_events.special_result(table, false, 0)
+	_guests_leave(_visuals[tables.find(table)], false)
 	table.clear()
-
-
-func _on_table_cleared(_table: TableNode) -> void:
-	pass
 
 
 func _on_eating_finished(table: TableNode) -> void:
 	_finish_eating(table)
 
 
+func _close_shop() -> void:
+	if _leaving:
+		return
+	_leaving = true
+	DayManager.next_phase()
+
+
+# --- Cập nhật hình -----------------------------------------------------------------
+
 func _update_ui() -> void:
-	_revenue_label.text = "Doanh thu: %s" % GameState.format_money(GameState.today_revenue)
-	_stars_label.text = "Đánh giá: %.1f ★" % GameState.stars
+	_pass.refresh(cart.carrying_broth_id)
 	if cart.carrying_broth_id == "":
-		_cart_label.text = "Xe đẩy: [Trống]"
+		_tray_icon.texture = load("res://assets/sprites/kitchen/tray.png")
+		_tray_label.text = "Khay: trống"
 	else:
-		_cart_label.text = "Xe đẩy: [%s]" % _broth_name(cart.carrying_broth_id)
+		_tray_icon.texture = KitchenPass.pot_texture(cart.carrying_broth_id)
+		_tray_label.text = "Khay: %s" % _broth_name(cart.carrying_broth_id)
 
-	for i in _inventory_ids.size():
-		var id := _inventory_ids[i]
-		var btn := _inventory_buttons[i]
-		var broth := Database.get_broth(id)
-		btn.text = "%s: x%d" % [broth.display_name if broth else id, GameState.get_broth_count(id)]
+	# Bong bóng nhóm đang chờ (trên đầu nhóm) + thanh kiên nhẫn.
+	var smallest := 99
+	for i in _queue.size():
+		var group := _queue[i]
+		smallest = mini(smallest, int(group["size"]))
+		var bubble: Control = group["bubble"]
+		bubble.reset_size()
+		var head := _reception.queue_head(i, int(group["size"])) - _bubbles.global_position
+		bubble.position = (head - Vector2(bubble.size.x * 0.5, bubble.size.y)).round()
+		var r := float(group["wait"]) / QUEUE_WAIT
+		var fill: ColorRect = group["bar"]
+		fill.size.x = (TableVisual.BAR_SIZE.x - 4.0) * clampf(r, 0.0, 1.0)
+		fill.color = TableVisual._patience_color(r)
 
-	var customer_colors := [Color("5fa8d3"), Color("f28482"), Color("84a59d"), Color("f6bd60")]
-
-	for i in _table_ui.size():
-		var ui = _table_ui[i]
-		var table: TableNode = ui["table"]
-		var status_lbl: Label = ui["status"]
-		var order_lbl: Label = ui["order"]
-		var sides_row: HBoxContainer = ui["sides_row"]
-		var wait_bar: ProgressBar = ui["wait_bar"]
-		var wait_time_lbl: Label = ui["wait_time"]
-		var eat_bar: ProgressBar = ui["eat_bar"]
-		var eat_time_lbl: Label = ui["eat_time"]
-		var serve_btn: Button = ui["serve"]
-		var char_rect: TextureRect = ui["char"]
-		var pot_rect: TextureRect = ui["pot"]
-		var smoke_rect: TextureRect = ui["smoke"]
-		var vip: Label = ui["vip"]
-		var bubble: Control = ui["bubble"]
-
-		if table.state == TableNode.State.EMPTY:
-			status_lbl.text = "Bàn %d: Trống - Chờ khách" % (i + 1)
-			bubble.visible = false
-			serve_btn.visible = false
-			char_rect.visible = false
-			pot_rect.visible = false
-			smoke_rect.visible = false
-		elif table.state == TableNode.State.WAITING_ORDER:
-			bubble.visible = true
-			serve_btn.visible = true
-			var broth := Database.get_broth(table.order_broth_id)
-			status_lbl.text = "Bàn %d: Khách gọi món" % (i + 1)
-			order_lbl.text = "Thèm: %s" % (broth.display_name if broth else table.order_broth_id)
-
-			# Cập nhật icon đồ nhúng
-			for child in sides_row.get_children():
-				child.queue_free()
-			for sid in table.side_items:
-				var icon_path := "%s%s.png" % [INGREDIENT_DIR, sid]
-				if ResourceLoader.exists(icon_path):
-					var side_icon := TextureRect.new()
-					side_icon.texture = load(icon_path)
-					side_icon.custom_minimum_size = Vector2(24, 24)
-					side_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-					side_icon.tooltip_text = GameState.item_display_name(sid)
-					sides_row.add_child(side_icon)
-
-			var rem := table.customer.remaining_time() if table.customer else 0.0
-			wait_bar.visible = true
-			wait_bar.value = 100.0 * (1.0 - rem / CUSTOMER_WAIT)
-			wait_time_lbl.visible = true
-			wait_time_lbl.text = "Chờ: %.0fs" % rem
-			eat_bar.visible = false
-			eat_time_lbl.visible = false
-
-			# Nút phục vụ hoặc thương lượng
-			var has_stock := GameState.get_broth_count(table.order_broth_id) > 0 or cart.carrying_broth_id == table.order_broth_id
-			if not has_stock and table.customer and not table.customer.has_meta("negotiated"):
-				serve_btn.text = "Thương lượng đổi món 🎲"
-			else:
-				serve_btn.text = "Bưng ra Bàn %d" % (i + 1)
-
-			char_rect.visible = true
-			if table.special == "critic":
-				char_rect.modulate = Color("c77dff")
-				vip.text = "[★ Nhà phê bình ẩm thực]"
-			elif table.special == "michelin":
-				char_rect.modulate = Color("ffd166")
-				vip.text = "[★ Giám khảo Michelin]"
-			else:
-				char_rect.modulate = customer_colors[i % customer_colors.size()]
-				vip.text = ""
-
-			pot_rect.visible = false
-			smoke_rect.visible = false
-		elif table.state == TableNode.State.EATING:
-			bubble.visible = true
-			serve_btn.visible = false
-			var broth := Database.get_broth(table.order_broth_id)
-			status_lbl.text = "Bàn %d: Đang ăn lẩu" % (i + 1)
-			order_lbl.text = "Đang ăn: %s" % (broth.display_name if broth else table.order_broth_id)
-			for child in sides_row.get_children():
-				child.queue_free()
-
-			wait_bar.visible = false
-			wait_time_lbl.visible = false
-			eat_bar.visible = true
-			var erem := table.eating_remaining()
-			eat_bar.value = 100.0 * (1.0 - erem / table.eating_time)
-			eat_time_lbl.visible = true
-			eat_time_lbl.text = "Nồi lẩu sôi: %.0fs" % erem
-
-			char_rect.visible = true
-			pot_rect.visible = true
-			smoke_rect.visible = true
-			vip.text = ""
+	for i in tables.size():
+		var table := tables[i]
+		var visual := _visuals[i]
+		match table.state:
+			TableNode.State.WAITING_ORDER:
+				visual.set_highlight(0)
+				var patience := (table.customer.remaining_time() / CUSTOMER_WAIT) if table.customer else 0.0
+				var has_stock := GameState.get_broth_count(table.order_broth_id) > 0 or cart.carrying_broth_id == table.order_broth_id
+				var note := ""
+				var note_color := HuntUI.RUST
+				if table.special == "critic":
+					note = "Nhà phê bình"
+					note_color = Color("6a3d9a")
+				elif table.special == "michelin":
+					note = "Khách lạ"
+					note_color = HuntUI.GOLDEN_INK
+				if not has_stock:
+					note = "Hết món! Chạm để đổi" if table.customer and not table.customer.has_meta("negotiated") else "Hết món!"
+					note_color = HuntUI.BAD
+				visual.show_waiting(table.order_broth_id, table.side_items, patience, note, note_color, has_stock)
+			TableNode.State.EATING:
+				visual.set_highlight(0)
+				visual.show_eating(table.order_broth_id, 1.0 - table.eating_remaining() / maxf(table.eating_time, 0.01))
+			_:
+				if not _reserved.has(table):
+					visual.show_empty()
+					# Có nhóm chờ: bàn đủ ghế cho ít nhất một nhóm thì nhấp nháy, không đủ thì mờ.
+					visual.set_highlight(0 if _queue.is_empty() else (1 if _seats[i] >= smallest else -1))
+				else:
+					visual.set_highlight(0)
 
 
-func log_line_safe(text: String) -> void:
+func _notify(text: String, color := Color("f3e2c0")) -> void:
+	_notification_label.text = text
+	_notification_label.add_theme_color_override("font_color", color)
+
+
+func _float_text(text: String, visual: TableVisual, color: Color) -> void:
+	var l := HuntUI.outlined_label(text, 22, color)
+	l.mouse_filter = MOUSE_FILTER_IGNORE
+	l.custom_minimum_size = Vector2(240, 0)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var at := visual.pot_global_center() - _bubbles.global_position
+	l.position = at - Vector2(120, 20)
+	_bubbles.add_child(l)
+	var t := l.create_tween().set_parallel(true)
+	t.tween_property(l, "position:y", at.y - 80, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(l, "modulate:a", 0.0, 0.4).set_delay(0.8)
+	t.chain().tween_callback(l.queue_free)
+
+
+func _sfx(name: String, db: float) -> void:
+	var path := "res://assets/audio/sfx/%s.ogg" % name
+	if not ResourceLoader.exists(path):
+		return
+	var p := AudioStreamPlayer.new()
+	p.stream = load(path)
+	p.volume_db = db
+	add_child(p)
+	p.play()
+	p.finished.connect(p.queue_free)
+
+
+## SellEvents ghi nhật ký qua hàm này (không còn ô log, chỉ in ra console để dò lỗi).
+func log_line(text: String) -> void:
 	print(text)

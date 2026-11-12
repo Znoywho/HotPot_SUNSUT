@@ -5,6 +5,7 @@ signal order_placed(broth_id: String, side_items: Array[String])
 signal left_angry
 
 var desired_broth_id := ""
+var group_size := 1 ## Số người trong nhóm (mỗi người ăn 1 phần lẩu).
 var side_items: Array[String] = []
 var wait_time := 20.0
 var _remaining := 0.0
