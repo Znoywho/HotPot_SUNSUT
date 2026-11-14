@@ -27,6 +27,10 @@ func _build() -> void:
 			ok = false # Ưu tiên điểm nằm trên nguyên liệu; thử quá nhiều thì chấp nhận.
 		if ok:
 			_targets.append(p)
+	var t := step.title.to_lower()
+	if t.begins_with("nhặt") or t.begins_with("loại"):
+		for q in _targets:
+			wither_spot(q, _radius * 0.5 / _px) # Lá úa / phần hỏng ngả vàng để biết chỗ cần nhặt.
 	if not _targets.is_empty():
 		_hand = pointer(_targets[0] + Vector2(-8, 4), "tap")
 
@@ -63,8 +67,15 @@ func _gui_input(event: InputEvent) -> void:
 func _pop_bit(at: Vector2) -> void:
 	var t := step.title.to_lower()
 	var whole := t.begins_with("nhặt") or t.begins_with("loại") or t.begins_with("cắt râu") or "cuống" in t
-	var radius := _radius * (0.6 if whole else 0.4) / _px
-	var bit := carve(circle(to_px(at), radius), whole, Color(1, 0.95, 0.88, 0.35))
+	var c := to_px(at)
+	var radius := _radius * 0.5 / _px
+	var bit: TextureRect
+	if whole:
+		# Gỡ mẩu mà không để lại lỗ: mẩu úa rơi xuống, chỗ cũ liền lại bằng màu xung quanh.
+		var ring := func(p: Vector2) -> bool: return p.distance_to(c) <= radius + 4.0
+		bit = heal_carve(circle(c, radius), ring)
+	else:
+		bit = carve(circle(c, _radius * 0.4 / _px), false, Color(1, 0.95, 0.88, 0.35))
 	drop_piece(bit, (at - item_center).normalized() * 0.6)
 
 

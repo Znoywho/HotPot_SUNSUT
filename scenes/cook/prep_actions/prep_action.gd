@@ -318,6 +318,57 @@ func carve(mask: Callable, remove := true, recolor := Color(0, 0, 0, 0)) -> Text
 	return r
 
 
+const WITHER := Color(0.62, 0.5, 0.16) ## Màu lá úa / phần hỏng.
+
+
+## Nhuộm vàng úa vùng tròn (đánh dấu phần sắp gỡ). Không đổi hình dáng nguyên liệu.
+func wither_spot(center: Vector2, radius: float, amount := 0.6) -> void:
+	if not _ensure_img():
+		return
+	var cp := to_px(center)
+	for y in _img.get_height():
+		for x in _img.get_width():
+			var c := _img.get_pixel(x, y)
+			if c.a > 0.1 and Vector2(x + 0.5, y + 0.5).distance_to(cp) <= radius:
+				_img.set_pixel(x, y, Color(c.lerp(WITHER * (0.6 + c.get_luminance() * 0.8), amount), c.a))
+	item.texture = ImageTexture.create_from_image(_img)
+
+
+## Gỡ 1 mảnh KHÔNG để lại lỗ: mảnh úa rơi xuống, chỗ cũ được "liền lại" bằng màu xung quanh (giữ nguyên
+## hình dáng và độ sáng tối của từng pixel). Trả về mảnh rơi.
+func heal_carve(mask: Callable, ring: Callable) -> TextureRect:
+	if not _ensure_img():
+		return null
+	var w := _img.get_width()
+	var h := _img.get_height()
+	var sum := Vector3.ZERO
+	var n := 0
+	var lum := 0.0
+	for y in h:
+		for x in w:
+			var c := _img.get_pixel(x, y)
+			if c.a > 0.5 and not mask.call(Vector2(x + 0.5, y + 0.5)) and ring.call(Vector2(x + 0.5, y + 0.5)):
+				sum += Vector3(c.r, c.g, c.b)
+				lum += c.get_luminance()
+				n += 1
+	var base := Color(0.3, 0.55, 0.2)
+	var base_lum := base.get_luminance()
+	if n > 0:
+		base = Color(sum.x / n, sum.y / n, sum.z / n)
+		base_lum = maxf(0.05, lum / n)
+	var bit := carve(mask, false) # Mảnh rơi (bản sao) - chưa đổi gì trên nguyên liệu.
+	if bit != null:
+		bit.modulate = Color(1.0, 0.9, 0.55) # Mảnh rơi ra ngả vàng úa.
+	for y in h:
+		for x in w:
+			var c := _img.get_pixel(x, y)
+			if c.a > 0.1 and mask.call(Vector2(x + 0.5, y + 0.5)):
+				var k := clampf(c.get_luminance() / base_lum if base_lum > 0.0 else 1.0, 0.75, 1.25)
+				_img.set_pixel(x, y, Color(clampf(base.r * k, 0, 1), clampf(base.g * k, 0, 1), clampf(base.b * k, 0, 1), c.a))
+	item.texture = ImageTexture.create_from_image(_img)
+	return bit
+
+
 ## Mảnh bật ra theo hướng push rồi rơi xuống khỏi khung, vừa rơi vừa xoay.
 func drop_piece(r: TextureRect, push := Vector2.ZERO) -> void:
 	if r == null:

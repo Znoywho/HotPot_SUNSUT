@@ -5,9 +5,9 @@
 [resource]
 script = ExtResource("1")
 perfect_score = 85
-ok_score = 50
-premium_average = 1.6
-normal_average = 0.9
+ok_score = 70
+premium_average = 1.85
+normal_average = 1.0
 ruin_fails = 3
 optional_skip_grade = 1
 session_max = 5

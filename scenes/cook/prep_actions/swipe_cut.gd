@@ -176,7 +176,7 @@ func _split(line: Array) -> void:
 		_add_piece(p.src, second, p.offset)
 	if not split_any:
 		return
-	var gap := (SCORE_GAP if _is_scoring() else SPLIT_GAP) / 2.0
+	var gap := (SCORE_GAP if _is_scoring() else (SPLIT_GAP * 0.5 if step.title.to_lower().begins_with("ngắt") else SPLIT_GAP)) / 2.0 # Rau ngắt khúc: khe hẹp, đừng làm rau trông nát.
 	for p in _pieces:
 		var reg: Rect2 = p.region
 		var centre: Vector2 = reg.get_center()
