@@ -1,9 +1,16 @@
 class_name StoragePopup
 extends Control
 ## Bảng xem kho: nguyên liệu + nước cốt chia theo ngày nhập, mỗi lô có dấu "!" và số ngày còn dùng được.
+## Thẻ thứ hai "Thực đơn" (MenuBook): giá, công thức các loại lẩu và giá đồ nhúng.
 ## Dùng: add_child(StoragePopup.new()) – tự đóng khi bấm "Đóng".
 
 const POT_ICON := "res://assets/sprites/ui/broth_pot.png"
+const TAB_NAMES: Array[String] = ["Kho", "Thực đơn"]
+
+var start_tab := 0 ## Đặt 1 trước add_child để mở thẳng thẻ Thực đơn.
+var _scroll: ScrollContainer
+var _hint: Label
+var _tab_buttons: Array[Button] = []
 
 
 func _ready() -> void:
@@ -13,8 +20,13 @@ func _ready() -> void:
 	dim.color = Color(0, 0, 0, 0.5)
 	dim.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(dim)
+	# Bấm ra khoảng tối ngoài bảng thì đóng (giống ESC / nút "Đóng").
+	dim.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			queue_free())
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	center.mouse_filter = MOUSE_FILTER_IGNORE # Để chạm ngoài bảng rơi xuống lớp tối phía dưới.
 	add_child(center)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_panel", 8, Vector2(26, 20)))
@@ -22,16 +34,61 @@ func _ready() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
 	panel.add_child(box)
-	box.add_child(HuntUI.label("Kho của quán", 28, HuntUI.RUST))
-	box.add_child(HuntUI.label("Đồ giữ được %d ngày (nâng Kho lạnh để giữ lâu hơn). Sơ chế, nấu và bán luôn lấy lô cũ nhất trước." % GameState.shelf_days(), HuntUI.FONT_SMALL, HuntUI.INK_SOFT))
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(760, 400)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	box.add_child(scroll)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 10)
+	box.add_child(tabs)
+	_hint = HuntUI.label("", HuntUI.FONT_SMALL, HuntUI.INK_SOFT)
+	_hint.custom_minimum_size = Vector2(760, 0) # Cố định bề rộng để bảng không co giãn khi đổi thẻ.
+	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(_hint)
+	_scroll = ScrollContainer.new()
+	_scroll.custom_minimum_size = Vector2(760, 370)
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(_scroll)
+	for i in TAB_NAMES.size():
+		var tab := HuntUI.button(TAB_NAMES[i], 200)
+		tab.toggle_mode = true
+		tab.pressed.connect(_show_tab.bind(i))
+		tabs.add_child(tab)
+		_tab_buttons.append(tab)
+
+	var close := HuntUI.button("Đóng", 220)
+	close.size_flags_horizontal = SIZE_SHRINK_CENTER
+	close.pressed.connect(queue_free)
+	box.add_child(close)
+	_show_tab(start_tab)
+	HuntUI.book_open(panel)
+
+
+## 0 = Kho, 1 = Thực đơn.
+func _show_tab(index: int) -> void:
+	for i in _tab_buttons.size():
+		_tab_buttons[i].set_pressed_no_signal(i == index)
+		_tab_buttons[i].modulate = Color.WHITE if i == index else Color(1, 1, 1, 0.6)
+	for child in _scroll.get_children():
+		_scroll.remove_child(child)
+		child.queue_free()
+	if index == 1:
+		_hint.text = "Món đang bán hôm nay (Ngày %d). Nồi có sẵn = nước cốt đã nấu trong kho." % GameState.day
+		_scroll.add_child(_with_scrollbar_gap(MenuBook.build()))
+	else:
+		_hint.text = "Đồ giữ được %d ngày (nâng Kho lạnh để giữ lâu hơn). Sơ chế, nấu và bán luôn lấy lô cũ nhất trước." % GameState.shelf_days()
+		_scroll.add_child(_with_scrollbar_gap(_storage_list()))
+
+
+## Chừa khe bên phải để thanh cuộn không đè lên chữ.
+func _with_scrollbar_gap(content: Control) -> Control:
+	var m := MarginContainer.new()
+	m.size_flags_horizontal = SIZE_EXPAND_FILL
+	m.add_theme_constant_override("margin_right", 18)
+	m.add_child(content)
+	return m
+
+
+func _storage_list() -> Control:
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 6)
-	scroll.add_child(list)
 
 	list.add_child(HuntUI.label("Nguyên liệu", 22, HuntUI.RUST))
 	var item_ids := GameState.item_batches.keys()
@@ -57,12 +114,7 @@ func _ready() -> void:
 	for id in broth_ids:
 		var broth := Database.get_broth(id)
 		list.add_child(_row(pot, broth.display_name if broth else id, GameState.broth_batch_list(id), true))
-
-	var close := HuntUI.button("Đóng", 220)
-	close.size_flags_horizontal = SIZE_SHRINK_CENTER
-	close.pressed.connect(queue_free)
-	box.add_child(close)
-	HuntUI.book_open(panel)
+	return list
 
 
 func _row(icon: Texture2D, name: String, batches: Array, is_broth := false, is_prepped := false) -> Control:
