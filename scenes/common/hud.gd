@@ -123,7 +123,8 @@ func _update_stars() -> void:
 
 ## Vị trí mặt trời/trăng và giờ trong game theo giai đoạn của ngày.
 ## Ngày (mặt trời) 6:00–17:59, đêm (trăng) 18:00–5:59: progress 0 -> 6h, 1 -> 18h, 2 -> 6h hôm sau.
-## Săn 6h–11h, nấu 11h–13h, bán 13h–22h (mặt trời lặn lúc 18h giữa buổi bán), tổng kết 22h, cửa hàng 23h.
+## Cửa hàng 6h sáng ngày mới (trước khi đi săn), săn 6h–11h, nấu 11h–13h, bán 13h–22h (mặt trời lặn lúc 18h
+## giữa buổi bán), tổng kết 22h.
 func _update_time() -> void:
 	var target := 0.0
 	match DayManager.current_phase:
@@ -136,7 +137,7 @@ func _update_time() -> void:
 		DayManager.Phase.DAY_END, DayManager.Phase.GAME_OVER:
 			target = _at(22) # Đóng cửa tổng kết.
 		DayManager.Phase.SHOP:
-			target = _at(23) # Mua sắm chuẩn bị ngày mai.
+			target = _at(6) # Sáng sớm ngày mới: mua sắm xong là đi săn luôn.
 		_:
 			target = 0.0
 	# Trượt mượt khi đổi giai đoạn, nhảy thẳng khi qua ngày mới.
