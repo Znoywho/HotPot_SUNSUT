@@ -37,6 +37,10 @@ const MONSTER_HP := 3 ## Số nhát chém trước khi quái gục và con khác
 const STAFF_LUNGE := 28.0 ## Nhân viên lao tới chừng này px (ở cỡ gốc) khi chặt quái.
 const PIXEL := 4.0 ## 1 điểm ảnh của bộ phong cảnh = 4 px màn hình (nền 320x180 trên 1280x720).
 const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
+const RESTAURANT_DOOR := Vector2(216, 66) ## Cửa quán trên đỉnh núi (điểm ảnh phong cảnh): đầu bếp chạy về đây khi vào game.
+const CHEF_FAR_SCALE := 0.25 ## Chạy tới cửa quán thì đầu bếp nhỏ còn chừng này (đi xa dần).
+const FADE_DELAY := 0.5 ## Đầu bếp chạy được chừng này giây thì màn bắt đầu tối dần.
+const FADE_SECONDS := 0.8
 
 @export var title_text := "SÔI SÙNG SỤC"
 @export var title_font_size := 72
@@ -65,6 +69,8 @@ const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
 @export var buttons_offset_y := 56.0 ## Hạ cột nút xuống để không che quán trên đỉnh núi.
 
 var chef: KitchenActor
+var _buttons: Array[PixelButton] = []
+var _leaving := false ## Đang chạy hiệu ứng vào game: chặn bấm thêm lần nữa.
 var _clouds: Array[TextureRect] = []
 var _cloud_speeds: Array[float] = []
 
@@ -303,8 +309,8 @@ func _build_buttons() -> void:
 	list.add_theme_constant_override("separation", button_gap)
 	add_child(list)
 
-	_add_menu_button(list, "CHƠI MỚI", DayManager.start_new_game)
-	var continue_button := _add_menu_button(list, "TIẾP TỤC", DayManager.continue_game)
+	_add_menu_button(list, "CHƠI MỚI", _enter_game.bind(DayManager.start_new_game))
+	var continue_button := _add_menu_button(list, "TIẾP TỤC", _enter_game.bind(DayManager.continue_game))
 	continue_button.disabled = not SaveManager.has_save()
 	if not OS.has_feature("web"): # Trên web không thoát được tab, nên ẩn nút.
 		_add_menu_button(list, "THOÁT", get_tree().quit)
@@ -321,5 +327,39 @@ func _add_menu_button(parent: Control, text: String, callback: Callable) -> Pixe
 	button.custom_minimum_size = button_size
 	button.pressed.connect(callback)
 	parent.add_child(button)
+	_buttons.append(button)
 	return button
+
+
+## Hiệu ứng vào game: khoá nút, đầu bếp chạy về cửa quán trên đỉnh núi và nhỏ dần (đi xa),
+## màn tối dần rồi mới gọi start (DayManager.start_new_game / continue_game). Cửa hàng tự sáng dần khi mở.
+func _enter_game(start: Callable) -> void:
+	if _leaving:
+		return
+	_leaving = true
+	var list := _buttons[0].get_parent() as Control
+	list.mouse_filter = MOUSE_FILTER_IGNORE
+	for button in _buttons:
+		button.mouse_filter = MOUSE_FILTER_IGNORE # khoá bấm nhưng không đổi sang màu xám
+	list.create_tween().tween_property(list, "modulate:a", 0.0, 0.3) # cột nút mờ dần cho đầu bếp chạy qua
+	for child in get_children():
+		if child is Timer:
+			child.stop() # ngừng đánh quái: hiệu ứng chém/khói tạo sau sẽ nằm đè lên màn tối
+
+	var door := _land_to_screen(RESTAURANT_DOOR)
+	var run_seconds := absf(door.x - chef.center_x()) / KitchenActor.WALK_SPEED
+	chef.walk_to(door.x) # walk_to tự phát animation chạy và quay mặt đúng hướng
+	var shrink := chef.create_tween().set_parallel(true)
+	shrink.tween_property(chef, "scale", Vector2.ONE * CHEF_FAR_SCALE, run_seconds).set_ease(Tween.EASE_IN)
+	shrink.tween_property(chef, "position:y", door.y - KitchenActor.SIZE, run_seconds).set_trans(Tween.TRANS_SINE)
+
+	var fade := ColorRect.new()
+	fade.color = Color(0, 0, 0, 0)
+	fade.mouse_filter = MOUSE_FILTER_STOP
+	fade.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	add_child(fade)
+	var tween := fade.create_tween()
+	tween.tween_interval(FADE_DELAY)
+	tween.tween_property(fade, "color:a", 1.0, FADE_SECONDS)
+	tween.tween_callback(start)
 

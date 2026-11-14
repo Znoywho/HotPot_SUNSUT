@@ -23,6 +23,7 @@ const INK := Color("3a2418") ## Chữ tối trên thẻ màu kem.
 const TEXT_LIGHT := Color("fbecd2")
 const ACCENT := Color("f2a33a")
 const TAB_DIM := Color(0.55, 0.55, 0.55) ## Tab chưa chọn tối đi.
+const FADE_IN_SECONDS := 0.5
 
 var _tab: UpgradeData.Category = UpgradeData.Category.KITCHEN
 var _tab_buttons := {} ## Category -> PixelButton
@@ -41,6 +42,7 @@ func _ready() -> void:
 	shade.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(shade)
 	_build_board()
+	_fade_in()
 	add_child(RotateHint.new())
 	GameState.money_changed.connect(_on_money_changed)
 	_on_money_changed(GameState.money)
@@ -49,6 +51,18 @@ func _ready() -> void:
 	else:
 		_message.text = "Lượng khách hiện tại: %d%%" % roundi(GameState.customer_multiplier * 100)
 	_select_tab(_tab)
+
+
+## Màn đen phủ lên rồi tan dần: nối tiếp hiệu ứng tối dần khi rời menu chính.
+func _fade_in() -> void:
+	var fade := ColorRect.new()
+	fade.color = Color.BLACK
+	fade.mouse_filter = MOUSE_FILTER_IGNORE
+	fade.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	add_child(fade)
+	var tween := fade.create_tween()
+	tween.tween_property(fade, "color:a", 0.0, FADE_IN_SECONDS)
+	tween.tween_callback(fade.queue_free)
 
 
 ## Một lớp phong cảnh phủ kín màn, giữ tỉ lệ (giống menu chính).
