@@ -294,9 +294,10 @@ class _DeskFront extends Control:
 		# Chuông + sổ đặt bàn (phía Lan).
 		draw_rect(Rect2(desk.position.x + 14, desk.position.y - 20, 16, 8), Color("f2c14e"))
 		draw_rect(Rect2(desk.position.x + 20, desk.position.y - 24, 4, 4), Color("f2c14e"))
-		draw_rect(Rect2(desk.position.x + 70, desk.position.y - 16, 32, 6), Color("f7f1e3"))
-		draw_rect(Rect2(desk.position.x + 70, desk.position.y - 10, 32, 2), Color("a67c52"))
-		_draw_register(Vector2(desk.end.x - 40, desk.position.y - 6))
+		draw_rect(Rect2(desk.position.x + 36, desk.position.y - 16, 28, 6), Color("f7f1e3"))
+		draw_rect(Rect2(desk.position.x + 36, desk.position.y - 10, 28, 2), Color("a67c52"))
+		# Máy tính tiền đặt ở khe giữa Lan và Mai để không che mặt ai.
+		_draw_register(Vector2((HOST_X + CASHIER_X) / 2.0, desk.position.y - 6))
 
 	## Máy tính tiền (phía Mai): `base` = giữa đáy máy trên mặt quầy.
 	func _draw_register(base: Vector2) -> void:
