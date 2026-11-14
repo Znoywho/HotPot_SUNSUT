@@ -53,9 +53,10 @@ func _process(delta: float) -> void:
 		phase_time_up.emit()
 
 
+## Chơi mới: mở cửa hàng trước để tiêu tiền khởi nghiệp chuẩn bị ngày 1, rồi mới đi săn.
 func start_new_game() -> void:
 	GameState.reset_new_game()
-	start_day()
+	go_to(Phase.SHOP)
 
 
 ## Tiếp tục từ file save (save được ghi lúc vào cửa hàng nâng cấp).
