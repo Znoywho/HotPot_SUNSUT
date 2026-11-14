@@ -11,7 +11,8 @@ const KITCHEN_CLUTTER := preload("res://assets/sprites/scenery/kitchen_clutter.p
 const BUFFALO := preload("res://assets/sprites/characters/mount_buffalo.png") ## Trâu (thú cưỡi) có sẵn, nhìn sang phải.
 const LAND_SIZE := Vector2(432, 180) ## Cỡ ảnh phong cảnh (điểm ảnh, rộng hơn 16:9 cho màn điện thoại); toạ độ nhân vật trên đồi tính theo ảnh này.
 const SUN := preload("res://assets/sprites/scenery/sun.png")
-const SUN_GLOW := preload("res://assets/sprites/scenery/sun_glow.png")
+const SUN_GLOW := preload("res://assets/sprites/scenery/sun_glow.png") ## Dùng cho cả quầng sáng mặt trời và ánh sáng từ cửa quán.
+const DOOR_LEAF := preload("res://assets/sprites/scenery/door_leaf.png")
 const CLOUDS: Array[Texture2D] = [
 	preload("res://assets/sprites/scenery/cloud_big.png"),
 	preload("res://assets/sprites/scenery/cloud_small.png"),
@@ -39,8 +40,13 @@ const PIXEL := 4.0 ## 1 điểm ảnh của bộ phong cảnh = 4 px màn hình 
 const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
 const RESTAURANT_DOOR := Vector2(216, 66) ## Cửa quán trên đỉnh núi (điểm ảnh phong cảnh): đầu bếp chạy về đây khi vào game.
 const CHEF_FAR_SCALE := 0.25 ## Chạy tới cửa quán thì đầu bếp nhỏ còn chừng này (đi xa dần).
-const FADE_DELAY := 0.5 ## Đầu bếp chạy được chừng này giây thì màn bắt đầu tối dần.
+const DOOR_LEFT_LEAF := Vector2(211, 54) ## Góc trái trên cánh cửa trái (điểm ảnh phong cảnh), cánh phải nằm ngay bên phải.
+const DOOR_OPEN_AT := 0.6 ## Đầu bếp chạy được chừng này giây thì cửa quán mở.
+const DOOR_OPEN_SECONDS := 0.35
+const DOOR_LIGHT_SCALE := 1.6 ## Quầng sáng từ cửa lớn tới chừng này lần.
+const FADE_DELAY := 0.9 ## Chừng này giây thì ánh sáng tràn ra phủ trắng màn hình.
 const FADE_SECONDS := 0.8
+const FLASH_COLOR := Color("fff4d6") ## Màu ánh sáng tràn màn khi vào quán (cửa hàng tan dần từ màu này).
 
 @export var title_text := "SÔI SÙNG SỤC"
 @export var title_font_size := 72
@@ -69,6 +75,8 @@ const FADE_SECONDS := 0.8
 @export var buttons_offset_y := 56.0 ## Hạ cột nút xuống để không che quán trên đỉnh núi.
 
 var chef: KitchenActor
+var _door_leaves: Array[TextureRect] = [] ## [trái, phải]
+var _door_light: TextureRect
 var _buttons: Array[PixelButton] = []
 var _leaving := false ## Đang chạy hiệu ứng vào game: chặn bấm thêm lần nữa.
 var _clouds: Array[TextureRect] = []
@@ -82,6 +90,7 @@ func _ready() -> void:
 	_build_sun()
 	_build_clouds()
 	_add_cover_layer(LANDSCAPE)
+	_build_door()
 	_build_buffaloes()
 	_build_clutter()
 	_build_fight()
@@ -122,6 +131,45 @@ func _land_scale() -> float:
 func _land_to_screen(point: Vector2) -> Vector2:
 	var land_scale := _land_scale()
 	return (get_viewport_rect().size - LAND_SIZE * land_scale) / 2.0 + point * land_scale
+
+
+## Hai cánh cửa quán đóng sẵn che ô cửa sáng trên phong cảnh, cùng quầng sáng ẩn sẵn sau cửa
+## (tạo trước đầu bếp để đầu bếp chạy tới thì đứng đè lên ánh sáng).
+func _build_door() -> void:
+	var land_scale := _land_scale()
+	var leaf_size := DOOR_LEAF.get_size() * land_scale
+	for i in 2:
+		var leaf := TextureRect.new()
+		leaf.texture = DOOR_LEAF
+		leaf.flip_h = i == 1 # ảnh là cánh trái, lật ra cánh phải
+		leaf.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		leaf.size = leaf_size
+		leaf.position = _land_to_screen(DOOR_LEFT_LEAF) + Vector2(leaf_size.x * i, 0)
+		leaf.pivot_offset = Vector2(leaf_size.x * i, 0) # bản lề ở mép ngoài: cánh trái xoay quanh mép trái
+		leaf.mouse_filter = MOUSE_FILTER_IGNORE
+		add_child(leaf)
+		_door_leaves.append(leaf)
+
+	_door_light = TextureRect.new()
+	_door_light.texture = SUN_GLOW
+	_door_light.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_door_light.size = SUN_GLOW.get_size() * land_scale
+	_door_light.pivot_offset = _door_light.size / 2.0
+	_door_light.position = _land_to_screen(DOOR_LEFT_LEAF) + Vector2(leaf_size.x, leaf_size.y / 2.0) - _door_light.pivot_offset
+	_door_light.scale = Vector2.ZERO
+	_door_light.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(_door_light)
+
+
+## Mở cửa quán: 2 cánh thu hẹp về phía bản lề (như mở vào trong), ánh sáng từ trong toả ra lớn dần rồi phập phồng.
+func _open_door() -> void:
+	var tween := create_tween().set_parallel(true)
+	for leaf in _door_leaves:
+		tween.tween_property(leaf, "scale:x", 0.0, DOOR_OPEN_SECONDS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tween.tween_property(_door_light, "scale", Vector2.ONE * DOOR_LIGHT_SCALE, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var pulse := _door_light.create_tween().set_loops()
+	pulse.tween_property(_door_light, "modulate:a", 0.7, 0.25)
+	pulse.tween_property(_door_light, "modulate:a", 1.0, 0.25)
 
 
 ## Trâu gặm cỏ trên đồi trái: đi chậm sang một bên, đứng gặm, quay đầu đi về, lặp mãi.
@@ -331,8 +379,9 @@ func _add_menu_button(parent: Control, text: String, callback: Callable) -> Pixe
 	return button
 
 
-## Hiệu ứng vào game: khoá nút, đầu bếp chạy về cửa quán trên đỉnh núi và nhỏ dần (đi xa),
-## màn tối dần rồi mới gọi start (DayManager.start_new_game / continue_game). Cửa hàng tự sáng dần khi mở.
+## Hiệu ứng vào game: khoá nút, đầu bếp chạy về cửa quán trên đỉnh núi và nhỏ dần (đi xa), cửa quán mở
+## toả sáng, ánh sáng tràn trắng màn rồi mới gọi start (DayManager.start_new_game / continue_game).
+## Cửa hàng mở ra tan dần từ cùng màu sáng đó.
 func _enter_game(start: Callable) -> void:
 	if _leaving:
 		return
@@ -344,7 +393,7 @@ func _enter_game(start: Callable) -> void:
 	list.create_tween().tween_property(list, "modulate:a", 0.0, 0.3) # cột nút mờ dần cho đầu bếp chạy qua
 	for child in get_children():
 		if child is Timer:
-			child.stop() # ngừng đánh quái: hiệu ứng chém/khói tạo sau sẽ nằm đè lên màn tối
+			child.stop() # ngừng đánh quái: hiệu ứng chém/khói tạo sau sẽ nằm đè lên lớp sáng phủ màn
 
 	var door := _land_to_screen(RESTAURANT_DOOR)
 	var run_seconds := absf(door.x - chef.center_x()) / KitchenActor.WALK_SPEED
@@ -353,8 +402,10 @@ func _enter_game(start: Callable) -> void:
 	shrink.tween_property(chef, "scale", Vector2.ONE * CHEF_FAR_SCALE, run_seconds).set_ease(Tween.EASE_IN)
 	shrink.tween_property(chef, "position:y", door.y - KitchenActor.SIZE, run_seconds).set_trans(Tween.TRANS_SINE)
 
+	get_tree().create_timer(DOOR_OPEN_AT).timeout.connect(_open_door)
+
 	var fade := ColorRect.new()
-	fade.color = Color(0, 0, 0, 0)
+	fade.color = Color(FLASH_COLOR, 0.0)
 	fade.mouse_filter = MOUSE_FILTER_STOP
 	fade.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(fade)

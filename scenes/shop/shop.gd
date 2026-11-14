@@ -24,6 +24,10 @@ const TEXT_LIGHT := Color("fbecd2")
 const ACCENT := Color("f2a33a")
 const TAB_DIM := Color(0.55, 0.55, 0.55) ## Tab chưa chọn tối đi.
 const FADE_IN_SECONDS := 0.5
+const FLASH_COLOR := Color("fff4d6") ## Màu ánh sáng khi rời menu (khớp FLASH_COLOR trong main_menu.gd): màn tan dần từ màu này.
+const BOARD_DROP_SECONDS := 0.9 ## Bảng rơi từ trên xuống và nảy khi chạm chỗ.
+const CARD_POP_SECONDS := 0.45
+const CARD_POP_STAGGER := 0.07 ## Thẻ sau nảy ra trễ hơn thẻ trước chừng này giây.
 
 var _tab: UpgradeData.Category = UpgradeData.Category.KITCHEN
 var _tab_buttons := {} ## Category -> PixelButton
@@ -53,10 +57,10 @@ func _ready() -> void:
 	_select_tab(_tab)
 
 
-## Màn đen phủ lên rồi tan dần: nối tiếp hiệu ứng tối dần khi rời menu chính.
+## Màn sáng phủ lên rồi tan dần: nối tiếp ánh sáng tràn màn khi rời menu chính.
 func _fade_in() -> void:
 	var fade := ColorRect.new()
-	fade.color = Color.BLACK
+	fade.color = FLASH_COLOR
 	fade.mouse_filter = MOUSE_FILTER_IGNORE
 	fade.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(fade)
@@ -85,6 +89,9 @@ func _build_board() -> void:
 	for side in ["margin_top", "margin_bottom"]:
 		margin.add_theme_constant_override(side, 16)
 	add_child(margin)
+	margin.position.y = -get_viewport_rect().size.y # bắt đầu trên mép màn, rơi xuống chỗ cũ (y = 0)
+	margin.create_tween().tween_property(margin, "position:y", 0.0, BOARD_DROP_SECONDS) \
+			.set_delay(0.15).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 
 	var board := PanelContainer.new()
 	board.add_theme_stylebox_override("panel", _box_style(BOARD_COLOR, BOARD_BORDER, 6, 24))
@@ -144,12 +151,32 @@ func _select_tab(category: UpgradeData.Category) -> void:
 
 
 ## Đổ thẻ cho các nâng cấp thuộc tab đang chọn (bỏ qua nâng cấp tiến hóa chưa mở khóa).
-func _rebuild_cards() -> void:
+## pop_in = thẻ lần lượt nảy ra (mở màn, đổi tab); mua xong thì vẽ lại thẳng, không nảy.
+func _rebuild_cards(pop_in := true) -> void:
 	for child in _cards.get_children():
+		_cards.remove_child(child) # gỡ ngay để lưới xếp lại chỉ với thẻ mới
 		child.queue_free()
+	var new_cards: Array[Control] = []
 	for upgrade in Database.upgrades:
 		if upgrade.category == _tab and not _is_locked(upgrade):
-			_cards.add_child(_make_card(upgrade))
+			var card := _make_card(upgrade)
+			if pop_in:
+				card.modulate.a = 0.0
+			_cards.add_child(card)
+			new_cards.append(card)
+	if not pop_in:
+		return
+	await get_tree().process_frame # chờ lưới xếp chỗ để biết cỡ thẻ (tâm phóng to)
+	for i in new_cards.size():
+		var card := new_cards[i]
+		if not is_instance_valid(card) or card.is_queued_for_deletion():
+			continue # đổi tab nhanh: thẻ cũ đã bị gỡ
+		card.pivot_offset = card.size / 2.0
+		card.scale = Vector2.ONE * 0.6
+		var tween := card.create_tween().set_parallel(true)
+		tween.tween_property(card, "scale", Vector2.ONE, CARD_POP_SECONDS).set_delay(i * CARD_POP_STAGGER) \
+				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(card, "modulate:a", 1.0, 0.2).set_delay(i * CARD_POP_STAGGER)
 
 
 ## Thẻ một nâng cấp: tên + cấp, mô tả, nút mua (MAX hoặc thiếu tiền thì nút xám).
@@ -197,7 +224,7 @@ func _buy_upgrade(upgrade: UpgradeData) -> void:
 	if level + 1 == upgrade.max_level() and upgrade.evolves_into != "":
 		var next := Database.get_upgrade(upgrade.evolves_into)
 		_message.text = "%s đã max cấp! Mở khóa %s." % [upgrade.display_name, next.display_name if next else upgrade.evolves_into]
-	_rebuild_cards()
+	_rebuild_cards(false)
 
 
 ## Nâng cấp mở khóa nhờ tiến hóa (vd Phí phục vụ) chỉ hiện khi nâng cấp gốc đã max cấp.

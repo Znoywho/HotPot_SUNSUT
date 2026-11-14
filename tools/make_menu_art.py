@@ -8,6 +8,7 @@ Phong cảnh tách lớp để ghép và cho chuyển động trong Godot (asset
 - landscape.png         432x180 (giữa 320 là phần màn 16:9 thấy), phía trời trong suốt: núi giữa có quán lẩu lớn trên đỉnh (xa, phủ sương),
                         dãy núi xa bo tròn, đồi trái (trâu gặm cỏ), đồi phải (chỗ nhân viên đánh quái), đồng cỏ
 - restaurant_grand.png  quán lẩu lớn nhiều tầng mái (bản rõ nét, không sương) để màn khác dùng lại
+- door_leaf.png         một cánh cửa quán (đã phủ sương cho khớp), Godot đặt 2 cánh đè lên ô cửa sáng và mở ra khi vào game
 - kitchen_clutter.png   rổ rau củ + thớt bày thịt, cà chua cắm dao, nồi chồng phía sau,
                         ghép từ ảnh trong assets/sprites/kitchen/
 Nút bát giác đỏ viền kem (StyleBoxTexture 9 ô, xem scenes/common/pixel_button.gd):
@@ -85,6 +86,9 @@ PLATEAU_Y = 66
 RESTAURANT_SIZE = (84, 40)  # Ảnh quán; đáy ảnh đặt đúng mặt đỉnh núi.
 LANTERN_SPOTS = [(2, 22), (78, 22), (14, 10), (66, 10)]  # Góc trái trên đèn lồng trong ảnh quán.
 LANTERN_BODY = (236, 80, 56)  # Đèn lồng sáng (không phủ sương) cho nổi trên quán mờ.
+DOOR_LIGHT = (255, 238, 176)  # Ánh sáng trong quán sau cánh cửa (không phủ sương, lộ ra khi cửa mở).
+DOOR_BOX = (37, 27, 46, 35)  # Ô cửa trong ảnh quán (x0, y0, x1, y1), mỗi cánh rộng 5 điểm ảnh.
+# Trên phong cảnh, cánh trái ở (211, 54), cánh phải ở (216, 54): khớp DOOR_LEFT_LEAF trong main_menu.gd.
 
 # Chữ "LẨU" pixel 3x8 trên biển quán ("X" = điểm tô). Ẩ có dấu mũ + dấu hỏi phía trên.
 SIGN_GLYPHS = {
@@ -322,6 +326,18 @@ def make_restaurant(with_lanterns: bool = True) -> Image.Image:
     return img
 
 
+def make_door_leaf() -> Image.Image:
+    """Một cánh cửa gỗ 5x9: khung tối, ô vuông chìm, núm cửa vàng ở mép trong (mép phải). Cánh phải = lật ngang."""
+    w = (DOOR_BOX[2] - DOOR_BOX[0] + 1) // 2
+    h = DOOR_BOX[3] - DOOR_BOX[1] + 1
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rectangle((0, 0, w - 1, h - 1), fill=WOOD, outline=WOOD_DARK)
+    d.rectangle((1, 2, w - 2, 4), outline=WOOD_DARK)
+    d.point((w - 2, h // 2 + 1), fill=GOLD)
+    return img
+
+
 def hazed(img: Image.Image, amount: float) -> Image.Image:
     """Pha màu sương: màu mới = màu cũ * (1 - amount) + HAZE_TINT * amount, giữ nguyên độ trong suốt."""
     out = img.copy()
@@ -410,6 +426,8 @@ def make_landscape() -> Image.Image:
     img.alpha_composite(hazed(make_restaurant(with_lanterns=False), HAZE_AMOUNT), (rx, ry))
     for x, y in LANTERN_SPOTS:  # đèn lồng vẽ sau lớp sương nên vẫn sáng rõ dù quán ở xa
         draw_lantern_glow(img, rx + x, ry + y)
+    x0, y0, x1, y1 = DOOR_BOX  # ô cửa sáng rực (bị 2 cánh cửa trong Godot che tới khi mở)
+    d.rectangle((rx + x0, ry + y0, rx + x1, ry + y1), fill=DOOR_LIGHT)
     draw_near_hill(d, left_hill_curve, rng)
     draw_trees(d, left_hill_curve, [x + SIDE for x in (-44, -36, 118, 126)], rng)
     draw_grass_tufts(d, rng)
@@ -513,6 +531,9 @@ if __name__ == "__main__":
     assert right_hill_curve(300 + SIDE) > PLATEAU_Y, "quán phải nằm trên đồi cao nhất"
     assert hazed(restaurant, 0.0).tobytes() == restaurant.tobytes(), "pha sương 0% phải giữ nguyên ảnh"
     restaurant.save(SCENERY_DIR + "restaurant_grand.png")
+    hazed(make_door_leaf(), HAZE_AMOUNT).save(SCENERY_DIR + "door_leaf.png")
+    assert (MOUNTAIN_CENTER - RESTAURANT_SIZE[0] // 2 + DOOR_BOX[0], PLATEAU_Y - RESTAURANT_SIZE[1] + 1 + DOOR_BOX[1]) == (211, 54), \
+        "đổi vị trí quán thì sửa cả DOOR_LEFT_LEAF trong main_menu.gd"
     landscape.save(SCENERY_DIR + "landscape.png")
     make_kitchen_clutter().save(SCENERY_DIR + "kitchen_clutter.png")
     make_sky().save(SCENERY_DIR + "sky.png")
