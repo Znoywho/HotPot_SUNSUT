@@ -41,6 +41,7 @@ var _shown_money := -1
 var _shown_day := -1
 var _sun_progress := 0.0
 var _storage_alert: Label ## Dấu "!" trên nút Kho khi có món sắp/đã hết hạn.
+var _pause_menu: PauseMenu ## Menu tạm dừng (ESC hoặc nút "II").
 
 
 func _ready() -> void:
@@ -75,6 +76,9 @@ func _ready() -> void:
 	row.add_child(_stars_section())
 	row.add_child(_time_section())
 	row.add_child(_storage_section())
+	_pause_menu = PauseMenu.new()
+	add_child(_pause_menu)
+	row.add_child(_pause_button())
 	_refresh(true)
 
 
@@ -331,7 +335,7 @@ func _star_rect(tex: Texture2D, scale: int) -> TextureRect:
 
 func _time_section() -> Control:
 	_sun = HudSunDial.new()
-	_sun.custom_minimum_size = Vector2(140, 60)
+	_sun.custom_minimum_size = Vector2(100, 60)
 	_sun.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_phase_label = _title_label("")
 	_time_label = Label.new()
@@ -356,7 +360,7 @@ func _time_section() -> Control:
 func _storage_section() -> Control:
 	var button := Button.new()
 	button.focus_mode = Control.FOCUS_NONE
-	button.custom_minimum_size = Vector2(96, 0)
+	button.custom_minimum_size = Vector2(72, 0)
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 		var st := _panel_style()
 		if state == "pressed":
@@ -390,9 +394,28 @@ func _storage_section() -> Control:
 	_storage_alert.add_theme_color_override("font_color", Color("ff5252"))
 	_storage_alert.add_theme_color_override("font_outline_color", OUTLINE)
 	_storage_alert.add_theme_constant_override("outline_size", 6)
-	_storage_alert.position = Vector2(70, -2)
+	_storage_alert.position = Vector2(48, -2)
 	_storage_alert.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(_storage_alert)
+	return button
+
+
+## Nút "II": mở menu tạm dừng (trên điện thoại không có phím ESC).
+func _pause_button() -> Control:
+	var button := Button.new()
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(60, 0)
+	button.text = "II"
+	button.add_theme_font_size_override("font_size", 28)
+	button.add_theme_color_override("font_color", TITLE_COLOR)
+	button.add_theme_color_override("font_outline_color", OUTLINE)
+	button.add_theme_constant_override("outline_size", 5)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var st := _panel_style()
+		if state == "pressed":
+			st.bg_color = PANEL_BG.lightened(0.15)
+		button.add_theme_stylebox_override(state, st)
+	button.pressed.connect(_pause_menu.open)
 	return button
 
 
