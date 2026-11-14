@@ -196,6 +196,12 @@ CUSTOMERS = {
 }
 
 
+# Nhân viên vẽ cùng kiểu khách (không cần hình sau lưng): Mai thu ngân - áo gi-lê đỏ đô, cổ trắng, cúc vàng.
+STAFF = {
+    "staff_mai": dict(skin=1, hair=(hair_bob, (38, 26, 24)), shirt=(150, 40, 52), pants=(40, 34, 40), collar=(250, 246, 236), buttons=(240, 200, 90)),
+}
+
+
 def make(spec):
     sp = Sprite()
     skin = SKINS[spec["skin"]]
@@ -272,4 +278,8 @@ if __name__ == "__main__":
         img.save(OUT + name + ".png")
         run_sheet(img).save(OUT + name + "_anim.png")
         make_back(spec).save(OUT + name + "_back.png")
-    print("OK: %d customers" % len(CUSTOMERS))
+    for name, spec in STAFF.items():
+        img = make(spec)
+        img.save(OUT + name + ".png")
+        run_sheet(img).save(OUT + name + "_anim.png")
+    print("OK: %d customers, %d staff" % (len(CUSTOMERS), len(STAFF)))

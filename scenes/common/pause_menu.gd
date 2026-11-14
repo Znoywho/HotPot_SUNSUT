@@ -55,7 +55,27 @@ func _input(event: InputEvent) -> void:
 		return
 	if key.keycode == KEY_ESCAPE or key.keycode == KEY_BACK:
 		get_viewport().set_input_as_handled()
-		toggle()
+		# ESC = "quay lại": đang mở bảng gì (sơ chế, chọn món, Kho...) thì đóng bảng đó trước,
+		# không mở gì mới hiện menu tạm dừng. Nút "II" trên HUD thì luôn mở menu.
+		if visible:
+			close()
+		elif not _close_top_overlay():
+			open()
+
+
+## Đóng bảng đang mở trên cùng: bảng Kho/Thực đơn của HUD, rồi tới bảng của màn hiện tại
+## (màn nào có `handle_back() -> bool` thì tự quyết đóng gì). Trả về true nếu đã đóng được.
+func _close_top_overlay() -> bool:
+	var hud := get_parent()
+	if hud != null:
+		for child in hud.get_children():
+			if child is StoragePopup and not child.is_queued_for_deletion():
+				child.queue_free()
+				return true
+	var scene := get_tree().current_scene
+	if scene != null and scene.has_method("handle_back"):
+		return bool(scene.call("handle_back"))
+	return false
 
 
 func toggle() -> void:

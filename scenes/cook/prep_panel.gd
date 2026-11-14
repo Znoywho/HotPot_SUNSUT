@@ -59,6 +59,10 @@ func open(needs: Dictionary) -> void:
 	dim.color = Color(0, 0, 0, 0.5)
 	dim.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(dim)
+	# Bấm ra khoảng tối ngoài khung thì đóng bảng, về bếp (giống ESC).
+	dim.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			close_panel())
 
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_panel", 8, Vector2(22, 16)))

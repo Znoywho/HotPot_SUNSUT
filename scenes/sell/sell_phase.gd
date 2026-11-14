@@ -37,12 +37,14 @@ const FLOOR_RECT := Rect2(16, 352, 1248, 290) ## Vùng xếp bàn trên sàn.
 const BAR_Y := 650.0
 const MAX_TABLE_SCALE := 1.25 ## Quán ít bàn (1 hàng) thì phóng bàn to cho cân với đầu bếp, lễ tân.
 const ONE_ROW_BOTTOM := 0.86
-const ROW_OVERLAP := 0.4
+const ROW_OVERLAP := 0.28 ## Hàng sau chồng lên hàng trước (phần trống trên đầu bàn); lớn hơn ~0.3 thì ghế hai hàng dính nhau.
 const TABLE_GAP := 24.0 ## Khoảng hở giữa hai bàn (ở tỉ lệ 1).
 const WAITER_HOME := Vector2(690, 300) ## Góc trên-trái chỗ Tùng đứng chờ dưới ô cửa bếp.
 const WAITER_SIZE := 96.0
 const WAITER_SPEED := 520.0 ## px/giây, Tùng chạy bàn nhanh.
 const CHAR_DIR := "res://assets/sprites/characters/"
+const NIGHT_STRENGTH := 0.5 ## Mức tối theo giờ trong quán (1 = tối như ngoài trời như màn bếp).
+const LAMP_GLOW := 0.45 ## Độ sáng quầng đèn treo lúc tối.
 const GUEST_LOOKS := ["customer_1", "customer_2", "customer_3", "customer_4", "customer_5", "customer_6"]
 const SPECIAL_LOOKS := {"critic": "customer_critic", "michelin": "customer_michelin"}
 
@@ -124,6 +126,7 @@ func _build_stage() -> void:
 	_pass = KitchenPass.new()
 	_stage.add_child(_pass)
 	_pass.pot_tapped.connect(_pick_to_cart)
+	_stage.add_child(MenuBoard.new()) # Bảng phấn Thực đơn cạnh quầy, chạm để xem giá và công thức (vẽ dưới bong bóng của quầy).
 	_reception = ReceptionDesk.new()
 	_stage.add_child(_reception)
 
@@ -141,12 +144,14 @@ func _build_stage() -> void:
 		_build_waiter()
 
 	# Ánh sáng theo giờ phủ lên cảnh + nhân vật; đèn treo và ô cửa bếp sáng dần khi trời tối.
+	# Trong quán đèn luôn bật nên tối nhẹ hơn ngoài trời (cửa sổ vẫn thấy trời đêm), quầng đèn dịu để không loá.
 	var light := DayLight.new()
+	light.strength = NIGHT_STRENGTH
 	_stage.add_child(light)
 	var gold := str(RestaurantDecor.furniture()["lamp"]) == "gold"
 	for p in RoomDecor.lamp_centers():
-		light.add_lamp(p, 220.0 if gold else 200.0, 1.0 if gold else 0.9, 1.2)
-	light.add_lamp(Vector2(1010, 170), 300.0, 0.8, 0.6)
+		light.add_lamp(p, 220.0 if gold else 200.0, LAMP_GLOW * (1.15 if gold else 1.0), 1.2)
+	light.add_lamp(Vector2(1010, 170), 300.0, LAMP_GLOW * 0.85, 0.6)
 	var windows := RestaurantWindows.new()
 	_stage.add_child(windows)
 	windows.setup(light)
@@ -157,6 +162,7 @@ func _build_stage() -> void:
 	_bubbles.size = STAGE
 	_bubbles.mouse_filter = MOUSE_FILTER_IGNORE
 	_stage.add_child(_bubbles)
+	_reception.move_speech_to(_bubbles) # Lời Lan / Mai nằm trên cửa sổ và ánh sáng, không bị che.
 
 
 func _art(name: String, px_size: Vector2, pos: Vector2) -> TextureRect:
@@ -345,7 +351,7 @@ func _try_spawn_group() -> void:
 	_make_queue_bubble(group)
 	get_tree().create_timer(1.2).timeout.connect(func() -> void:
 		if is_inside_tree() and not _queue.is_empty() and _queue[0] == group:
-			_reception.greet("Quý khách %d người ạ!" % count))
+			_reception.greet("Xin chào quý khách!"))
 	if special == "critic":
 		_notify("Nhà phê bình ẩm thực tới! Xếp bàn và phục vụ thật nhanh!", Color("e0b0ff"))
 	elif special == "michelin":
@@ -367,32 +373,12 @@ static func _random_group_size(max_seats: int) -> int:
 	return 1
 
 
+## Thanh kiên nhẫn mỏng dưới chân nhóm đang chờ (không còn bong bóng "Nhóm N người" để khỏi che quầy).
+## Khách đặc biệt có thêm một dòng chữ nhỏ dưới thanh.
 func _make_queue_bubble(group: Dictionary) -> void:
-	var panel := PanelContainer.new()
-	panel.mouse_filter = MOUSE_FILTER_IGNORE
-	var st := StyleBoxFlat.new()
-	st.bg_color = Color("fcf8e8")
-	st.border_color = Color("a67c52")
-	st.set_border_width_all(3)
-	st.set_corner_radius_all(10)
-	st.content_margin_left = 8
-	st.content_margin_right = 8
-	st.content_margin_top = 2
-	st.content_margin_bottom = 6
-	panel.add_theme_stylebox_override("panel", st)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
+	box.add_theme_constant_override("separation", 0)
 	box.mouse_filter = MOUSE_FILTER_IGNORE
-	panel.add_child(box)
-	var count: int = group["size"]
-	var text := "%d khách" % count if count == 1 else "Nhóm %d người" % count
-	if group["special"] == "critic":
-		text = "Nhà phê bình"
-	elif group["special"] == "michelin":
-		text = "Khách lạ"
-	var title := HuntUI.label(text, 18, HuntUI.INK)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
 	var bar := Control.new()
 	bar.custom_minimum_size = TableVisual.BAR_SIZE
 	bar.size_flags_horizontal = SIZE_SHRINK_CENTER
@@ -408,10 +394,18 @@ func _make_queue_bubble(group: Dictionary) -> void:
 	fill.size = TableVisual.BAR_SIZE - Vector2(4, 4)
 	fill.mouse_filter = MOUSE_FILTER_IGNORE
 	bar.add_child(fill)
-	_bubbles.add_child(panel)
-	group["bubble"] = panel
+	var special_text := ""
+	if group["special"] == "critic":
+		special_text = "Nhà phê bình"
+	elif group["special"] == "michelin":
+		special_text = "Khách lạ"
+	if special_text != "":
+		var title := HuntUI.outlined_label(special_text, 18, Color("fff59d"))
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(title)
+	_bubbles.add_child(box)
+	group["bubble"] = box
 	group["bar"] = fill
-
 
 ## Đếm ngược kiên nhẫn của các nhóm đang chờ; hết thì cả nhóm bỏ về.
 func _tick_queue(delta: float) -> void:
@@ -743,6 +737,7 @@ func _finish_eating(table: TableNode) -> void:
 		var service_text := ", phí phục vụ %s" % GameState.format_money(service) if service > 0 else ""
 		_notify("Bàn %d thanh toán lẩu + %d đĩa: %s%s, tip %s." % [tables.find(table) + 1, dishes, GameState.format_money(bill), service_text, GameState.format_money(tip)], Color("fff59d"))
 		_float_text("+%s" % GameState.format_money(bill + service + tip), visual, HuntUI.GOLD)
+		_reception.cash_in(bill + service + tip)
 		_sfx("loot", -12.0)
 		if table.special != "":
 			_events.special_result(table, table.served_fast and not table.served_expired, bill)
@@ -784,15 +779,15 @@ func _update_ui() -> void:
 		_tray_icon.texture = KitchenPass.pot_texture(cart.carrying_broth_id)
 		_tray_label.text = "Khay: %s" % _broth_name(cart.carrying_broth_id)
 
-	# Bong bóng nhóm đang chờ (trên đầu nhóm) + thanh kiên nhẫn.
+	# Thanh kiên nhẫn dưới chân nhóm đang chờ.
 	var smallest := 99
 	for i in _queue.size():
 		var group := _queue[i]
 		smallest = mini(smallest, int(group["size"]))
 		var bubble: Control = group["bubble"]
 		bubble.reset_size()
-		var head := _reception.queue_head(i, int(group["size"])) - _bubbles.global_position
-		bubble.position = (head - Vector2(bubble.size.x * 0.5, bubble.size.y)).round()
+		var spot := _reception.queue_bar_spot(i, bubble.size) - _bubbles.global_position
+		bubble.position = spot.round()
 		var r := float(group["wait"]) / QUEUE_WAIT
 		var fill: ColorRect = group["bar"]
 		fill.size.x = (TableVisual.BAR_SIZE.x - 4.0) * clampf(r, 0.0, 1.0)
