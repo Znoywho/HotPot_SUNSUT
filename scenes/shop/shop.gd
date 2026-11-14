@@ -25,7 +25,7 @@ const ACCENT := Color("f2a33a")
 const TAB_DIM := Color(0.55, 0.55, 0.55) ## Tab chưa chọn tối đi.
 const FADE_IN_SECONDS := 0.5
 const FLASH_COLOR := Color("fff4d6") ## Màu ánh sáng khi rời menu (khớp FLASH_COLOR trong main_menu.gd): màn tan dần từ màu này.
-const BOARD_DROP_SECONDS := 0.9 ## Bảng rơi từ trên xuống và nảy khi chạm chỗ.
+const BOARD_DROP_SECONDS := 0.7 ## Bảng rơi từ trên xuống, trượt quá một chút rồi êm về chỗ.
 const CARD_POP_SECONDS := 0.45
 const CARD_POP_STAGGER := 0.07 ## Thẻ sau nảy ra trễ hơn thẻ trước chừng này giây.
 
@@ -91,7 +91,7 @@ func _build_board() -> void:
 	add_child(margin)
 	margin.position.y = -get_viewport_rect().size.y # bắt đầu trên mép màn, rơi xuống chỗ cũ (y = 0)
 	margin.create_tween().tween_property(margin, "position:y", 0.0, BOARD_DROP_SECONDS) \
-			.set_delay(0.15).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+			.set_delay(0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT) # 1 nhịp nảy mềm thay vì đập nhiều lần
 
 	var board := PanelContainer.new()
 	board.add_theme_stylebox_override("panel", _box_style(BOARD_COLOR, BOARD_BORDER, 6, 24))
@@ -172,7 +172,7 @@ func _rebuild_cards(pop_in := true) -> void:
 		if not is_instance_valid(card) or card.is_queued_for_deletion():
 			continue # đổi tab nhanh: thẻ cũ đã bị gỡ
 		card.pivot_offset = card.size / 2.0
-		card.scale = Vector2.ONE * 0.6
+		card.scale = Vector2.ONE * 0.85
 		var tween := card.create_tween().set_parallel(true)
 		tween.tween_property(card, "scale", Vector2.ONE, CARD_POP_SECONDS).set_delay(i * CARD_POP_STAGGER) \
 				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

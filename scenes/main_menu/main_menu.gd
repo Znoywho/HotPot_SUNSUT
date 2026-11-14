@@ -11,7 +11,7 @@ const KITCHEN_CLUTTER := preload("res://assets/sprites/scenery/kitchen_clutter.p
 const BUFFALO := preload("res://assets/sprites/characters/mount_buffalo.png") ## Trâu (thú cưỡi) có sẵn, nhìn sang phải.
 const LAND_SIZE := Vector2(432, 180) ## Cỡ ảnh phong cảnh (điểm ảnh, rộng hơn 16:9 cho màn điện thoại); toạ độ nhân vật trên đồi tính theo ảnh này.
 const SUN := preload("res://assets/sprites/scenery/sun.png")
-const SUN_GLOW := preload("res://assets/sprites/scenery/sun_glow.png") ## Dùng cho cả quầng sáng mặt trời và ánh sáng từ cửa quán.
+const SUN_GLOW := preload("res://assets/sprites/scenery/sun_glow.png")
 const DOOR_LEAF := preload("res://assets/sprites/scenery/door_leaf.png")
 const CLOUDS: Array[Texture2D] = [
 	preload("res://assets/sprites/scenery/cloud_big.png"),
@@ -43,7 +43,14 @@ const CHEF_FAR_SCALE := 0.25 ## Chạy tới cửa quán thì đầu bếp nhỏ
 const DOOR_LEFT_LEAF := Vector2(211, 54) ## Góc trái trên cánh cửa trái (điểm ảnh phong cảnh), cánh phải nằm ngay bên phải.
 const DOOR_OPEN_AT := 0.6 ## Đầu bếp chạy được chừng này giây thì cửa quán mở.
 const DOOR_OPEN_SECONDS := 0.35
-const DOOR_LIGHT_SCALE := 1.6 ## Quầng sáng từ cửa lớn tới chừng này lần.
+const LIGHT_COLOR := Color("ffe9a8") ## Ánh đèn vàng ấm hắt ra từ cửa quán.
+const LIGHT_CORE_RADIUS := 70.0 ## Lõi sáng quanh cửa (px màn hình ở 1280x720, co giãn theo phong cảnh).
+const LIGHT_HALO_RADIUS := 260.0 ## Quầng sáng mờ toả rộng.
+## Tia sáng loe ra từ cửa: (góc độ, dài px, rộng px); 0 độ = sang phải, -90 = thẳng lên.
+const LIGHT_BEAMS := [
+	[-172.0, 300.0, 46.0], [-145.0, 380.0, 60.0], [-118.0, 330.0, 50.0], [-90.0, 420.0, 70.0],
+	[-62.0, 340.0, 52.0], [-36.0, 390.0, 60.0], [-8.0, 300.0, 46.0],
+]
 const FADE_DELAY := 0.9 ## Chừng này giây thì ánh sáng tràn ra phủ trắng màn hình.
 const FADE_SECONDS := 0.8
 const FLASH_COLOR := Color("fff4d6") ## Màu ánh sáng tràn màn khi vào quán (cửa hàng tan dần từ màu này).
@@ -76,7 +83,7 @@ const FLASH_COLOR := Color("fff4d6") ## Màu ánh sáng tràn màn khi vào quá
 
 var chef: KitchenActor
 var _door_leaves: Array[TextureRect] = [] ## [trái, phải]
-var _door_light: TextureRect
+var _door_lights: Array[TextureRect] = [] ## Lõi, quầng, rồi các tia sáng; ẩn tới khi cửa mở.
 var _buttons: Array[PixelButton] = []
 var _leaving := false ## Đang chạy hiệu ứng vào game: chặn bấm thêm lần nữa.
 var _clouds: Array[TextureRect] = []
@@ -150,26 +157,66 @@ func _build_door() -> void:
 		add_child(leaf)
 		_door_leaves.append(leaf)
 
-	_door_light = TextureRect.new()
-	_door_light.texture = SUN_GLOW
-	_door_light.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_door_light.size = SUN_GLOW.get_size() * land_scale
-	_door_light.pivot_offset = _door_light.size / 2.0
-	_door_light.position = _land_to_screen(DOOR_LEFT_LEAF) + Vector2(leaf_size.x, leaf_size.y / 2.0) - _door_light.pivot_offset
-	_door_light.scale = Vector2.ZERO
-	_door_light.mouse_filter = MOUSE_FILTER_IGNORE
-	add_child(_door_light)
+	var door_center := _land_to_screen(DOOR_LEFT_LEAF) + Vector2(leaf_size.x, leaf_size.y / 2.0)
+	var light_scale := _land_scale() / PIXEL # số px đặt cho màn 1280x720, màn khác co giãn theo
+	_door_lights.append(_add_soft_light(door_center, Vector2.ONE * LIGHT_HALO_RADIUS * 2.0 * light_scale, 0.35))
+	for beam in LIGHT_BEAMS:
+		var ray := _add_soft_light(door_center, Vector2(beam[1], beam[2]) * light_scale, 0.45, true)
+		ray.rotation_degrees = beam[0]
+		_door_lights.append(ray)
+	_door_lights.append(_add_soft_light(door_center, Vector2.ONE * LIGHT_CORE_RADIUS * 2.0 * light_scale, 1.0))
 
 
-## Mở cửa quán: 2 cánh thu hẹp về phía bản lề (như mở vào trong), ánh sáng từ trong toả ra lớn dần rồi phập phồng.
+## Một vệt sáng mượt (gradient tỏa tròn, cộng sáng lên cảnh): tâm sáng nhất, mờ dần ra mép.
+## beam = tia sáng: gốc ở mép trái, tỏa dọc theo chiều dài; không thì tâm ở giữa. Ẩn sẵn (scale 0).
+func _add_soft_light(origin: Vector2, light_size: Vector2, strength: float, beam := false) -> TextureRect:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(LIGHT_COLOR, strength))
+	gradient.set_color(1, Color(LIGHT_COLOR, 0.0))
+	gradient.add_point(0.4, Color(LIGHT_COLOR, strength * 0.35)) # tắt nhanh gần tâm rồi kéo dài mờ như ánh đèn thật
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.0, 0.5) if beam else Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5) if beam else Vector2(1.0, 0.5)
+	var material := CanvasItemMaterial.new()
+	material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+
+	var light := TextureRect.new()
+	light.texture = texture
+	light.material = material
+	light.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR # mượt, không vỡ pixel
+	light.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	light.size = light_size
+	light.pivot_offset = Vector2(0.0, light_size.y / 2.0) if beam else light_size / 2.0
+	light.position = origin - light.pivot_offset
+	light.scale = Vector2.ZERO
+	light.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(light)
+	return light
+
+
+## Mở cửa quán: 2 cánh thu hẹp về phía bản lề (như mở vào trong); lõi + quầng sáng nở ra, các tia sáng
+## lần lượt vươn dài rồi lay nhẹ, độ sáng chập chờn như đèn thật.
 func _open_door() -> void:
 	var tween := create_tween().set_parallel(true)
 	for leaf in _door_leaves:
-		tween.tween_property(leaf, "scale:x", 0.0, DOOR_OPEN_SECONDS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tween.tween_property(_door_light, "scale", Vector2.ONE * DOOR_LIGHT_SCALE, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	var pulse := _door_light.create_tween().set_loops()
-	pulse.tween_property(_door_light, "modulate:a", 0.7, 0.25)
-	pulse.tween_property(_door_light, "modulate:a", 1.0, 0.25)
+		tween.tween_property(leaf, "scale:x", 0.0, DOOR_OPEN_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	for i in _door_lights.size():
+		var light := _door_lights[i]
+		var is_beam := light.pivot_offset.x == 0.0
+		light.scale = Vector2(0.0, 1.0) if is_beam else Vector2.ZERO
+		tween.tween_property(light, "scale", Vector2.ONE, 0.7).set_delay(0.1 + i * 0.04) \
+				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		var flicker := light.create_tween().set_loops()
+		var period := randf_range(0.4, 0.8)
+		flicker.tween_property(light, "modulate:a", randf_range(0.7, 0.85), period).set_trans(Tween.TRANS_SINE)
+		flicker.tween_property(light, "modulate:a", 1.0, period).set_trans(Tween.TRANS_SINE)
+		if is_beam:
+			var sway := light.create_tween().set_loops()
+			var base := light.rotation_degrees
+			sway.tween_property(light, "rotation_degrees", base + 4.0, randf_range(1.0, 1.6)).set_trans(Tween.TRANS_SINE)
+			sway.tween_property(light, "rotation_degrees", base - 4.0, randf_range(1.0, 1.6)).set_trans(Tween.TRANS_SINE)
 
 
 ## Trâu gặm cỏ trên đồi trái: đi chậm sang một bên, đứng gặm, quay đầu đi về, lặp mãi.
