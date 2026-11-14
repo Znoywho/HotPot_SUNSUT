@@ -13,6 +13,7 @@ const STAGE := Vector2(1280, 720)
 const CHEF_X := 806.0
 const CHEF_FEET := 252.0
 const LEDGE_Y := 204.0 ## Mặt quầy (đáy nồi đặt ở đây).
+const COUNTER_BOTTOM := 240.0 ## Mép dưới thân quầy trong restaurant_pass_front.png (hàng 60 x 4): cắt người đứng sau quầy tại đây.
 const POT_X0 := 878.0
 const POT_STEP := 76.0
 const POT_SIZE := Vector2(64, 56) ## Nồi 32x28 phóng x2.
@@ -31,15 +32,21 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	# Người đứng sau quầy nằm trong khung cắt tới mép dưới quầy, để chân và bóng không lộ ra dưới quầy.
+	var behind := Control.new()
+	behind.size = Vector2(STAGE.x, COUNTER_BOTTOM)
+	behind.clip_contents = true
+	behind.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(behind)
 	chef = KitchenActor.new()
-	add_child(chef)
+	behind.add_child(chef)
 	chef.setup(load(CHAR_DIR + "player.png"), CHEF_X, CHEF_FEET, "Đầu bếp", true)
 	# Bếp phó Minh (cấp Nhân viên bếp 3, cùng người ở màn bếp) đứng cạnh đầu bếp; nồi dồn sang phải.
 	var pot_x0 := POT_X0
 	var pot_step := POT_STEP
 	if RestaurantDecor.has_sous():
 		sous = KitchenActor.new()
-		add_child(sous)
+		behind.add_child(sous)
 		sous.setup(load(CHAR_DIR + "staff_minh.png"), SOUS_X, CHEF_FEET, "Minh", true)
 		pot_x0 = SOUS_POT_X0
 		pot_step = SOUS_POT_STEP

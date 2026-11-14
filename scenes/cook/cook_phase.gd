@@ -44,6 +44,7 @@ var _fridge: TextureRect
 var _cards: Dictionary = {} ## broth id -> {button: Button, chips: Dictionary(id -> Label), sub: Label}
 var _info: Label
 var _menu: PanelContainer
+var _leave_layer: Control ## Hộp hỏi "Còn nồi chưa chín" đang mở (ESC đóng được).
 var _menu_title: Label
 var _menu_slot: StoveSlot = null
 var _timer_label: Label
@@ -642,11 +643,39 @@ func _wrap_up() -> void:
 			slot.clear()
 
 
+## ESC / nút Back (menu tạm dừng gọi): đóng bảng đang mở trên cùng, quay về bếp.
+## Thứ tự: hộp hỏi "Còn nồi chưa chín" > bảng Kho > bảng sơ chế > bảng chọn món. Không có gì mở thì trả về false.
+func handle_back() -> bool:
+	if is_instance_valid(_leave_layer) and not _leave_layer.is_queued_for_deletion():
+		_leave_layer.queue_free()
+		return true
+	for child in get_children():
+		if child is StoragePopup and not child.is_queued_for_deletion():
+			child.queue_free()
+			return true
+	if _prep_panel != null:
+		_prep_panel.close_panel()
+		return true
+	if _menu.visible:
+		_close_menu()
+		return true
+	return false
+
+
+## Bấm ra khoảng trống thì đóng bảng chọn món. Màn bếp là lớp nhận chạm dưới cùng: chạm nào rơi xuống tới đây
+## là chạm vào chỗ không có nút / bếp / tủ lạnh nào.
+func _gui_input(event: InputEvent) -> void:
+	var mb := event as InputEventMouseButton
+	if mb != null and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and _menu.visible:
+		_close_menu()
+
+
 func _confirm_leave(count: int) -> void:
 	var layer := Control.new()
 	layer.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	layer.mouse_filter = MOUSE_FILTER_STOP
 	add_child(layer)
+	_leave_layer = layer
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.5)
 	dim.set_anchors_and_offsets_preset(PRESET_FULL_RECT)

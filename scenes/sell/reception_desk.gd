@@ -1,6 +1,7 @@
 class_name ReceptionDesk
 extends Control
-## Quầy lễ tân cạnh cửa ra vào (cửa đã vẽ trong nền nhà hàng). Nhóm khách (1-6 người) bước vào cửa,
+## Quầy lễ tân + thu ngân cạnh cửa ra vào (Mai thu ngân luôn đứng quầy, báo tiền khi bàn thanh toán).
+## Nhóm khách (1-6 người) bước vào cửa,
 ## xếp hàng chờ trước quầy (lễ tân Lan chào nếu đã thuê nhân viên), người chơi chọn bàn thì cả nhóm đi tới
 ## và ngồi vào từng ghế. Ăn xong / bỏ về thì từng người đi ra cửa.
 ## Toạ độ theo sân khấu 1280x720 của màn bán. Màu quầy theo cấp Nội thất (RestaurantDecor).
@@ -9,7 +10,8 @@ const CHAR_DIR := "res://assets/sprites/characters/"
 const STAGE := Vector2(1280, 720)
 const DOOR_FEET := Vector2(74, 318) ## Chân khách khi vừa bước qua cửa.
 const DESK := Rect2(140, 292, 196, 56) ## Mặt trước quầy (mặt quầy ở cạnh trên).
-const HOST_X := 238.0
+const HOST_X := 190.0 ## Lan đón khách ở nửa trái quầy.
+const CASHIER_X := 290.0 ## Mai thu ngân ở nửa phải quầy, cạnh máy tính tiền.
 const HOST_FEET := 330.0
 ## Chỗ đứng chờ (giữa chân nhóm): chỗ 0 trước quầy, chỗ 1 cạnh cửa.
 const QUEUE_FEET := [Vector2(262, 404), Vector2(92, 404)]
@@ -19,9 +21,14 @@ const GUEST_SIZE := 96.0
 const WALK_SPEED := 280.0 ## px/giây
 
 var host: KitchenActor
+var cashier: KitchenActor ## Mai thu ngân: luôn có mặt, báo tiền khi bàn thanh toán.
 var _bubble: PanelContainer
 var _bubble_label: Label
 var _bubble_until := 0.0
+var _cash_bubble: PanelContainer
+var _cash_label: Label
+var _cash_until := 0.0
+var _front: _DeskFront
 
 
 func _init() -> void:
@@ -35,13 +42,23 @@ func _ready() -> void:
 		host = KitchenActor.new()
 		add_child(host)
 		host.setup(load(CHAR_DIR + "staff_lan.png"), HOST_X, HOST_FEET, "Lan", false)
+	cashier = KitchenActor.new()
+	add_child(cashier)
+	cashier.setup(load(CHAR_DIR + "staff_mai.png"), CASHIER_X, HOST_FEET, "Mai", false)
 
-	var front := _DeskFront.new()
-	front.desk = DESK
-	add_child(front)
+	_front = _DeskFront.new()
+	_front.desk = DESK
+	add_child(_front)
 
-	_bubble = PanelContainer.new()
-	_bubble.mouse_filter = MOUSE_FILTER_IGNORE
+	_bubble_label = HuntUI.label("", 18, HuntUI.INK)
+	_bubble = _make_bubble(_bubble_label)
+	_cash_label = HuntUI.label("", 18, HuntUI.GOLDEN_INK)
+	_cash_bubble = _make_bubble(_cash_label)
+
+
+func _make_bubble(label: Label) -> PanelContainer:
+	var bubble := PanelContainer.new()
+	bubble.mouse_filter = MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("fcf8e8")
 	style.border_color = Color("a67c52")
@@ -51,28 +68,48 @@ func _ready() -> void:
 	style.content_margin_right = 10
 	style.content_margin_top = 2
 	style.content_margin_bottom = 2
-	_bubble.add_theme_stylebox_override("panel", style)
-	_bubble_label = HuntUI.label("", 18, HuntUI.INK)
-	_bubble.add_child(_bubble_label)
-	_bubble.visible = false
-	add_child(_bubble)
+	bubble.add_theme_stylebox_override("panel", style)
+	bubble.add_child(label)
+	bubble.visible = false
+	add_child(bubble)
+	return bubble
 
 
 func _process(_delta: float) -> void:
-	if _bubble.visible and Time.get_ticks_msec() / 1000.0 > _bubble_until:
+	var now := Time.get_ticks_msec() / 1000.0
+	if _bubble.visible and now > _bubble_until:
 		_bubble.visible = false
+	if _cash_bubble.visible and now > _cash_until:
+		_cash_bubble.visible = false
 
 
-## Lễ tân nói một câu (không có lễ tân thì thôi).
+## Nhân viên quầy nói một câu: Lan nếu đã thuê, không thì Mai.
 func greet(text: String) -> void:
-	if host == null:
+	# Chưa thuê Lan thì Mai thu ngân chào thay.
+	var speaker := host if host != null else cashier
+	if speaker == null:
 		return
+	var x := HOST_X if speaker == host else CASHIER_X
 	_bubble_label.text = text
 	_bubble.visible = true
 	_bubble.reset_size()
-	_bubble.position = Vector2(HOST_X - _bubble.size.x / 2.0, HOST_FEET - KitchenActor.SIZE - _bubble.size.y + 18.0)
+	_bubble.position = Vector2(x - _bubble.size.x / 2.0, HOST_FEET - KitchenActor.SIZE - _bubble.size.y + 18.0)
 	_bubble_until = Time.get_ticks_msec() / 1000.0 + 1.4
-	host.work(0.4, "stir")
+	speaker.work(0.4, "stir")
+
+
+## Mai thu ngân báo số tiền bàn vừa trả, máy tính tiền bật ngăn kéo.
+func cash_in(amount: int) -> void:
+	if cashier == null:
+		return
+	_cash_label.text = "Cảm ơn quý khách! +%s" % GameState.format_money(amount)
+	_cash_bubble.visible = true
+	_cash_bubble.reset_size()
+	# Bong bóng ngang mặt, lệch sang phải (không đè bong bóng của Lan, không lên vùng cửa sổ vẽ phía trên).
+	_cash_bubble.position = Vector2(CASHIER_X + 22.0, HOST_FEET - KitchenActor.SIZE + 30.0)
+	_cash_until = Time.get_ticks_msec() / 1000.0 + 1.6
+	cashier.work(0.5, "chop")
+	_front.ring_register()
 
 
 ## Vị trí (global, góc trên-trái hình) của người thứ k trong nhóm `count` người đứng ở chỗ chờ `slot`.
@@ -93,6 +130,19 @@ func queue_head(slot: int, count: int) -> Vector2:
 	var rows := 1 if count <= 3 else 2
 	return global_position + Vector2(feet.x, feet.y - GUEST_SIZE - (rows - 1) * MEMBER_DY + 8.0)
 
+
+## Góc trên-trái (global) của thanh kiên nhẫn cỡ `bar_size` cho nhóm ở chỗ chờ `slot`: ngay dưới chân hàng trước.
+func queue_bar_spot(slot: int, bar_size: Vector2) -> Vector2:
+	var feet: Vector2 = QUEUE_FEET[clampi(slot, 0, QUEUE_FEET.size() - 1)]
+	return global_position + Vector2(feet.x - bar_size.x * 0.5, feet.y + 4.0)
+
+
+## Chuyển bong bóng lời nói của Lan / Mai sang lớp `layer` (vẽ trên cửa sổ và ánh sáng).
+## `layer` phải cùng gốc toạ độ với quầy (cả hai đều phủ sân khấu từ (0, 0)).
+func move_speech_to(layer: Control) -> void:
+	for b in [_bubble, _cash_bubble]:
+		b.get_parent().remove_child(b)
+		layer.add_child(b)
 
 ## Nhóm bước vào cửa rồi tới chỗ chờ `slot`. Trả về danh sách người đi bộ {rect, legs}.
 func enter_group(looks: Array, slot: int, overlay: Control) -> Array[Dictionary]:
@@ -215,6 +265,7 @@ func _walk_to(w: Dictionary, target: Vector2, delay := 0.0) -> float:
 ## Mặt trước quầy lễ tân, vẽ đè lên người lễ tân (che nửa dưới).
 class _DeskFront extends Control:
 	var desk: Rect2
+	var drawer_open := 0.0 ## 0 = đóng, 1 = ngăn kéo bật hẳn ra.
 
 	func _ready() -> void:
 		mouse_filter = MOUSE_FILTER_IGNORE
@@ -240,8 +291,44 @@ class _DeskFront extends Control:
 			draw_rect(Rect2(desk.position.x, desk.position.y, desk.size.x, 12), cloth)
 			if trim.a > 0.0:
 				draw_rect(Rect2(desk.position.x, desk.position.y + 12, desk.size.x, 4), trim)
-		# Chuông + sổ đặt bàn trên mặt quầy.
+		# Chuông + sổ đặt bàn (phía Lan).
 		draw_rect(Rect2(desk.position.x + 14, desk.position.y - 20, 16, 8), Color("f2c14e"))
 		draw_rect(Rect2(desk.position.x + 20, desk.position.y - 24, 4, 4), Color("f2c14e"))
-		draw_rect(Rect2(desk.end.x - 52, desk.position.y - 16, 36, 6), Color("f7f1e3"))
-		draw_rect(Rect2(desk.end.x - 52, desk.position.y - 10, 36, 2), Color("a67c52"))
+		draw_rect(Rect2(desk.position.x + 36, desk.position.y - 16, 28, 6), Color("f7f1e3"))
+		draw_rect(Rect2(desk.position.x + 36, desk.position.y - 10, 28, 2), Color("a67c52"))
+		# Máy tính tiền đặt ở khe giữa Lan và Mai để không che mặt ai.
+		_draw_register(Vector2((HOST_X + CASHIER_X) / 2.0, desk.position.y - 6))
+
+	## Máy tính tiền (phía Mai): `base` = giữa đáy máy trên mặt quầy.
+	func _draw_register(base: Vector2) -> void:
+		var ink := Color("241a1a")
+		var body := Color("5b6770")
+		var light := Color("8a98a3")
+		# Ngăn kéo bật ra phía trước khi thu tiền.
+		if drawer_open > 0.0:
+			var dy := 8.0 * drawer_open
+			draw_rect(Rect2(base.x - 22, base.y - 6 + dy, 44, 8), ink)
+			draw_rect(Rect2(base.x - 20, base.y - 6 + dy, 40, 6), Color("c9a36a"))
+			draw_rect(Rect2(base.x - 14, base.y - 5 + dy, 8, 3), Color("6fbf73")) # Tiền giấy.
+			draw_rect(Rect2(base.x + 2, base.y - 5 + dy, 8, 3), Color("6fbf73"))
+		# Thân máy + phím.
+		draw_rect(Rect2(base.x - 22, base.y - 22, 44, 22), ink)
+		draw_rect(Rect2(base.x - 20, base.y - 20, 40, 18), body)
+		draw_rect(Rect2(base.x - 20, base.y - 20, 40, 4), light)
+		for row in 2:
+			for col in 4:
+				draw_rect(Rect2(base.x - 16 + col * 9, base.y - 13 + row * 5, 6, 3), Color("e8e2d4"))
+		# Màn hình số phía trên (sáng lên khi đang thu tiền).
+		draw_rect(Rect2(base.x - 10, base.y - 34, 22, 12), ink)
+		draw_rect(Rect2(base.x - 8, base.y - 32, 18, 8), Color("9be07a") if drawer_open > 0.0 else Color("3e6b3a"))
+
+	## Bật ngăn kéo rồi đóng lại (gọi khi Mai thu tiền).
+	func ring_register() -> void:
+		var t := create_tween()
+		t.tween_method(_set_drawer, 0.0, 1.0, 0.12)
+		t.tween_interval(0.7)
+		t.tween_method(_set_drawer, 1.0, 0.0, 0.2)
+
+	func _set_drawer(v: float) -> void:
+		drawer_open = v
+		queue_redraw()
