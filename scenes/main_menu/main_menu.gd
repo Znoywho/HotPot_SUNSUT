@@ -21,8 +21,8 @@ const DANCE_TROUPE := [
 	["cat_dance_orange", Vector2(24, 28), Vector2(41, 39), 1.0, 1.0, 0],
 ]
 const DANCE_GROUP_SIZE := Vector2(84, 40) ## Khung cả đội (điểm ảnh ở tỉ lệ 1), đáy = chân con đứng trước.
-const TITLE_SHADER := preload("res://scenes/main_menu/title_gradient.gdshader")
-const TITLE_OUTLINE := Color("2b1a14")
+const TITLE_TEXTURE := preload("res://assets/sprites/scenery/title_pixel.png") ## Logo pixel (tools/make_title_logo.py).
+const TITLE_SHINE := preload("res://scenes/main_menu/title_shine.gdshader")
 const BUFFALO := preload("res://assets/sprites/characters/mount_buffalo.png") ## Trâu (thú cưỡi) có sẵn, nhìn sang phải.
 const LAND_SIZE := Vector2(432, 180) ## Cỡ ảnh phong cảnh (điểm ảnh, rộng hơn 16:9 cho màn điện thoại); toạ độ nhân vật trên đồi tính theo ảnh này.
 const SUN := preload("res://assets/sprites/scenery/sun.png")
@@ -54,7 +54,6 @@ const BOSS_TEXTURE := preload("res://assets/sprites/monsters/boss_hotpot_golem.p
 const BOSS_SCALE := 2.6 ## Boss to gấp chừng này quái thường cho nổi bật.
 const STAFF_LUNGE := 28.0 ## Nhân viên lao tới chừng này px (ở cỡ gốc) khi chặt quái.
 const PIXEL := 4.0 ## 1 điểm ảnh của bộ phong cảnh = 4 px màn hình (nền 320x180 trên 1280x720).
-const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
 const RESTAURANT_DOOR := Vector2(216, 66) ## Cửa quán trên đỉnh núi (điểm ảnh phong cảnh): đầu bếp chạy về đây khi vào game.
 const CHEF_FAR_SCALE := 0.25 ## Chạy tới cửa quán thì đầu bếp nhỏ còn chừng này (đi xa dần).
 const DOOR_LEFT_LEAF := Vector2(211, 54) ## Góc trái trên cánh cửa trái (điểm ảnh phong cảnh), cánh phải nằm ngay bên phải.
@@ -69,11 +68,7 @@ const CHEF_FADE_FROM := 0.35 ## Đầu bếp bắt đầu mờ dần khi chạy 
 const FADE_SECONDS := 1.0 ## Ánh sáng tràn ra phủ kín màn rồi mới vào game.
 const FLASH_COLOR := Color("fff4d6") ## Màu ánh sáng tràn màn khi vào quán (cửa hàng tan dần từ màu này).
 
-@export var title_text := "SÔI SÙNG SỤC"
-@export var title_font_size := 80
-@export var title_color := Color("f08a2c") ## Màu nửa dưới chữ logo.
-@export var title_color_top := Color("ffe27a") ## Màu nửa trên chữ logo (chuyển dần xuống title_color).
-@export var title_extrude_color := Color("9c3322") ## Khối nổi 3D dưới chữ.
+@export var title_scale := 3 ## Phóng logo pixel số nguyên lần để điểm ảnh không méo.
 @export var chef_scale := 2.2 ## Đầu bếp gốc 128px, nhân thêm chừng này.
 @export_range(0.0, 1.0) var chef_x_ratio := 0.87 ## Vị trí đầu bếp theo bề ngang màn hình.
 @export_range(0.0, 1.0) var chef_feet_ratio := 0.94 ## Chân đầu bếp theo bề dọc màn hình.
@@ -578,31 +573,19 @@ func _respawn_monster(monster: TextureRect) -> void:
 	tween.tween_callback(monster.set_meta.bind("hp", MONSTER_HP))
 
 
-## Logo: chữ to tô dải màu vàng sang cam (shader theo chiều dọc chữ), viền nâu đậm, khối nổi 3D đỏ sẫm
-## phía dưới; bong bóng sủi từ đỉnh chữ bay lên vỡ (sôi sùng sục); cả logo nhấp nhô nhẹ.
+## Logo pixel mập "SÔI SÙNG SỤC" (Ô = nồi lẩu, dấu huyền = ớt, dấu nặng = cà chua) có ánh kim lướt qua chữ
+## (title_shine.gdshader); bong bóng sủi từ đỉnh chữ bay lên vỡ (sôi sùng sục); cả logo nhấp nhô nhẹ.
 func _build_title() -> void:
-	var logo := Control.new()
+	var logo := TextureRect.new()
+	logo.texture = TITLE_TEXTURE
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	logo.mouse_filter = MOUSE_FILTER_IGNORE
-	add_child(logo)
-	var depth := int(title_font_size * 0.12) # bề dày khối nổi
-	var shadow := _make_title_label(TITLE_OUTLINE, 12) # viền tối ôm cả khối nổi
-	shadow.position.y = depth + 2
-	logo.add_child(shadow)
-	for i in range(depth, 0, -1): # khối nổi: các lớp đỏ sẫm chồng dần lên tới chữ
-		var back := _make_title_label(title_extrude_color, 10, title_extrude_color)
-		back.position.y = i
-		logo.add_child(back)
-	var front := _make_title_label(Color.WHITE, 8)
 	var material := ShaderMaterial.new()
-	material.shader = TITLE_SHADER
-	material.set_shader_parameter("top_color", title_color_top)
-	material.set_shader_parameter("bottom_color", title_color)
-	material.set_shader_parameter("outline_color", TITLE_OUTLINE)
-	front.material = material
-	logo.add_child(front)
-	var text_size := front.get_minimum_size()
-	material.set_shader_parameter("grad_from", text_size.y * 0.28)
-	material.set_shader_parameter("grad_to", text_size.y * 0.78)
+	material.shader = TITLE_SHINE
+	logo.material = material
+	add_child(logo)
+	var text_size := TITLE_TEXTURE.get_size() * title_scale
 	logo.size = text_size
 	logo.position = Vector2((get_viewport_rect().size.x - text_size.x) / 2.0, 6.0)
 	logo.pivot_offset = text_size / 2.0
@@ -616,18 +599,6 @@ func _build_title() -> void:
 	bubbles.timeout.connect(_spawn_title_bubble.bind(logo, text_size))
 	add_child(bubbles)
 	bubbles.start()
-
-
-func _make_title_label(color: Color, outline: int, outline_color := TITLE_OUTLINE) -> Label:
-	var label := Label.new()
-	label.text = title_text
-	label.add_theme_font_override("font", BOLD_FONT)
-	label.add_theme_font_size_override("font_size", title_font_size)
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", outline_color)
-	label.add_theme_constant_override("outline_size", outline)
-	label.mouse_filter = MOUSE_FILTER_IGNORE
-	return label
 
 
 ## Bong bóng kem nhỏ nổi lên từ đỉnh chữ, lắc nhẹ, phồng rồi vỡ (nằm sau chữ).
