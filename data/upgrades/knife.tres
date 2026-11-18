@@ -8,6 +8,6 @@ id = "knife"
 display_name = "Dao bén"
 description = "+ dame khi đi săn."
 category = 1
-costs = Array[int]([80000, 160000, 320000, 640000, 1280000])
+costs = Array[int]([150000, 350000, 800000, 1800000, 4000000])
 values = Array[float]([0.0, 3.0, 6.0, 10.0, 15.0, 20.0])
 evolves_into = "dragon_blade"

@@ -8,6 +8,6 @@ id = "armor"
 display_name = "Giáp phòng hộ"
 description = "+ máu tối đa khi đi săn."
 category = 1
-costs = Array[int]([80000, 160000, 320000, 640000, 1280000])
+costs = Array[int]([150000, 350000, 800000, 1800000, 4000000])
 values = Array[float]([0.0, 30.0, 60.0, 100.0, 150.0, 200.0])
 evolves_into = "battle_robe"

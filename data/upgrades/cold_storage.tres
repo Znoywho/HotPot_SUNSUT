@@ -8,6 +8,6 @@ id = "cold_storage"
 display_name = "Kho lạnh"
 description = "Mỗi cấp giữ nguyên liệu và nồi lẩu thêm 1 ngày (gốc 3 ngày, tối đa 6 ngày)."
 category = 0
-costs = Array[int]([150000, 350000, 800000])
+costs = Array[int]([300000, 800000, 2000000])
 values = Array[float]([0.0, 1.0, 2.0, 3.0])
 evolves_into = ""

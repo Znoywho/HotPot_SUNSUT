@@ -8,6 +8,6 @@ id = "tables"
 display_name = "Thêm bàn"
 description = "Mỗi cấp thêm 1 bàn tròn 6 ghế (lúc đầu 4 bàn, tối đa 10 bàn). Đủ 10 bàn thì mở Phí phục vụ."
 category = 2
-costs = Array[int]([50000, 100000, 150000, 200000, 250000, 300000])
+costs = Array[int]([150000, 300000, 500000, 800000, 1200000, 1800000])
 values = Array[float]([4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
 evolves_into = "service"

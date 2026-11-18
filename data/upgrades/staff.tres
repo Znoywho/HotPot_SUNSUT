@@ -8,6 +8,6 @@ id = "staff"
 display_name = "Nhân viên bếp"
 description = "Cấp 1-2: thuê phụ bếp tự sơ chế nguyên liệu. Cấp 3: thêm bếp phó tự nấu khi có bếp trống."
 category = 0
-costs = Array[int]([250000, 600000, 1400000])
+costs = Array[int]([500000, 1500000, 4000000])
 values = Array[float]([0.0, 1.0, 2.0, 3.0])
 evolves_into = ""
