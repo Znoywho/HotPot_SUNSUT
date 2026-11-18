@@ -1,7 +1,7 @@
 class_name PauseMenu
 extends CanvasLayer
 ## Menu tạm dừng: ESC (hoặc nút "II" trên HUD, nút Back trên Android) để mở/đóng.
-## Chơi tiếp / Chơi mới / Thoát ra menu chính. Chơi mới và Thoát phải xác nhận lần nữa.
+## Chơi tiếp / Cài đặt / Chơi mới / Thoát ra menu chính. Chơi mới và Thoát phải xác nhận lần nữa.
 ## HUD tạo sẵn menu này; chỉ mở được khi HUD đang hiện (tức là đang trong ngày chơi).
 
 const LAYER := 110 ## Trên cả sổ tổng kết ngày (DayManager.DAY_END_LAYER = 100).
@@ -107,6 +107,7 @@ func _show_main() -> void:
 	_clear()
 	_add_title("TẠM DỪNG")
 	_add_button("Chơi tiếp", close)
+	_add_button("Cài đặt", func(): get_tree().root.add_child(SettingsPanel.new()))
 	_add_button("Chơi mới", _show_confirm.bind(
 			"Bắt đầu lại từ Ngày 1?\nTiến độ hiện tại sẽ mất.", "Bắt đầu lại", _new_game))
 	_add_button("Thoát", _show_confirm.bind(
