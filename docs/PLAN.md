@@ -10,7 +10,7 @@
 
 ## Tiến độ (cập nhật 18/11 chiều, ngày 18/21)
 
-Đã gộp vào `main` tới PR #21, không còn PR chờ. Kiểm tra headless: không lỗi script. Bản trên itch.io vẫn là bản cũ.
+Đã gộp vào `main` tới PR #22, không còn PR chờ (ngoài PR cập nhật tiến độ này). Kiểm tra headless: không lỗi script. Bản trên itch.io vẫn là bản cũ.
 
 | Việc | Ai | Trạng thái | Còn thiếu |
 |---|---|---|---|
@@ -33,6 +33,7 @@
 | Lượng rơi, phạt khi thua | Hải | Chưa làm | `drop_amount_multiplier` 3.0 » 2.0, thua mất một nửa đồ (xem PR #20) |
 | Menu chính mới (mèo, trâu Thần Tài) | Hải | Xong | Đẩy thẳng lên `main`, lần sau qua PR |
 | S20–S24 Bếp, khách, xe đẩy, tip, sao | Tuấn | Xong | **Test cảm ứng trên điện thoại** |
+| Dọn bàn, quét rác, lau vũng nước ở màn bán | Hải | Xong (#22) | Phần của Tuấn, Tuấn cần xem lại |
 | S25 Thêm nước cốt | Tuấn | Xong | 5 nước cốt |
 | Số phần theo nguyên liệu (issue #19) | Tuấn | Chưa nhận | Cắt nếu không kịp |
 | Tutorial | Nhóm | Chưa làm | Cắt nếu không kịp |
