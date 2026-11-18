@@ -25,12 +25,10 @@ const TITLE_COLOR := Color("f3e2c0")
 const OUTLINE := Color("1a0f0a")
 const MONEY_COLOR := Color("ffd34e")
 const TEXT_COLOR := Color("f5f1e6")
-const BAR_FILL := Color("4cc552")
-const BAR_DONE := Color("ffd34e")
 
 var _money_label: Label
 var _day_label: Label
-var _kpi_bar: ProgressBar
+var _kpi_bar: PixelBar
 var _kpi_label: Label
 var _stars: Array[TextureRect] = []
 var _sun: HudSunDial
@@ -103,8 +101,7 @@ func _refresh(force: bool) -> void:
 	_kpi_bar.max_value = target
 	_kpi_bar.value = mini(GameState.today_revenue, target)
 	_kpi_label.text = "%s / %s" % [_short_money(GameState.today_revenue), _short_money(GameState.kpi_target)]
-	var fill := _kpi_bar.get_theme_stylebox("fill") as StyleBoxFlat
-	fill.bg_color = BAR_DONE if GameState.is_kpi_reached() else BAR_FILL
+	_kpi_bar.fill_color = PixelBar.GOLD if GameState.is_kpi_reached() else PixelBar.GREEN
 	_update_stars()
 	_update_time()
 	_update_storage_alert()
@@ -281,16 +278,8 @@ func _value_box(content: Control) -> Control:
 
 
 func _kpi_widget() -> Control:
-	_kpi_bar = ProgressBar.new()
-	_kpi_bar.show_percentage = false
+	_kpi_bar = PixelBar.new()
 	_kpi_bar.custom_minimum_size = Vector2(116, 30)
-	_kpi_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_kpi_bar.add_theme_stylebox_override("background", _value_style())
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = BAR_FILL
-	fill.set_border_width_all(2)
-	fill.border_color = VALUE_BORDER
-	_kpi_bar.add_theme_stylebox_override("fill", fill)
 	_kpi_label = Label.new()
 	_kpi_label.add_theme_font_size_override("font_size", 18)
 	_kpi_label.add_theme_color_override("font_color", TEXT_COLOR)
