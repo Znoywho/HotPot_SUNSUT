@@ -7,8 +7,10 @@ signal inventory_changed
 signal stars_changed(new_value: float)
 
 const START_MONEY := 500_000
-const FIRST_DAY_KPI := 300_000 ## TODO(nhóm): doc chưa ghi KPI ngày 1 -> chốt con số.
-const KPI_GROWTH_PERCENT := 110 ## KPI ngày sau = doanh thu ngày trước + 10%.
+const FIRST_DAY_KPI := 300_000 ## Đã chốt: ngày 1 dễ để người chơi thấy giàu, KPI sau đó bám theo doanh thu.
+const KPI_GROWTH_PERCENT := 110 ## Ngày 1: KPI ngày sau = doanh thu + 10%.
+const KPI_GROWTH_PER_DAY := 0.5 ## Mỗi ngày qua, phần tăng KPI cộng thêm 0,5% (ngày 10: +14,5%).
+const KPI_GROWTH_MAX_PERCENT := 120 ## Tăng tối đa +20%/ngày.
 const CUSTOMER_PENALTY := 0.05 ## Bị trừ sao -> khách ngày sau giảm 5%.
 const MIN_CUSTOMER_MULTIPLIER := 0.2
 const START_STARS := 3.0
@@ -16,7 +18,8 @@ const START_TABLES_FLOOR1 := 4
 const MAX_TABLES_FLOOR1 := 10 ## Bằng giá trị cao nhất của nâng cấp "Thêm bàn" (data/upgrades/tables.tres).
 const MAX_TABLES_FLOOR2 := 12
 const MILESTONE_EVERY := 5 ## Mốc ngày 5, 10, 15...
-const MAX_MONSTER_BONUS := 1.0 ## Quái mạnh thêm tối đa +100%.
+const MONSTER_BONUS_PER_DAY := 0.04 ## Quái mạnh thêm 4% máu/dame mỗi ngày (ngày 10: +36%).
+const MAX_MONSTER_BONUS := 1.5 ## Quái mạnh thêm tối đa +150%.
 
 const INGREDIENT_NAMES := {
 	"tomato": "Cà chua",
@@ -553,9 +556,15 @@ func is_kpi_reached() -> bool:
 	return today_revenue >= kpi_target
 
 
-## KPI cho ngày mai, tính bằng số nguyên để không bị sai số (làm tròn lên).
+## KPI cho ngày mai: next = ceil(revenue × kpi_growth_percent(day) / 100), làm tròn lên.
 func next_kpi() -> int:
-	return ceili(today_revenue * KPI_GROWTH_PERCENT / 100.0 - 0.000001)
+	return ceili(today_revenue * kpi_growth_percent(day) / 100.0 - 0.000001)
+
+
+## % KPI ngày sau so với doanh thu hôm nay: g(d) = min(KPI_GROWTH_PERCENT + KPI_GROWTH_PER_DAY × (d - 1), KPI_GROWTH_MAX_PERCENT).
+## Càng về sau KPI tăng càng nhanh, trong khi số khách mỗi ngày có hạn -> khó dần.
+static func kpi_growth_percent(for_day: int) -> float:
+	return minf(KPI_GROWTH_PERCENT + KPI_GROWTH_PER_DAY * (for_day - 1), KPI_GROWTH_MAX_PERCENT)
 
 
 ## Gọi khi đạt KPI: tính KPI mới, áp phạt sao, sang ngày mới.
@@ -578,9 +587,10 @@ func is_milestone_day() -> bool:
 	return day % MILESTONE_EVERY == 0
 
 
-## Hệ số máu/dame quái: +10% mỗi mốc 5 ngày, cộng dồn tối đa +100%.
+## Hệ số máu/dame quái: m(d) = 1 + min(MONSTER_BONUS_PER_DAY × (d - 1), MAX_MONSTER_BONUS).
+## Tăng đều mỗi ngày để theo kịp đầu bếp mạnh lên nhờ Dao / Giáp.
 func monster_stat_multiplier() -> float:
-	return 1.0 + minf(0.1 * milestones_reached(), MAX_MONSTER_BONUS)
+	return 1.0 + minf(MONSTER_BONUS_PER_DAY * (day - 1), MAX_MONSTER_BONUS)
 
 
 # --- Save / load ------------------------------------------------------------
