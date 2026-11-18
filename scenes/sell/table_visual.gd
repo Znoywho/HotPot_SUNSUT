@@ -60,6 +60,9 @@ var _pulse := 0.0
 var _bubble_style: StyleBoxFlat
 var _shown_order := ""
 var _shown_sides: Array[String] = []
+var _row: HBoxContainer
+var _mess: Control ## Bát dơ, vết nước lẩu, khăn giấy khi bàn chưa dọn.
+var _mess_seed := 0
 
 
 func _init(table_number := 1, seat_count := 4) -> void:
@@ -90,6 +93,10 @@ func _init(table_number := 1, seat_count := 4) -> void:
 	_top = _TableTop.new()
 	_top.owner_table = self
 	add_child(_top)
+	_mess = _Mess.new()
+	_mess.owner_table = self
+	_mess.visible = false
+	add_child(_mess)
 
 	pot = TextureRect.new()
 	pot.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -196,6 +203,7 @@ func _build_bubble() -> void:
 	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_note)
 	var row := HBoxContainer.new()
+	_row = row
 	row.add_theme_constant_override("separation", 4)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.mouse_filter = MOUSE_FILTER_IGNORE
@@ -318,7 +326,10 @@ func show_waiting(broth_id: String, sides: Array[String], patience: float, note:
 	_eating = false
 	pot.visible = false
 	smoke.visible = false
+	_mess.visible = false
 	bubble.visible = true
+	_row.visible = true
+	_bar_fill.get_parent().visible = true
 	_set_order(broth_id, sides)
 	_portions.visible = false
 	_bubble_pot.modulate = Color.WHITE
@@ -335,7 +346,10 @@ func show_eating(broth_id: String, progress: float) -> void:
 		pot.texture = KitchenPass.pot_texture(broth_id)
 		pot.visible = true
 		smoke.visible = true
+	_mess.visible = false
 	bubble.visible = true
+	_row.visible = true
+	_bar_fill.get_parent().visible = true
 	_set_order(broth_id, [])
 	_portions.visible = false
 	_bubble_pot.modulate = Color(1, 1, 1, 0.55)
@@ -358,7 +372,29 @@ func show_empty() -> void:
 	pot.visible = false
 	smoke.visible = false
 	bubble.visible = false
+	_mess.visible = false
 	_shown_order = ""
+
+
+## Bàn bẩn chờ dọn: bong bóng nhấp nháy "Bàn bẩn, chạm để dọn" (đang mở bảng Dọn dẹp thì "Đang dọn...").
+## `progress` (0..1) làm mess trên bàn mờ dần.
+func show_dirty(progress: float, cleaning: bool) -> void:
+	_eating = false
+	for g in guests:
+		g.visible = false
+	pot.visible = false
+	smoke.visible = false
+	if not _mess.visible:
+		_mess_seed = randi()
+		_mess.queue_redraw()
+	_mess.visible = true
+	_mess.modulate.a = 1.0 - clampf(progress, 0.0, 1.0)
+	bubble.visible = true
+	_row.visible = false
+	_set_note("Đang dọn..." if cleaning else "Bàn bẩn, chạm để dọn", HuntUI.INK if cleaning else HuntUI.RUST)
+	_bar_fill.get_parent().visible = false
+	var glow := 0.0 if cleaning else 0.5 + 0.5 * sin(_pulse * 6.0)
+	_bubble_style.border_color = Color("a67c52").lerp(Color("4fa3e0"), glow)
 
 
 func _set_order(broth_id: String, sides: Array[String]) -> void:
@@ -531,7 +567,8 @@ class _TableTop extends Control:
 			# Mép bàn dày (mặt cắt) rồi mặt bàn.
 			draw_colored_polygon(TableVisual._ellipse(c + Vector2(0, 9), rx, ry), edge)
 			draw_colored_polygon(TableVisual._ellipse(c, rx, ry), top)
-			draw_colored_polygon(TableVisual._ellipse(c + Vector2(-rx * 0.15, -ry * 0.2), rx * 0.6, ry * 0.45), top.lightened(0.1))
+			# Vệt sáng đèn treo rọi xuống giữa mặt bàn (đều quanh bếp âm, không lệch).
+			draw_colored_polygon(TableVisual._ellipse(c + Vector2(0, -ry * 0.08), rx * 0.72, ry * 0.62), top.lightened(0.1))
 			if trim.a > 0.0:
 				draw_polyline(TableVisual._ellipse(c, rx - 8.0, ry - 4.0) + PackedVector2Array([c + Vector2(rx - 8.0, 0)]), trim, 2.0)
 		# Bếp âm giữa bàn.
@@ -575,3 +612,42 @@ class _FrontChairs extends Control:
 				draw_rect(Rect2(p.x - 15, top + 14, 30, 3), chair.darkened(0.3))
 				draw_rect(Rect2(p.x - 16, top + 26, 4, 10), chair.darkened(0.35))
 				draw_rect(Rect2(p.x + 12, top + 26, 4, 10), chair.darkened(0.35))
+
+
+## Bàn chưa dọn: bát dơ đổ nghiêng, vết nước lẩu, đũa vứt, khăn giấy vo (vị trí ngẫu nhiên theo `_mess_seed`).
+class _Mess extends Control:
+	var owner_table: TableVisual
+
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+		size = owner_table.size
+
+	func _draw() -> void:
+		var t := owner_table
+		var rng := RandomNumberGenerator.new()
+		rng.seed = t._mess_seed
+		var c := t.center()
+		# Nồi rỗng còn cặn ở bếp giữa bàn.
+		draw_colored_polygon(TableVisual._ellipse(c + Vector2(0, -2), 20, 8), Color("4a4a4a"))
+		draw_colored_polygon(TableVisual._ellipse(c + Vector2(0, -3), 15, 5), Color("7a3b1e"))
+		# Vết nước lẩu loang.
+		for k in 3:
+			var p := c + Vector2(rng.randf_range(-0.7, 0.7) * t._rx, rng.randf_range(-0.5, 0.6) * t._ry)
+			draw_colored_polygon(TableVisual._ellipse(p, rng.randf_range(7, 12), rng.randf_range(3, 5)), Color(0.55, 0.25, 0.1, 0.55))
+		# Bát dơ trước các ghế (đổ nghiêng, còn nước).
+		for i in t.seats:
+			if rng.randf() < 0.35:
+				continue
+			var a: float = t._angles[i]
+			var b := c + Vector2(cos(a) * t._rx * 0.66, sin(a) * t._ry * 0.6) + Vector2(rng.randf_range(-4, 4), rng.randf_range(-2, 2))
+			draw_colored_polygon(TableVisual._ellipse(b, 9, 4), Color("e6dccb"))
+			draw_colored_polygon(TableVisual._ellipse(b, 6, 2.5), Color("8a4b2a"))
+			# Đôi đũa vứt chéo.
+			var d := Vector2(cos(a + 1.2), sin(a + 1.2) * 0.5) * 14.0
+			draw_line(b + Vector2(6, -2), b + Vector2(6, -2) + d, Color("c49a5a"), 2.0)
+			draw_line(b + Vector2(8, 0), b + Vector2(8, 0) + d, Color("c49a5a"), 2.0)
+		# Khăn giấy vo.
+		for k in 2:
+			var n := c + Vector2(rng.randf_range(-0.6, 0.6) * t._rx, rng.randf_range(-0.4, 0.5) * t._ry)
+			draw_rect(Rect2(n.x - 5, n.y - 4, 10, 7), Color("f2eee4"))
+			draw_rect(Rect2(n.x - 3, n.y - 1, 6, 2), Color("c9c2b2"))

@@ -1,7 +1,7 @@
 class_name TableNode
 extends Node
 
-enum State { EMPTY, OCCUPIED, WAITING_ORDER, SERVED, EATING }
+enum State { EMPTY, OCCUPIED, WAITING_ORDER, SERVED, EATING, DIRTY } ## DIRTY: khách ăn xong để lại, phải dọn mới xếp khách mới.
 var state: State = State.EMPTY
 var customer: Customer = null
 var order_broth_id := ""
@@ -67,3 +67,13 @@ func clear() -> void:
 	special = ""
 	state = State.EMPTY
 	customer_left.emit(self)
+
+
+## Khách ăn xong rời bàn: bàn bẩn, chưa xếp khách được cho tới khi dọn.
+func make_dirty() -> void:
+	state = State.DIRTY
+
+
+func finish_cleaning() -> void:
+	if state == State.DIRTY:
+		state = State.EMPTY

@@ -6,6 +6,10 @@ extends Control
 ## - Mỗi bàn gọi 1 nồi lẩu dù đi mấy người; nhóm càng đông thì gọi càng nhiều đĩa đồ nhúng (tính tiền theo đĩa).
 ## - Ô cửa bếp: các nồi lẩu đã nấu bày trên quầy kèm số phần; chạm nồi để lấy lên khay, chạm bàn để bưng ra
 ##   (khay trống thì tự lấy đúng món; không đủ phần thì thương lượng đổi món).
+## - Dọn dẹp: chạm chỗ bẩn -> bảng Dọn dẹp (CleanPanel, kiểu bảng sơ chế), chơi từng bước rồi chấm Hoàn hảo / Ổn / Hỏng:
+##   + Trên bàn: khách ăn xong để lại bàn bẩn -> dọn bát đũa + lau bàn bằng khăn. Bàn bẩn chưa xếp khách được.
+##   + Dưới sàn: rác -> quét vào hốt rác; vũng nước -> lau bằng cây lau nhà. Khách về làm rơi + thỉnh thoảng tự có.
+##     Sàn càng bẩn khách chờ càng sốt ruột; đóng cửa còn chỗ bẩn thì trừ sao.
 ## Thanh HUD chung (tiền, ngày, KPI, sao, giờ) do DayManager hiện phía trên; màn này chừa sẵn chỗ cho thanh đó.
 
 const TIP_MIN := 0.03
@@ -28,6 +32,15 @@ const DIPPING_POOL := ["beef", "mushroom", "greens", "shrimp", "enoki", "tomato"
 ## TODO(nhóm): cân bằng tỉ lệ số người mỗi nhóm (chỉ số = số người, giá trị = trọng số).
 const GROUP_SIZE_WEIGHTS := [0, 15, 30, 15, 25, 8, 7]
 const TABLE_SEATS := 6 ## Bàn tròn nào cũng 6 ghế (nhóm đông nhất 6 người).
+## TODO(nhóm): cân bằng dọn dẹp.
+const STAR_CLEAN_PERFECT := 0.03 ## Dọn Hoàn hảo: cộng sao.
+const MESS_INTERVAL := 14.0 ## Trung bình mấy giây sàn tự bẩn thêm 1 chỗ.
+const PUDDLE_CHANCE := 0.35 ## Tỉ lệ chỗ bẩn tự có là vũng nước (còn lại là rác).
+const TRASH_LEAVE_CHANCE := 0.5 ## Tỉ lệ khách về làm rơi rác cạnh bàn.
+const SPILL_LEAVE_CHANCE := 0.2 ## Tỉ lệ khách về làm đổ nước cạnh bàn.
+const MAX_MESS := 6
+const MESS_PATIENCE_DRAIN := 0.15 ## Mỗi chỗ bẩn dưới sàn làm khách chờ ở quầy mất kiên nhẫn nhanh thêm 15%.
+const STAR_MESS_LEFT := 0.05 ## Đóng cửa còn chỗ bẩn dưới sàn: trừ sao mỗi chỗ.
 
 const ART := "res://assets/sprites/restaurant/"
 const STAGE := Vector2(1280, 720)
@@ -68,6 +81,11 @@ var _waiter: TextureRect = null ## Tùng bưng lẩu (cấp Nhân viên bếp 2+
 var _waiter_legs: SpriteFrameLayer = null
 var _waiter_pot: TextureRect = null
 var _waiter_busy := false
+var _mess_layer: Control ## Rác / vũng nước trên sàn (trên bàn, dưới khách đi lại).
+var _mess: Array[FloorMess] = []
+var _mess_timer := MESS_INTERVAL
+var _cleaning: Dictionary = {} ## TableNode đang mở bảng Dọn dẹp.
+var _clean_panel: Control = null ## Bảng Dọn dẹp đang mở.
 
 var _tray_icon: TextureRect
 var _tray_label: Label
@@ -95,6 +113,7 @@ func _process(delta: float) -> void:
 		_spawn_timer = spawn_interval
 		_try_spawn_group()
 	_tick_queue(delta)
+	_tick_mess(delta)
 	for table in tables:
 		if table.state == TableNode.State.WAITING_ORDER and table.customer and table != _negotiating:
 			if table.customer.remaining_time() <= 0.0:
@@ -135,6 +154,10 @@ func _build_stage() -> void:
 	_floor.size = FLOOR_RECT.size
 	_floor.mouse_filter = MOUSE_FILTER_IGNORE
 	_stage.add_child(_floor)
+	_mess_layer = Control.new()
+	_mess_layer.size = STAGE
+	_mess_layer.mouse_filter = MOUSE_FILTER_IGNORE
+	_stage.add_child(_mess_layer)
 
 	_overlay = Control.new()
 	_overlay.size = STAGE
@@ -409,8 +432,9 @@ func _make_queue_bubble(group: Dictionary) -> void:
 
 ## Đếm ngược kiên nhẫn của các nhóm đang chờ; hết thì cả nhóm bỏ về.
 func _tick_queue(delta: float) -> void:
+	var drain := 1.0 + MESS_PATIENCE_DRAIN * _mess.size()
 	for group in _queue.duplicate():
-		group["wait"] = float(group["wait"]) - delta
+		group["wait"] = float(group["wait"]) - delta * drain
 		if float(group["wait"]) <= 0.0:
 			_remove_from_queue(group)
 			_reception.leave_queue(group["walkers"])
@@ -437,7 +461,16 @@ func _remove_from_queue(group: Dictionary) -> void:
 # --- Xếp bàn -----------------------------------------------------------------------
 
 func _on_table_tapped(table: TableNode) -> void:
-	if table.state == TableNode.State.EMPTY:
+	if table.state == TableNode.State.DIRTY:
+		if not _cleaning.has(table):
+			var index := tables.find(table)
+			_cleaning[table] = true
+			var done := func(grade: int) -> void:
+				_cleaning.erase(table)
+				table.finish_cleaning()
+				_clean_result(grade, "Bàn %d sạch rồi, xếp khách được." % (index + 1))
+			_open_clean_panel("table", "Bàn %d" % (index + 1), done, func() -> void: _cleaning.erase(table))
+	elif table.state == TableNode.State.EMPTY:
 		if not _reserved.has(table):
 			_seat_at(table)
 	else:
@@ -725,6 +758,7 @@ func _finish_eating(table: TableNode) -> void:
 			_events.special_result(table, false, broth.price)
 		_guests_leave(visual, false)
 		table.clear()
+		_leave_mess(table, visual)
 		return
 	if broth:
 		# Hoá đơn = 1 nồi lẩu + các đĩa đồ nhúng (nhóm đông gọi nhiều đĩa hơn).
@@ -743,6 +777,7 @@ func _finish_eating(table: TableNode) -> void:
 			_events.special_result(table, table.served_fast and not table.served_expired, bill)
 	_guests_leave(visual, true)
 	table.clear()
+	_leave_mess(table, visual)
 
 
 func _customer_timeout(table: TableNode) -> void:
@@ -757,6 +792,100 @@ func _customer_timeout(table: TableNode) -> void:
 	table.clear()
 
 
+# --- Dọn dẹp ------------------------------------------------------------------------
+
+## Khách ăn xong rời bàn: bàn bẩn + có khi làm rơi rác / đổ nước cạnh bàn.
+func _leave_mess(table: TableNode, visual: TableVisual) -> void:
+	table.make_dirty()
+	for kind in ["trash", "puddle"]:
+		if randf() < (TRASH_LEAVE_CHANCE if kind == "trash" else SPILL_LEAVE_CHANCE):
+			var near := visual.get_global_transform() * Vector2(visual.size.x * randf_range(0.1, 0.9), TableVisual.HEIGHT * 0.9)
+			_spawn_mess(kind, near - _mess_layer.global_position)
+
+
+## Mở bảng Dọn dẹp (đè lên quán, giờ vẫn chạy). Xong -> on_done(grade); để sau -> on_cancel().
+func _open_clean_panel(kind: String, title: String, on_done: Callable, on_cancel: Callable) -> void:
+	if is_instance_valid(_clean_panel):
+		on_cancel.call()
+		return
+	var panel := CleanPanel.new()
+	add_child(panel)
+	panel.open(kind, title)
+	_clean_panel = panel
+	panel.finished.connect(func(grade: int) -> void:
+		_clean_panel = null
+		on_done.call(grade))
+	panel.closed.connect(func() -> void:
+		_clean_panel = null
+		on_cancel.call())
+
+
+func _clean_result(grade: int, text: String) -> void:
+	if grade == 2:
+		GameState.add_star(STAR_CLEAN_PERFECT)
+		_notify(text + " Hoàn hảo, +sao!", Color("fff59d"))
+	elif grade == 1:
+		_notify(text, Color("c8e6c9"))
+	else:
+		_notify(text + " (dọn ẩu)", Color("ffccbc"))
+
+
+func _clean_floor(mess: FloorMess) -> void:
+	if not is_instance_valid(mess) or mess.is_gone() or mess.cleaning:
+		return
+	mess.cleaning = true
+	var done := func(grade: int) -> void:
+		_mess.erase(mess)
+		if is_instance_valid(mess):
+			mess.finish()
+		_clean_result(grade, "Sàn sạch bong!" if _mess.is_empty() else "Còn %d chỗ bẩn dưới sàn." % _mess.size())
+	var cancel := func() -> void:
+		if is_instance_valid(mess):
+			mess.cleaning = false
+	_open_clean_panel(mess.kind, mess.label(), done, cancel)
+
+
+## Sàn thỉnh thoảng tự bẩn thêm (rác / vũng nước).
+func _tick_mess(delta: float) -> void:
+	_mess_timer -= delta
+	if _mess_timer <= 0.0:
+		_mess_timer = MESS_INTERVAL * randf_range(0.6, 1.4)
+		var kind := "puddle" if randf() < PUDDLE_CHANCE else "trash"
+		_spawn_mess(kind, _random_floor_spot(FloorMess.hit_size(kind)))
+
+
+## Chỗ trống trên sàn (tránh đè lên bàn để không che chỗ chạm bàn); không tìm được thì lấy đại một chỗ.
+func _random_floor_spot(hit_size: Vector2) -> Vector2:
+	var best := Vector2.ZERO
+	for attempt in 12:
+		var p := FLOOR_RECT.position + Vector2(randf_range(40, FLOOR_RECT.size.x - 40), randf_range(20, FLOOR_RECT.size.y - 20))
+		best = p
+		var hit := Rect2(p - hit_size / 2.0, hit_size)
+		var free := true
+		for v in _visuals:
+			var r := Rect2(v.position + _floor.position, v.size * v.scale).grow(-v.size.x * v.scale.x * 0.12)
+			if r.intersects(hit):
+				free = false
+				break
+		if free:
+			return p
+	return best
+
+
+func _spawn_mess(kind: String, center: Vector2) -> void:
+	_mess = _mess.filter(func(m: FloorMess) -> bool: return is_instance_valid(m) and not m.is_gone())
+	if _mess.size() >= MAX_MESS:
+		return
+	var m := FloorMess.new(kind)
+	var area := Rect2(FLOOR_RECT.position, FLOOR_RECT.size - m.size)
+	m.position = (center - m.size / 2.0).clamp(area.position, area.end).round()
+	_mess_layer.add_child(m)
+	_mess.append(m)
+	m.tapped.connect(_clean_floor)
+	if _mess.size() >= 3:
+		_notify("Sàn bẩn quá, khách chờ bắt đầu sốt ruột! Chạm chỗ bẩn để dọn.", Color("ffccbc"))
+
+
 func _on_eating_finished(table: TableNode) -> void:
 	_finish_eating(table)
 
@@ -765,6 +894,9 @@ func _close_shop() -> void:
 	if _leaving:
 		return
 	_leaving = true
+	_mess = _mess.filter(func(m: FloorMess) -> bool: return is_instance_valid(m) and not m.is_gone())
+	if not _mess.is_empty():
+		GameState.lose_star(STAR_MESS_LEFT * _mess.size())
 	DayManager.next_phase()
 
 
@@ -813,6 +945,9 @@ func _update_ui() -> void:
 					note = "Hết món! Chạm để đổi" if table.customer and not table.customer.has_meta("negotiated") else "Hết món!"
 					note_color = HuntUI.BAD
 				visual.show_waiting(table.order_broth_id, table.side_items, patience, note, note_color, has_stock)
+			TableNode.State.DIRTY:
+				visual.set_highlight(0)
+				visual.show_dirty(0.0, _cleaning.has(table))
 			TableNode.State.EATING:
 				visual.set_highlight(0)
 				visual.show_eating(table.order_broth_id, 1.0 - table.eating_remaining() / maxf(table.eating_time, 0.01))
