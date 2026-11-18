@@ -1,13 +1,28 @@
 extends Control
 ## Menu chính: phong cảnh đồng quê nhiều lớp (trời, mặt trời, mây trôi, quán lẩu lớn trên đỉnh núi giữa),
-## tên game ở trên, nút ở giữa, đầu bếp đứng bên phải, đống đồ bếp ở góc trái,
-## 3 nhân viên vây quanh một con quái trên đồi phải thay nhau chém (quái gục thì con khác nhảy ra, lặp mãi).
+## logo ở trên, nút ở giữa, đầu bếp đứng bên phải, trâu + 3 mèo nhảy ở góc trái,
+## trên đồi phải 3 nhân viên đứng giữa bị một vòng quái vây quanh, sau lưng có boss to; nhân viên chém quái quanh mình,
+## quái nhảy vào cắn, boss dậm đất (quái gục thì con khác rơi vào chỗ cũ, lặp mãi).
 ## Ảnh vẽ bằng tools/make_menu_art.py.
 ## Các số chỉnh giao diện để @export: chọn node MainMenu trong editor là sửa được, không cần đụng code.
 
 const SKY := preload("res://assets/sprites/scenery/sky.png")
 const LANDSCAPE := preload("res://assets/sprites/scenery/landscape.png")
-const KITCHEN_CLUTTER := preload("res://assets/sprites/scenery/kitchen_clutter.png")
+const KIT := "res://assets/sprites/kitchen/"
+const DANCE_FRAMES := 8 ## Số khung một điệu nhảy (ảnh dải ngang), xem tools/make_menu_art.py.
+const DANCE_FPS := 6.0
+## Đội nhảy góc trái kiểu 2.5D: [ảnh, cỡ 1 khung (điểm ảnh), chân đứng (điểm ảnh trong nhóm), tỉ lệ, độ sáng, chậm mấy khung].
+## Trâu Thần Tài đứng sau cùng (chân cao hơn trên màn, hơi nhạt vì xa; trâu to mập nên vẫn nổi), 3 mèo xếp vòng cung
+## phía trước: 2 con bên hơi lùi và nhỏ hơn, mèo cam ở giữa gần nhất. Vẽ theo thứ tự danh sách (xa trước).
+const DANCE_TROUPE := [
+	["buffalo_dance", Vector2(50, 54), Vector2(41, 10), 0.95, 0.88, 0],
+	["cat_dance_grey", Vector2(24, 28), Vector2(12, 34), 0.9, 0.95, 1],
+	["cat_dance_black", Vector2(24, 28), Vector2(70, 34), 0.9, 0.95, 1],
+	["cat_dance_orange", Vector2(24, 28), Vector2(41, 39), 1.0, 1.0, 0],
+]
+const DANCE_GROUP_SIZE := Vector2(84, 40) ## Khung cả đội (điểm ảnh ở tỉ lệ 1), đáy = chân con đứng trước.
+const TITLE_SHADER := preload("res://scenes/main_menu/title_gradient.gdshader")
+const TITLE_OUTLINE := Color("2b1a14")
 const BUFFALO := preload("res://assets/sprites/characters/mount_buffalo.png") ## Trâu (thú cưỡi) có sẵn, nhìn sang phải.
 const LAND_SIZE := Vector2(432, 180) ## Cỡ ảnh phong cảnh (điểm ảnh, rộng hơn 16:9 cho màn điện thoại); toạ độ nhân vật trên đồi tính theo ảnh này.
 const SUN := preload("res://assets/sprites/scenery/sun.png")
@@ -35,42 +50,45 @@ const MONSTER_TEXTURES: Array[Texture2D] = [
 ]
 const MONSTER_SIZE := 104.0
 const MONSTER_HP := 3 ## Số nhát chém trước khi quái gục và con khác nhảy ra.
+const BOSS_TEXTURE := preload("res://assets/sprites/monsters/boss_hotpot_golem.png")
+const BOSS_SCALE := 2.6 ## Boss to gấp chừng này quái thường cho nổi bật.
 const STAFF_LUNGE := 28.0 ## Nhân viên lao tới chừng này px (ở cỡ gốc) khi chặt quái.
 const PIXEL := 4.0 ## 1 điểm ảnh của bộ phong cảnh = 4 px màn hình (nền 320x180 trên 1280x720).
 const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
 const RESTAURANT_DOOR := Vector2(216, 66) ## Cửa quán trên đỉnh núi (điểm ảnh phong cảnh): đầu bếp chạy về đây khi vào game.
 const CHEF_FAR_SCALE := 0.25 ## Chạy tới cửa quán thì đầu bếp nhỏ còn chừng này (đi xa dần).
 const DOOR_LEFT_LEAF := Vector2(211, 54) ## Góc trái trên cánh cửa trái (điểm ảnh phong cảnh), cánh phải nằm ngay bên phải.
-const DOOR_OPEN_AT := 0.6 ## Đầu bếp chạy được chừng này giây thì cửa quán mở.
-const DOOR_OPEN_SECONDS := 0.35
+const DOOR_OPEN_SECONDS := 0.5
+const DOOR_OPEN_LEAD := 0.6 ## Cửa mở trước khi đầu bếp tới nơi chừng này giây.
 const LIGHT_COLOR := Color("ffe9a8") ## Ánh đèn vàng ấm hắt ra từ cửa quán.
-const LIGHT_CORE_RADIUS := 70.0 ## Lõi sáng quanh cửa (px màn hình ở 1280x720, co giãn theo phong cảnh).
-const LIGHT_HALO_RADIUS := 260.0 ## Quầng sáng mờ toả rộng.
-## Tia sáng loe ra từ cửa: (góc độ, dài px, rộng px); 0 độ = sang phải, -90 = thẳng lên.
-const LIGHT_BEAMS := [
-	[-172.0, 300.0, 46.0], [-145.0, 380.0, 60.0], [-118.0, 330.0, 50.0], [-90.0, 420.0, 70.0],
-	[-62.0, 340.0, 52.0], [-36.0, 390.0, 60.0], [-8.0, 300.0, 46.0],
-]
-const FADE_DELAY := 0.9 ## Chừng này giây thì ánh sáng tràn ra phủ trắng màn hình.
-const FADE_SECONDS := 0.8
+const LIGHT_CORE_RADIUS := 60.0 ## Lõi sáng quanh cửa (px màn hình ở 1280x720, co giãn theo phong cảnh).
+const LIGHT_HALO_RADIUS := 240.0 ## Quầng sáng mờ toả rộng.
+const GLARE_SECONDS := 1.0 ## Loá sáng: quầng sáng hiện dần, bùng to rồi dịu lại khi cửa mở.
+const STEP_IN_SECONDS := 0.5 ## Tới cửa rồi đầu bếp còn bước thêm chừng này giây vào trong (lúc này mờ hẳn).
+const CHEF_FADE_FROM := 0.35 ## Đầu bếp bắt đầu mờ dần khi chạy được chừng này phần quãng đường.
+const FADE_SECONDS := 1.0 ## Ánh sáng tràn ra phủ kín màn rồi mới vào game.
 const FLASH_COLOR := Color("fff4d6") ## Màu ánh sáng tràn màn khi vào quán (cửa hàng tan dần từ màu này).
 
 @export var title_text := "SÔI SÙNG SỤC"
-@export var title_font_size := 72
-@export var title_color := Color("f2a33a")
+@export var title_font_size := 80
+@export var title_color := Color("f08a2c") ## Màu nửa dưới chữ logo.
+@export var title_color_top := Color("ffe27a") ## Màu nửa trên chữ logo (chuyển dần xuống title_color).
+@export var title_extrude_color := Color("9c3322") ## Khối nổi 3D dưới chữ.
 @export var chef_scale := 2.2 ## Đầu bếp gốc 128px, nhân thêm chừng này.
 @export_range(0.0, 1.0) var chef_x_ratio := 0.87 ## Vị trí đầu bếp theo bề ngang màn hình.
 @export_range(0.0, 1.0) var chef_feet_ratio := 0.94 ## Chân đầu bếp theo bề dọc màn hình.
-## Toạ độ chân quái / nhân viên / bò tính bằng ĐIỂM ẢNH TRÊN PHONG CẢNH 432x180 (không phải px màn hình),
+## Toạ độ trận đánh / bò tính bằng ĐIỂM ẢNH TRÊN PHONG CẢNH 432x180 (không phải px màn hình),
 ## nên màn rộng hay hẹp thì nhân vật vẫn đứng đúng trên đồi. Đồi phải: y = 70 + 0.005 * (x - 356)^2.
-## Nhân viên đầu danh sách đứng phía sau quái (vẽ trước), mấy người sau đứng hai bên.
-@export var monster_feet := Vector2(346, 92) ## Giữa mặt đồi phải (đỉnh đồi y = 70, chân đồi y = 112).
-@export var staff_feet: Array[Vector2] = [Vector2(352, 87), Vector2(326, 94), Vector2(368, 94)]
+@export var fight_center := Vector2(343, 87) ## Giữa vòng vây: 3 nhân viên đứng quanh điểm này.
+@export var ring_radius := Vector2(27, 7.5) ## Bán kính vòng quái (dẹt vì nhìn chéo từ trên xuống).
+@export var ring_count := 6 ## Số quái trong vòng vây.
+@export var staff_radius := Vector2(7, 2.5) ## Nhân viên đứng tựa lưng nhau quanh tâm.
+@export var boss_feet := Vector2(356, 78) ## Boss đứng sau vòng vây (xa hơn nên vẽ trước).
 @export var fight_scale := 0.5 ## Nhân vật trên đồi = cỡ gốc (32 điểm ảnh) nhân chừng này, vì ở xa.
 @export var buffalo_feet: Array[Vector2] = [Vector2(66, 77), Vector2(88, 76.5), Vector2(108, 81)] ## Đồi trái.
 @export var buffalo_scale := 0.45 ## Trâu gốc 32 điểm ảnh, ở xa nên thu nhỏ còn chừng này.
 @export var buffalo_wander := 6.0 ## Trâu đi tới đi lui chừng này điểm ảnh.
-@export var clutter_scale := 3.0 ## Đồ bếp góc trái phóng chừng này lần.
+@export var clutter_scale := 5.0 ## Đội nhảy góc trái phóng chừng này lần (con đứng trước).
 @export var clutter_margin := Vector2(48, 24) ## Cách mép trái / mép dưới màn hình (px).
 @export var sun_position_ratio := Vector2(0.88, 0.14) ## Tâm mặt trời theo tỉ lệ màn hình (góc trên phải).
 @export var sun_bob_height := 8.0 ## Mặt trời nhấp nhô lên xuống chừng này px.
@@ -83,10 +101,13 @@ const FLASH_COLOR := Color("fff4d6") ## Màu ánh sáng tràn màn khi vào quá
 
 var chef: KitchenActor
 var _door_leaves: Array[TextureRect] = [] ## [trái, phải]
-var _door_lights: Array[TextureRect] = [] ## Lõi, quầng, rồi các tia sáng; ẩn tới khi cửa mở.
+var _door_lights: Array[TextureRect] = [] ## Quầng rồi lõi sáng; ẩn tới khi cửa mở.
+var _light_tweens: Array[Tween] = [] ## Tween loá/thở của ánh sáng, dừng khi ánh sáng tràn màn.
 var _buttons: Array[PixelButton] = []
 var _leaving := false ## Đang chạy hiệu ứng vào game: chặn bấm thêm lần nữa.
 var _clouds: Array[TextureRect] = []
+var _dance_frames: Array[AtlasTexture] = []
+var _dance_time := 0.0
 var _cloud_speeds: Array[float] = []
 
 
@@ -94,8 +115,8 @@ var _cloud_speeds: Array[float] = []
 func _ready() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	_add_cover_layer(SKY)
-	_build_sun()
 	_build_clouds()
+	_build_sun() # vẽ sau mây: mây trôi qua phía sau, không che mặt trời
 	_add_cover_layer(LANDSCAPE)
 	_build_door()
 	_build_buffaloes()
@@ -107,8 +128,9 @@ func _ready() -> void:
 	add_child(RotateHint.new())
 
 
-## Mây trôi sang phải, ra khỏi mép phải thì quay lại từ mép trái.
+## Mây trôi sang phải, ra khỏi mép phải thì quay lại từ mép trái; mèo góc trái nhảy.
 func _process(delta: float) -> void:
+	_animate_dance(delta)
 	var screen_width := get_viewport_rect().size.x
 	for i in _clouds.size():
 		var cloud := _clouds[i]
@@ -159,26 +181,31 @@ func _build_door() -> void:
 
 	var door_center := _land_to_screen(DOOR_LEFT_LEAF) + Vector2(leaf_size.x, leaf_size.y / 2.0)
 	var light_scale := _land_scale() / PIXEL # số px đặt cho màn 1280x720, màn khác co giãn theo
-	_door_lights.append(_add_soft_light(door_center, Vector2.ONE * LIGHT_HALO_RADIUS * 2.0 * light_scale, 0.35))
-	for beam in LIGHT_BEAMS:
-		var ray := _add_soft_light(door_center, Vector2(beam[1], beam[2]) * light_scale, 0.45, true)
-		ray.rotation_degrees = beam[0]
-		_door_lights.append(ray)
-	_door_lights.append(_add_soft_light(door_center, Vector2.ONE * LIGHT_CORE_RADIUS * 2.0 * light_scale, 1.0))
+	_door_lights.append(_add_soft_light(door_center, LIGHT_HALO_RADIUS * light_scale, 0.45)) # quầng
+	_door_lights.append(_add_soft_light(door_center, LIGHT_CORE_RADIUS * light_scale, 1.0)) # lõi
 
 
-## Một vệt sáng mượt (gradient tỏa tròn, cộng sáng lên cảnh): tâm sáng nhất, mờ dần ra mép.
-## beam = tia sáng: gốc ở mép trái, tỏa dọc theo chiều dài; không thì tâm ở giữa. Ẩn sẵn (scale 0).
-func _add_soft_light(origin: Vector2, light_size: Vector2, strength: float, beam := false) -> TextureRect:
+## Một quầng sáng tròn mượt (cộng sáng lên cảnh): tâm sáng nhất, mờ dần ra mép theo đường cong êm
+## (nhiều điểm gradient + ảnh 256px nên không thấy vòng/khối). Ẩn sẵn (scale 0).
+func _add_soft_light(origin: Vector2, radius: float, strength: float) -> TextureRect:
 	var gradient := Gradient.new()
-	gradient.set_color(0, Color(LIGHT_COLOR, strength))
-	gradient.set_color(1, Color(LIGHT_COLOR, 0.0))
-	gradient.add_point(0.4, Color(LIGHT_COLOR, strength * 0.35)) # tắt nhanh gần tâm rồi kéo dài mờ như ánh đèn thật
+	const STEPS := 12
+	var offsets := PackedFloat32Array()
+	var colors := PackedColorArray()
+	for i in STEPS + 1:
+		var t := float(i) / STEPS
+		var falloff := pow(1.0 - t, 2.2) # tắt êm, không có mép
+		offsets.append(t)
+		colors.append(Color(LIGHT_COLOR, strength * falloff))
+	gradient.offsets = offsets
+	gradient.colors = colors
 	var texture := GradientTexture2D.new()
 	texture.gradient = gradient
+	texture.width = 256
+	texture.height = 256
 	texture.fill = GradientTexture2D.FILL_RADIAL
-	texture.fill_from = Vector2(0.0, 0.5) if beam else Vector2(0.5, 0.5)
-	texture.fill_to = Vector2(1.0, 0.5) if beam else Vector2(1.0, 0.5)
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5)
 	var material := CanvasItemMaterial.new()
 	material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 
@@ -187,36 +214,40 @@ func _add_soft_light(origin: Vector2, light_size: Vector2, strength: float, beam
 	light.material = material
 	light.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR # mượt, không vỡ pixel
 	light.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	light.size = light_size
-	light.pivot_offset = Vector2(0.0, light_size.y / 2.0) if beam else light_size / 2.0
+	light.size = Vector2.ONE * radius * 2.0
+	light.pivot_offset = light.size / 2.0
 	light.position = origin - light.pivot_offset
-	light.scale = Vector2.ZERO
+	light.scale = Vector2.ONE * 0.4
+	light.modulate.a = 0.0
 	light.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(light)
 	return light
 
 
-## Mở cửa quán: 2 cánh thu hẹp về phía bản lề (như mở vào trong); lõi + quầng sáng nở ra, các tia sáng
-## lần lượt vươn dài rồi lay nhẹ, độ sáng chập chờn như đèn thật.
+## Mở cửa quán: 2 cánh thu hẹp về phía bản lề (như mở vào trong); ánh sáng loá bùng to rồi dịu lại,
+## sau đó thở nhẹ như đèn thật.
 func _open_door() -> void:
 	var tween := create_tween().set_parallel(true)
 	for leaf in _door_leaves:
 		tween.tween_property(leaf, "scale:x", 0.0, DOOR_OPEN_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	for i in _door_lights.size():
-		var light := _door_lights[i]
-		var is_beam := light.pivot_offset.x == 0.0
-		light.scale = Vector2(0.0, 1.0) if is_beam else Vector2.ZERO
-		tween.tween_property(light, "scale", Vector2.ONE, 0.7).set_delay(0.1 + i * 0.04) \
-				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		var flicker := light.create_tween().set_loops()
-		var period := randf_range(0.4, 0.8)
-		flicker.tween_property(light, "modulate:a", randf_range(0.7, 0.85), period).set_trans(Tween.TRANS_SINE)
-		flicker.tween_property(light, "modulate:a", 1.0, period).set_trans(Tween.TRANS_SINE)
-		if is_beam:
-			var sway := light.create_tween().set_loops()
-			var base := light.rotation_degrees
-			sway.tween_property(light, "rotation_degrees", base + 4.0, randf_range(1.0, 1.6)).set_trans(Tween.TRANS_SINE)
-			sway.tween_property(light, "rotation_degrees", base - 4.0, randf_range(1.0, 1.6)).set_trans(Tween.TRANS_SINE)
+	for light in _door_lights:
+		var glare := light.create_tween()
+		_light_tweens.append(glare)
+		glare.tween_property(light, "modulate:a", 1.0, GLARE_SECONDS * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		glare.parallel().tween_property(light, "scale", Vector2.ONE * 1.35, GLARE_SECONDS * 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		glare.tween_property(light, "scale", Vector2.ONE, GLARE_SECONDS * 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		glare.tween_callback(_breathe.bind(light))
+
+
+## Ánh sáng thở nhẹ (to/nhỏ, sáng/mờ chút xíu), lặp mãi.
+func _breathe(light: TextureRect) -> void:
+	var period := randf_range(0.6, 0.9)
+	var loop := light.create_tween().set_loops()
+	_light_tweens.append(loop)
+	loop.tween_property(light, "scale", Vector2.ONE * 1.05, period).set_trans(Tween.TRANS_SINE)
+	loop.parallel().tween_property(light, "modulate:a", 0.85, period).set_trans(Tween.TRANS_SINE)
+	loop.tween_property(light, "scale", Vector2.ONE, period).set_trans(Tween.TRANS_SINE)
+	loop.parallel().tween_property(light, "modulate:a", 1.0, period).set_trans(Tween.TRANS_SINE)
 
 
 ## Trâu gặm cỏ trên đồi trái: đi chậm sang một bên, đứng gặm, quay đầu đi về, lặp mãi.
@@ -291,111 +322,334 @@ func _build_chef() -> void:
 	chef.scale = Vector2.ONE * chef_scale
 
 
-## Đống đồ bếp lộn xộn sát góc trái dưới.
+## Góc trái dưới: trâu áo đỏ nón đỏ và 3 con mèo đứng 2 chân nhảy cùng một điệu (giơ tay, nhún, nghiêng
+## trái phải, bật nhảy), xếp có chiều sâu kiểu 2.5D: xa thì nhỏ và cao hơn, mỗi con có bóng pixel dưới chân;
+## 2 mèo hàng giữa chậm 1 nhịp cho sinh động.
 func _build_clutter() -> void:
-	var clutter := TextureRect.new()
-	clutter.texture = KITCHEN_CLUTTER
-	clutter.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	clutter.size = KITCHEN_CLUTTER.get_size() * clutter_scale
-	clutter.position = Vector2(clutter_margin.x, get_viewport_rect().size.y - clutter.size.y - clutter_margin.y)
-	clutter.mouse_filter = MOUSE_FILTER_IGNORE
-	add_child(clutter)
+	var s := clutter_scale
+	var group := Control.new()
+	group.mouse_filter = MOUSE_FILTER_IGNORE
+	group.size = DANCE_GROUP_SIZE * s
+	group.position = Vector2(clutter_margin.x, get_viewport_rect().size.y - group.size.y - clutter_margin.y)
+	add_child(group)
+	for member in DANCE_TROUPE:
+		var frame: Vector2 = member[1]
+		var feet: Vector2 = member[2] * s
+		var depth: float = member[3]
+		var px := s * depth # cỡ 1 điểm ảnh của con này trên màn
+		var shadow_tex: Texture2D = load("res://assets/sprites/scenery/%s.png" % ("shadow_buffalo" if member[0] == "buffalo_dance" else "shadow_cat"))
+		var shadow := TextureRect.new()
+		shadow.texture = shadow_tex
+		shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		shadow.size = shadow_tex.get_size() * px # cùng cỡ điểm ảnh với nhân vật
+		shadow.mouse_filter = MOUSE_FILTER_IGNORE
+		shadow.position = feet - Vector2(shadow.size.x / 2.0, 1.0 * px) # ngay dưới chân như bóng của mọi nhân vật khác
+		group.add_child(shadow)
+		var atlas := AtlasTexture.new()
+		atlas.atlas = load("res://assets/sprites/scenery/%s.png" % member[0])
+		atlas.region = Rect2(Vector2.ZERO, frame)
+		atlas.set_meta("offset", member[5])
+		var dancer := TextureRect.new()
+		dancer.texture = atlas
+		dancer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		dancer.size = frame * px
+		dancer.position = feet - Vector2(dancer.size.x / 2.0, dancer.size.y - 2.0 * px) # chân ảnh cách đáy 2 điểm ảnh
+		dancer.mouse_filter = MOUSE_FILTER_IGNORE
+		var light: float = member[4] # xa thì hơi tối/nhạt
+		dancer.modulate = Color(light, light, light)
+		group.add_child(dancer)
+		_dance_frames.append(atlas)
 
 
-## Một con quái giữa, nhân viên vây quanh quay mặt vào quái, mỗi người chém theo nhịp hẹn giờ riêng.
-## Cỡ nhân vật theo tỉ lệ phóng phong cảnh để luôn cân với ngọn đồi.
+## Đổi khung điệu nhảy theo thời gian (gọi từ _process).
+func _animate_dance(delta: float) -> void:
+	_dance_time += delta
+	var frame := int(_dance_time * DANCE_FPS)
+	for atlas in _dance_frames:
+		var f: int = (frame - int(atlas.get_meta("offset")) + DANCE_FRAMES) % DANCE_FRAMES
+		atlas.region.position.x = atlas.region.size.x * f
+
+
+## Trận trên đồi: boss to đứng sau, một vòng quái vây 3 nhân viên ở giữa. Vẽ theo chân từ xa tới gần
+## (y nhỏ trước) để người đứng trước che người đứng sau. Cỡ nhân vật theo tỉ lệ phóng phong cảnh để luôn cân với ngọn đồi.
 func _build_fight() -> void:
 	var size_scale := fight_scale * _land_scale() / PIXEL # nhân vật gốc 128px ứng với 32 điểm ảnh x PIXEL
-	var monster_base := _land_to_screen(monster_feet)
+	var center := _land_to_screen(fight_center)
 	var monster_size := MONSTER_SIZE * size_scale
-	var monster := HuntUI.texture_rect(MONSTER_TEXTURES[randi() % MONSTER_TEXTURES.size()], monster_size)
-	monster.size = Vector2(monster_size, monster_size)
-	monster.position = monster_base - Vector2(monster_size / 2.0, monster_size)
-	monster.pivot_offset = Vector2(monster_size / 2.0, monster_size)
-	monster.set_meta("hp", MONSTER_HP)
-	monster.set_meta("home_x", monster.position.x) # chỗ đứng gốc cố định: nhiều đòn dồn dập không làm quái trôi
+	var actors: Array[Control] = []
 
+	var boss := _make_fight_monster(BOSS_TEXTURE, _land_to_screen(boss_feet), monster_size * BOSS_SCALE)
+	boss.set_meta("boss", true)
+	actors.append(boss)
+
+	var monsters: Array[TextureRect] = []
+	for i in ring_count:
+		var angle := TAU * (i + 0.5) / ring_count + PI / 2.0
+		var feet := _land_to_screen(fight_center + Vector2(cos(angle), sin(angle)) * ring_radius)
+		var monster := _make_fight_monster(MONSTER_TEXTURES[i % MONSTER_TEXTURES.size()], feet, monster_size)
+		monster.flip_h = feet.x < center.x # ảnh quái nhìn sang trái: quái bên trái lật lại để nhìn vào giữa
+		monsters.append(monster)
+		actors.append(monster)
+
+	var staff_list: Array[KitchenActor] = []
 	for i in STAFF_TEXTURES.size():
-		if i == 1:
-			add_child(monster) # người đầu đứng sau quái, những người sau đứng trước
-			_start_monster_idle(monster)
-		var feet := _land_to_screen(staff_feet[i % staff_feet.size()])
+		var angle := TAU * i / STAFF_TEXTURES.size() - PI / 2.0
+		var feet := center + Vector2(cos(angle), sin(angle)) * staff_radius * _land_scale()
 		var staff := KitchenActor.new()
-		add_child(staff)
-		staff.setup(STAFF_TEXTURES[i], feet.x, feet.y, "", feet.x < monster_base.x)
+		staff.setup(STAFF_TEXTURES[i], feet.x, feet.y, "", feet.x >= center.x) # quay mặt ra ngoài đón quái
 		staff.pivot_offset = Vector2(KitchenActor.SIZE / 2.0, KitchenActor.SIZE)
 		staff.scale = Vector2.ONE * size_scale
-		staff.set_meta("home_x", staff.position.x)
+		staff.set_meta("home", staff.position)
+		staff.set_meta("feet_y", feet.y)
+		staff_list.append(staff)
+		actors.append(staff)
 
-		var timer := Timer.new()
-		timer.wait_time = randf_range(1.2, 2.0)
-		timer.timeout.connect(_staff_attack.bind(staff, monster))
-		add_child(timer)
-		timer.start(randf_range(0.2, 1.6))
+	actors.sort_custom(func(a: Control, b: Control) -> bool: return _feet_y(a) < _feet_y(b))
+	for actor in actors:
+		add_child(actor)
+	for actor in actors:
+		if actor is TextureRect:
+			_start_monster_idle(actor, actor == boss)
+
+	for staff in staff_list:
+		_add_loop_timer(randf_range(1.0, 1.6), _staff_attack.bind(staff, monsters, boss))
+	for monster in monsters:
+		_add_loop_timer(randf_range(2.5, 4.5), _monster_pounce.bind(monster, staff_list, center))
+	_add_loop_timer(randf_range(4.5, 6.0), _boss_stomp.bind(boss, staff_list, monsters))
 
 
-## Quái nhún tại chỗ (co giãn quanh chân).
-func _start_monster_idle(monster: TextureRect) -> void:
+## Quái (TextureRect) đứng chân tại feet, gốc co giãn ở chân.
+func _make_fight_monster(texture: Texture2D, feet: Vector2, monster_size: float) -> TextureRect:
+	var monster := HuntUI.texture_rect(texture, monster_size)
+	monster.size = Vector2(monster_size, monster_size)
+	monster.position = feet - Vector2(monster_size / 2.0, monster_size)
+	monster.pivot_offset = Vector2(monster_size / 2.0, monster_size)
+	monster.mouse_filter = MOUSE_FILTER_IGNORE
+	monster.set_meta("hp", MONSTER_HP)
+	monster.set_meta("home", monster.position) # chỗ đứng gốc cố định: nhiều đòn dồn dập không làm quái trôi
+	monster.set_meta("feet_y", feet.y)
+	return monster
+
+
+func _feet_y(actor: Control) -> float:
+	return actor.get_meta("feet_y")
+
+
+## Hẹn giờ lặp (dừng hết khi vào game, xem _enter_game).
+func _add_loop_timer(wait: float, callback: Callable) -> void:
+	var timer := Timer.new()
+	timer.wait_time = wait
+	timer.timeout.connect(callback)
+	add_child(timer)
+	timer.start(randf_range(0.2, wait))
+
+
+## Quái nhún tại chỗ (co giãn quanh chân); boss nhún chậm và nặng hơn.
+func _start_monster_idle(monster: TextureRect, heavy := false) -> void:
+	var period := 0.7 if heavy else randf_range(0.35, 0.45)
+	var squash := Vector2(1.04, 0.95) if heavy else Vector2(1.06, 0.92)
 	var tween := monster.create_tween().set_loops()
-	tween.tween_property(monster, "scale", Vector2(1.06, 0.92), 0.4).set_trans(Tween.TRANS_SINE)
-	tween.tween_property(monster, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(monster, "scale", squash, period).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(monster, "scale", Vector2.ONE, period).set_trans(Tween.TRANS_SINE)
 
 
-## Nhân viên lao tới chặt quái dưới đất (không bay lên chém để luôn đứng trên đồi), vệt chém hiện trên quái, rồi lùi về.
-func _staff_attack(staff: KitchenActor, monster: TextureRect) -> void:
-	var target := monster.get_global_rect().get_center()
-	var direction := signf(target.x - staff.center_x())
-	var home_x: float = staff.get_meta("home_x")
+## Tâm thân một nhân vật (giữa ảnh) theo toạ độ màn hình.
+func _body_center(actor: Control) -> Vector2:
+	return actor.get_global_rect().get_center()
+
+
+## Nhân viên chém con quái gần mình nhất (thỉnh thoảng chém boss): quay mặt về phía nó, lao tới,
+## vệt chém hiện trên quái, rồi lùi về.
+func _staff_attack(staff: KitchenActor, monsters: Array[TextureRect], boss: TextureRect) -> void:
+	var home: Vector2 = staff.get_meta("home")
+	var target: TextureRect = boss
+	if randf() > 0.2:
+		var best := INF
+		for monster in monsters:
+			var d := _body_center(monster).distance_to(_body_center(staff)) + randf() * 30.0 # hơi ngẫu nhiên để đổi mục tiêu
+			if monster.get_meta("hp") > 0 and d < best:
+				best = d
+				target = monster
+	var hit_at := _body_center(target)
+	var direction := (hit_at - _body_center(staff)).normalized()
+	staff.face(direction.x > 0.0)
 	var lunge := create_tween()
-	lunge.tween_property(staff, "position:x", home_x + STAFF_LUNGE * staff.scale.x * direction, 0.1)
+	lunge.tween_property(staff, "position", home + direction * STAFF_LUNGE * staff.scale.x, 0.1)
 	lunge.tween_callback(staff.work.bind(0.3, "chop"))
-	lunge.tween_callback(func() -> void: HuntFX.play(self, "slash", target, 5.0 * staff.scale.x))
-	lunge.tween_callback(_hit_monster.bind(monster, direction))
+	var slash_scale := 5.0 * staff.scale.x * (1.6 if target == boss else 1.0)
+	lunge.tween_callback(func() -> void: HuntFX.play(self, "slash", hit_at, slash_scale))
+	lunge.tween_callback(_hit_monster.bind(target, direction))
 	lunge.tween_interval(0.25)
-	lunge.tween_property(staff, "position:x", home_x, 0.2)
+	lunge.tween_property(staff, "position", home, 0.2)
 
 
-## Quái trúng đòn: nháy trắng + bật lùi theo hướng đòn (direction = -1 sang trái, 1 sang phải);
-## hết máu thì khói bốc lên và đổi sang quái khác.
-func _hit_monster(monster: TextureRect, direction: float) -> void:
+## Quái nhảy vào cắn nhân viên gần nhất (vồng lên rồi về chỗ); nhân viên bị cắn nháy đỏ, giật lùi.
+func _monster_pounce(monster: TextureRect, staff_list: Array[KitchenActor], center: Vector2) -> void:
+	if monster.get_meta("hp") <= 0:
+		return
+	var home: Vector2 = monster.get_meta("home")
+	var victim := staff_list[0]
+	for staff in staff_list:
+		if _body_center(staff).distance_to(_body_center(monster)) < _body_center(victim).distance_to(_body_center(monster)):
+			victim = staff
+	var reach := (center - (home + monster.pivot_offset)) * 0.45
+	var jump := monster.size.y * 0.35
+	var tween := monster.create_tween()
+	tween.tween_property(monster, "position", home + reach + Vector2(0, -jump), 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(monster, "position", home + reach, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_callback(_flinch.bind(victim, signf(reach.x)))
+	tween.tween_property(monster, "position", home, 0.25).set_trans(Tween.TRANS_SINE)
+
+
+## Nhân viên trúng đòn: nháy đỏ và giật lùi một chút theo hướng đòn.
+func _flinch(staff: KitchenActor, direction: float) -> void:
+	var home: Vector2 = staff.get_meta("home")
+	var tween := staff.create_tween()
+	tween.tween_property(staff, "modulate", Color(1.8, 0.6, 0.6), 0.05)
+	tween.parallel().tween_property(staff, "position:x", home.x + 6.0 * direction * staff.scale.x, 0.06)
+	tween.tween_property(staff, "modulate", Color.WHITE, 0.15)
+	tween.parallel().tween_property(staff, "position:x", home.x, 0.15)
+
+
+## Boss dậm đất: rướn người lên rồi nện xuống, bụi tung ở chân, nhân viên và quái bị hất nảy lên.
+func _boss_stomp(boss: TextureRect, staff_list: Array[KitchenActor], monsters: Array[TextureRect]) -> void:
+	var home: Vector2 = boss.get_meta("home")
+	var tween := boss.create_tween()
+	tween.tween_property(boss, "scale", Vector2(0.94, 1.12), 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(boss, "position:y", home.y - boss.size.y * 0.08, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(boss, "scale", Vector2(1.14, 0.86), 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(boss, "position:y", home.y, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_callback(_stomp_impact.bind(boss, staff_list, monsters))
+	tween.tween_property(boss, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+
+func _stomp_impact(boss: TextureRect, staff_list: Array[KitchenActor], monsters: Array[TextureRect]) -> void:
+	var feet := boss.position + Vector2(boss.size.x / 2.0, boss.size.y * 0.9)
+	HuntFX.play(self, "smoke", feet, 1.4 * boss.size.x / MONSTER_SIZE)
+	for staff in staff_list:
+		_bounce(staff)
+	for monster in monsters:
+		if monster.get_meta("hp") > 0:
+			_bounce(monster)
+
+
+## Nảy nhẹ tại chỗ (bị dư chấn hất lên).
+func _bounce(actor: Control) -> void:
+	var home: Vector2 = actor.get_meta("home")
+	var tween := actor.create_tween()
+	tween.tween_property(actor, "position:y", home.y - actor.size.y * actor.scale.y * 0.18, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(actor, "position:y", home.y, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+
+## Quái trúng đòn: nháy trắng + bật lùi theo hướng đòn; hết máu thì khói bốc lên và quái mới rơi vào chỗ cũ.
+## Boss không bao giờ gục (chỉ nháy trắng, rung nhẹ).
+func _hit_monster(monster: TextureRect, direction: Vector2) -> void:
 	if monster.get_meta("hp") <= 0:
 		return # đang gục, chờ con mới nhảy ra
-	var hp: int = monster.get_meta("hp") - 1
-	monster.set_meta("hp", hp)
-	var home_x: float = monster.get_meta("home_x")
+	var home: Vector2 = monster.get_meta("home")
+	var is_boss: bool = monster.get_meta("boss", false)
+	var knock := direction * (4.0 if is_boss else 10.0) * monster.size.x / MONSTER_SIZE
 	var tween := create_tween()
 	tween.tween_property(monster, "modulate", Color(3, 3, 3), 0.05)
-	tween.parallel().tween_property(monster, "position:x", home_x + 10.0 * direction, 0.08)
+	tween.parallel().tween_property(monster, "position", home + knock, 0.08)
 	tween.tween_property(monster, "modulate", Color.WHITE, 0.1)
-	tween.parallel().tween_property(monster, "position:x", home_x, 0.15)
+	tween.parallel().tween_property(monster, "position", home, 0.15)
+	if is_boss:
+		return
+	var hp: int = monster.get_meta("hp") - 1
+	monster.set_meta("hp", hp)
 	if hp > 0:
 		return
-	HuntFX.play(self, "smoke", monster.get_global_rect().get_center(), 1.8 * monster.size.x / MONSTER_SIZE) # khói co theo cỡ quái trên đồi
+	HuntFX.play(self, "smoke", _body_center(monster), 1.8 * monster.size.x / MONSTER_SIZE) # khói co theo cỡ quái trên đồi
 	tween.tween_property(monster, "modulate:a", 0.0, 0.1)
-	tween.tween_interval(0.6)
+	tween.tween_interval(0.8)
 	tween.tween_callback(_respawn_monster.bind(monster))
-	tween.tween_property(monster, "modulate:a", 1.0, 0.2)
 
 
-## Quái mới nhảy ra cùng chỗ, đủ máu.
+## Quái mới (loại ngẫu nhiên) từ trên rơi xuống đúng chỗ cũ, đủ máu.
 func _respawn_monster(monster: TextureRect) -> void:
+	var home: Vector2 = monster.get_meta("home")
 	monster.texture = MONSTER_TEXTURES[randi() % MONSTER_TEXTURES.size()]
-	monster.flip_h = randf() < 0.5
-	monster.set_meta("hp", MONSTER_HP)
+	monster.position = home - Vector2(0, monster.size.y * 0.8)
+	var tween := monster.create_tween()
+	tween.tween_property(monster, "modulate:a", 1.0, 0.15)
+	tween.parallel().tween_property(monster, "position", home, 0.25).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(monster.set_meta.bind("hp", MONSTER_HP))
 
 
-## Tên game chữ đậm, viền tối để đọc rõ trên nền trời.
+## Logo: chữ to tô dải màu vàng sang cam (shader theo chiều dọc chữ), viền nâu đậm, khối nổi 3D đỏ sẫm
+## phía dưới; bong bóng sủi từ đỉnh chữ bay lên vỡ (sôi sùng sục); cả logo nhấp nhô nhẹ.
 func _build_title() -> void:
-	var title := Label.new()
-	title.text = title_text
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", BOLD_FONT)
-	title.add_theme_font_size_override("font_size", title_font_size)
-	title.add_theme_color_override("font_color", title_color)
-	title.add_theme_color_override("font_outline_color", Color("2b1a14"))
-	title.add_theme_constant_override("outline_size", 14)
-	add_child(title)
-	title.set_anchors_and_offsets_preset(PRESET_TOP_WIDE, PRESET_MODE_MINSIZE, 16)
+	var logo := Control.new()
+	logo.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(logo)
+	var depth := int(title_font_size * 0.12) # bề dày khối nổi
+	var shadow := _make_title_label(TITLE_OUTLINE, 12) # viền tối ôm cả khối nổi
+	shadow.position.y = depth + 2
+	logo.add_child(shadow)
+	for i in range(depth, 0, -1): # khối nổi: các lớp đỏ sẫm chồng dần lên tới chữ
+		var back := _make_title_label(title_extrude_color, 10, title_extrude_color)
+		back.position.y = i
+		logo.add_child(back)
+	var front := _make_title_label(Color.WHITE, 8)
+	var material := ShaderMaterial.new()
+	material.shader = TITLE_SHADER
+	material.set_shader_parameter("top_color", title_color_top)
+	material.set_shader_parameter("bottom_color", title_color)
+	material.set_shader_parameter("outline_color", TITLE_OUTLINE)
+	front.material = material
+	logo.add_child(front)
+	var text_size := front.get_minimum_size()
+	material.set_shader_parameter("grad_from", text_size.y * 0.28)
+	material.set_shader_parameter("grad_to", text_size.y * 0.78)
+	logo.size = text_size
+	logo.position = Vector2((get_viewport_rect().size.x - text_size.x) / 2.0, 6.0)
+	logo.pivot_offset = text_size / 2.0
+
+	var bob := logo.create_tween().set_loops()
+	bob.tween_property(logo, "position:y", logo.position.y + 5.0, 1.6).set_trans(Tween.TRANS_SINE)
+	bob.tween_property(logo, "position:y", logo.position.y, 1.6).set_trans(Tween.TRANS_SINE)
+
+	var bubbles := Timer.new()
+	bubbles.wait_time = 0.35
+	bubbles.timeout.connect(_spawn_title_bubble.bind(logo, text_size))
+	add_child(bubbles)
+	bubbles.start()
+
+
+func _make_title_label(color: Color, outline: int, outline_color := TITLE_OUTLINE) -> Label:
+	var label := Label.new()
+	label.text = title_text
+	label.add_theme_font_override("font", BOLD_FONT)
+	label.add_theme_font_size_override("font_size", title_font_size)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", outline_color)
+	label.add_theme_constant_override("outline_size", outline)
+	label.mouse_filter = MOUSE_FILTER_IGNORE
+	return label
+
+
+## Bong bóng kem nhỏ nổi lên từ đỉnh chữ, lắc nhẹ, phồng rồi vỡ (nằm sau chữ).
+func _spawn_title_bubble(logo: Control, text_size: Vector2) -> void:
+	var bubble := TextureRect.new()
+	bubble.texture = load(KIT + "bubble.png")
+	bubble.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	var d := randf_range(10.0, 20.0)
+	bubble.size = Vector2(d, d)
+	bubble.pivot_offset = bubble.size / 2.0
+	bubble.modulate = Color(1.0, 0.95, 0.8, 0.0)
+	bubble.position = Vector2(randf_range(0.08, 0.92) * text_size.x, text_size.y * 0.3) - bubble.pivot_offset
+	bubble.mouse_filter = MOUSE_FILTER_IGNORE
+	logo.add_child(bubble)
+	logo.move_child(bubble, 0)
+	var life := randf_range(1.0, 1.6)
+	var tween := bubble.create_tween().set_parallel(true)
+	tween.tween_property(bubble, "position:y", bubble.position.y - randf_range(26.0, 44.0), life).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(bubble, "position:x", bubble.position.x + randf_range(-8.0, 8.0), life).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(bubble, "modulate:a", 0.9, 0.2)
+	tween.tween_property(bubble, "scale", Vector2.ONE * 1.4, 0.12).set_delay(life - 0.12)
+	tween.tween_property(bubble, "modulate:a", 0.0, 0.12).set_delay(life - 0.12)
+	tween.chain().tween_callback(bubble.queue_free)
 
 
 ## Cột nút pixel ở giữa màn hình: Chơi mới, Tiếp tục, Thoát.
@@ -442,22 +696,45 @@ func _enter_game(start: Callable) -> void:
 		if child is Timer:
 			child.stop() # ngừng đánh quái: hiệu ứng chém/khói tạo sau sẽ nằm đè lên lớp sáng phủ màn
 
+	# 1) Đầu bếp chạy về cửa quán, nhỏ dần (đi xa). 2) Gần tới thì cửa mở, ánh sáng loá bùng.
+	# 3) Đầu bếp bước vào ánh sáng, khuất sau cửa. 4) Ánh sáng tràn phủ kín màn rồi vào game.
 	var door := _land_to_screen(RESTAURANT_DOOR)
-	var run_seconds := absf(door.x - chef.center_x()) / KitchenActor.WALK_SPEED
+	var run_seconds := clampf(absf(door.x - chef.center_x()) / KitchenActor.WALK_SPEED, 0.12, KitchenActor.MAX_WALK_SECONDS)
 	chef.walk_to(door.x) # walk_to tự phát animation chạy và quay mặt đúng hướng
 	var shrink := chef.create_tween().set_parallel(true)
 	shrink.tween_property(chef, "scale", Vector2.ONE * CHEF_FAR_SCALE, run_seconds).set_ease(Tween.EASE_IN)
 	shrink.tween_property(chef, "position:y", door.y - KitchenActor.SIZE, run_seconds).set_trans(Tween.TRANS_SINE)
 
-	get_tree().create_timer(DOOR_OPEN_AT).timeout.connect(_open_door)
+	get_tree().create_timer(maxf(0.0, run_seconds - DOOR_OPEN_LEAD)).timeout.connect(_open_door)
+
+	# Càng tới gần cửa càng mờ và ám màu ánh đèn, bước qua cửa thì tan hẳn vào ánh sáng.
+	var fade_start := run_seconds * CHEF_FADE_FROM
+	var step_in := chef.create_tween()
+	step_in.tween_interval(fade_start)
+	step_in.tween_property(chef, "modulate", Color(LIGHT_COLOR, 0.0), run_seconds - fade_start + STEP_IN_SECONDS) 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var step_shrink := chef.create_tween()
+	step_shrink.tween_interval(run_seconds)
+	step_shrink.tween_property(chef, "scale", Vector2.ONE * CHEF_FAR_SCALE * 0.8, STEP_IN_SECONDS).set_trans(Tween.TRANS_SINE)
 
 	var fade := ColorRect.new()
 	fade.color = Color(FLASH_COLOR, 0.0)
 	fade.mouse_filter = MOUSE_FILTER_STOP
 	fade.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(fade)
+	var fill_at := run_seconds + STEP_IN_SECONDS * 0.5 # màn sáng dần lúc đầu bếp sắp tan hẳn
 	var tween := fade.create_tween()
-	tween.tween_interval(FADE_DELAY)
-	tween.tween_property(fade, "color:a", 1.0, FADE_SECONDS)
+	tween.tween_interval(fill_at)
+	tween.tween_callback(_flood_light)
+	tween.tween_property(fade, "color:a", 1.0, FADE_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_callback(start)
 
+
+## Ánh sáng từ cửa nở to tràn ra cả màn (màn trắng phủ theo cùng lúc).
+func _flood_light() -> void:
+	for t in _light_tweens:
+		if t.is_valid():
+			t.kill()
+	for light in _door_lights:
+		var grow := light.create_tween().set_parallel(true)
+		grow.tween_property(light, "scale", Vector2.ONE * 6.0, FADE_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		grow.tween_property(light, "modulate:a", 1.0, FADE_SECONDS * 0.4).set_trans(Tween.TRANS_SINE)

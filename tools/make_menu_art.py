@@ -9,7 +9,12 @@ Phong cảnh tách lớp để ghép và cho chuyển động trong Godot (asset
                         dãy núi xa bo tròn, đồi trái (trâu gặm cỏ), đồi phải (chỗ nhân viên đánh quái), đồng cỏ
 - restaurant_grand.png  quán lẩu lớn nhiều tầng mái (bản rõ nét, không sương) để màn khác dùng lại
 - door_leaf.png         một cánh cửa quán (đã phủ sương cho khớp), Godot đặt 2 cánh đè lên ô cửa sáng và mở ra khi vào game
-- kitchen_clutter.png   rổ rau củ + thớt bày thịt, cà chua cắm dao, nồi chồng phía sau,
+- cat_dance_orange/black/grey.png  3 mèo đứng 2 chân nhảy (dải 8 khung 24x28), góc trái menu
+- buffalo_dance.png     trâu Thần Tài (áo đỏ viền vàng, mũ cánh chuồn, cầm thỏi vàng) nhảy cùng điệu,
+                        đứng sau 3 mèo (dải 8 khung 50x54)
+- shadow_cat.png, shadow_buffalo.png  bóng dưới chân đội nhảy (cùng kiểu bóng chung của nhân vật)
+                        (đặt quanh bếp lò nồi lẩu góc trái menu)
+- kitchen_clutter.png   (không còn dùng ở menu) rổ rau củ + thớt bày thịt, cà chua cắm dao, nồi chồng phía sau,
                         ghép từ ảnh trong assets/sprites/kitchen/
 Nút bát giác đỏ viền kem (StyleBoxTexture 9 ô, xem scenes/common/pixel_button.gd):
 - assets/sprites/ui/button_red_normal.png, button_red_pressed.png, button_red_disabled.png
@@ -32,17 +37,31 @@ MEADOW_TOP = 112  # Đồng cỏ bắt đầu ở đây (~ 38% chiều cao từ 
 SKY_BANDS = [(92, 132, 206), (112, 140, 212), (138, 146, 214), (164, 156, 214), (188, 172, 218), (210, 192, 222)]
 CLOUD = (232, 226, 240)
 CLOUD_SHADE = (196, 186, 222)
+CLOUD_LIGHT = (252, 248, 255)  # Mép trên mây được nắng.
+CLOUD_DEEP = (170, 160, 206)  # Đáy mây đậm nhất.
 SUN = (255, 244, 196)
 SUN_EDGE = (255, 218, 120)
 SUN_GLOW = (255, 236, 190)
 HAZE = (104, 146, 116)  # Dãy đồi xa phủ cây (xanh ngả sương).
-RANGE = (132, 162, 162)  # Dãy núi cao xa nhất: xanh pha nhiều sương (nhạt gần màu trời cho thấy rất xa).
-RANGE_LIT = (150, 176, 170)
-RANGE_SHADE = (118, 148, 152)
-RANGE_RIDGE = (110, 140, 146)
-RANGE_ROUND = 24  # Bán kính bo tròn đỉnh núi (điểm ảnh).
-# Đỉnh núi xa (x, y đỉnh, độ dốc): cao nhất dồn về hai bên, trũng sau quán để quán vẫn nổi trên trời.
-RANGE_PEAKS = [(20, 30, 0.9), (92, 18, 0.8), (150, 40, 0.9), (282, 34, 0.85), (356, 14, 0.75), (420, 32, 0.9)]
+# Dãy núi xa: 2 lớp đỉnh cao, nhọn, mảnh cho hùng vĩ, cùng tông xanh với đồi phía trước
+# (lớp xa hơn nhạt hơn vì sương). Chừa khoảng trời quanh mặt trời (x ~ 320–390) để không che.
+# Mỗi đỉnh (x, y, dốc): dốc càng lớn thì núi càng mảnh. Xếp gần đối xứng quanh quán (x = 216):
+# 2 đỉnh cao nhất kẹp hai bên tên game, thấp dần ra ngoài; phía phải hạ thấp chỗ mặt trời.
+RANGE_LAYERS = [
+    {  # lớp xa, cao nhất
+        "peaks": [(18, 16, 2.6), (60, 28, 2.6), (98, 14, 2.8), (142, 4, 3.0), (180, 22, 2.6),
+                  (252, 22, 2.6), (290, 4, 3.0), (334, 48, 2.8), (372, 44, 2.8), (414, 16, 2.6)],
+        "lit": (134, 170, 140), "shade": (112, 150, 128), "mid": (122, 160, 134), "ridge": (100, 138, 118),
+        "cap": (176, 200, 172),
+    },
+    {  # lớp gần, thấp hơn, xanh đậm hơn
+        "peaks": [(30, 46, 2.4), (74, 40, 2.4), (118, 34, 2.4), (164, 46, 2.4),
+                  (268, 46, 2.4), (314, 34, 2.4), (358, 50, 2.4), (402, 42, 2.4)],
+        "lit": (110, 154, 112), "shade": (90, 132, 100), "mid": (100, 144, 106), "ridge": (80, 120, 92),
+        "cap": (140, 178, 132),
+    },
+]
+RANGE_ROUND = 2.5  # Bo đỉnh rất ít để đỉnh nhọn (điểm ảnh).
 GRASS_TUFT = (126, 184, 78)
 GRASS_TUFT_DARK = (70, 122, 56)
 # Chỗ trâu đứng gặm cỏ trên đồi trái (khớp buffalo_feet trong scenes/main_menu/main_menu.gd).
@@ -115,39 +134,43 @@ def right_hill_curve(x: float) -> float:
     return 70 + 0.005 * (x - 300 - SIDE) ** 2
 
 
-def range_curve(x: float) -> float:
-    """Dãy núi cao xa nhất, đỉnh bo tròn: y = min theo từng đỉnh của peak_y(x) + gợn 1.5 * sin(x / 3)."""
-    return min(peak_y(p, x) for p in RANGE_PEAKS) + 1.5 * math.sin(x / 3)
+def range_curve(peaks, x: float) -> float:
+    """Đường đỉnh một lớp núi: y = min theo từng đỉnh của peak_y(x) + gợn 0.8 * sin(x / 2.3)."""
+    return min(peak_y(p, x) for p in peaks) + 0.8 * math.sin(x / 2.3)
 
 
 def peak_y(peak: tuple, x: float) -> float:
-    """Một đỉnh bo tròn: y = đỉnh_y + dốc * (sqrt((x - đỉnh_x)^2 + R^2) - R); gần đỉnh cong như vòm, xa ra thành sườn thẳng."""
+    """Một đỉnh: y = đỉnh_y + dốc * (sqrt((x - đỉnh_x)^2 + R^2) - R); gần đỉnh hơi bo, xa ra thành sườn thẳng dốc."""
     px, py, slope = peak
     return py + slope * (math.hypot(x - px, RANGE_ROUND) - RANGE_ROUND)
 
 
-def nearest_peak(x: float) -> tuple:
+def nearest_peak(peaks, x: float) -> tuple:
     """Đỉnh tạo nên đường núi tại cột x (đỉnh cho y nhỏ nhất) - để biết x nằm sườn trái hay sườn phải."""
-    return min(RANGE_PEAKS, key=lambda p: peak_y(p, x))
+    return min(peaks, key=lambda p: peak_y(p, x))
 
 
 def draw_mountain_range(d: ImageDraw.ImageDraw, rng: random.Random) -> None:
-    """Dãy núi cao xa: sườn trái sáng, sườn phải tối, viền đỉnh sáng, vài vệt khe núi chéo xuống từ đỉnh."""
-    for x in range(W):
-        top = round(range_curve(x))
-        px = nearest_peak(x)[0]
-        d.line((x, top, x, MEADOW_TOP), fill=RANGE_LIT if x < px else RANGE_SHADE)
-        d.point((x, top), fill=RANGE_LIT)
-        for y in range(top + 6, MEADOW_TOP, 4):  # chấm lưới thưa pha màu giữa cho sườn đỡ phẳng (không xếp chéo)
-            if x % 3 == (y // 4) % 3:
-                d.point((x, y), fill=RANGE)
-    for px, py, slope in RANGE_PEAKS:  # khe núi: 2 vệt chéo từ gần đỉnh đi xuống
-        for side in (-1, 1):
-            x, y = px + side * 3, py + 4
-            for _ in range(rng.randint(10, 18)):
-                d.point((round(x), y), fill=RANGE_RIDGE)
-                x += side * rng.uniform(0.6, 1.2)
-                y += 1
+    """Hai lớp núi xa (xa trước, gần sau): sườn trái sáng, sườn phải tối, đỉnh sáng nhạt,
+    khe núi chéo xuống từ đỉnh, chấm lưới thưa cho sườn đỡ phẳng."""
+    for layer in RANGE_LAYERS:
+        peaks = layer["peaks"]
+        for x in range(W):
+            top = round(range_curve(peaks, x))
+            px, py, _ = nearest_peak(peaks, x)
+            d.line((x, top, x, MEADOW_TOP), fill=layer["lit"] if x < px else layer["shade"])
+            if top - py < 7:  # chóp núi sáng nhạt
+                d.line((x, top, x, top + 1), fill=layer["cap"])
+            for y in range(top + 5, MEADOW_TOP, 3):
+                if x % 3 == (y // 3) % 3:
+                    d.point((x, y), fill=layer["mid"])
+        for px, py, slope in peaks:  # khe núi: vệt chéo từ gần đỉnh đi xuống theo sườn
+            for side in (-1, 1):
+                x, y = px + side * 1.5, py + 3
+                for _ in range(rng.randint(14, 24)):
+                    d.point((round(x), y), fill=layer["ridge"])
+                    x += side * rng.uniform(0.2, 0.5)
+                    y += 1
 
 
 def draw_grass_tufts(d: ImageDraw.ImageDraw, rng: random.Random) -> None:
@@ -214,18 +237,51 @@ def make_sun_glow() -> Image.Image:
     return img
 
 
-def make_cloud(width: int, puffs: int, seed: int) -> Image.Image:
-    """Mây dẹt: vài cụm elip chồng nhau, đáy phẳng có viền bóng tím."""
+# Cụm mây (tâm x theo tỉ lệ bề ngang, bán kính theo tỉ lệ chiều cao), vẽ từ sau ra trước:
+# cụm giữa to nhất nhô cao, hai bên thấp dần, hai cụm nhỏ sát đáy cho chân mây tròn.
+CLOUD_PUFFS = [(0.17, 0.27), (0.40, 0.49), (0.66, 0.40), (0.85, 0.25), (0.28, 0.24), (0.55, 0.26), (0.76, 0.22)]
+
+
+def make_cloud(width: int, seed: int) -> Image.Image:
+    """Mây tích phồng: các cụm tròn chồng nhau, đáy phẳng. Mép trên mỗi cụm sáng nắng,
+    rãnh giữa hai cụm có vệt bóng, nửa dưới chuyển dần sang bóng tím (ô cờ), đáy đậm."""
     rng = random.Random(seed)
-    height = 12
+    height = round(width * 0.5)
+    base = height - 1
+    owner = [[-1] * width for _ in range(height)]  # cụm nào vẽ sau cùng phủ điểm này
+    centers = []
+    for i, (fx, fr) in enumerate(CLOUD_PUFFS):
+        r = fr * height + rng.uniform(-0.6, 0.6)
+        cx = fx * width + rng.uniform(-0.8, 0.8)
+        cy = base - r * (0.95 if i < 4 else 0.35)  # 4 cụm đầu nhô cao, mấy cụm sau làm chân mây
+        centers.append((cx, cy, r))
+        for y in range(height):
+            for x in range(width):
+                if y <= base and math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= r:
+                    owner[y][x] = i
     img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    for i in range(puffs):
-        cx = 6 + i * (width - 12) // max(1, puffs - 1)
-        r = rng.randint(3, 5)
-        d.ellipse((cx - r * 2 + 2, height - 3 - r * 2, cx + r * 2 - 2, height - 3), fill=CLOUD)
-    d.rectangle((2, height - 5, width - 3, height - 3), fill=CLOUD)
-    d.line((3, height - 2, width - 4, height - 2), fill=CLOUD_SHADE)
+    px = img.load()
+    for y in range(height):
+        for x in range(width):
+            i = owner[y][x]
+            if i < 0:
+                continue
+            cx, cy, r = centers[i]
+            up = y == 0 or owner[y - 1][x] < 0
+            dy = (y + 0.5 - cy) / r  # -1 đỉnh cụm, +1 đáy cụm
+            dx = (x + 0.5 - cx) / r
+            seam = y > 0 and owner[y - 1][x] >= 0 and owner[y - 1][x] != i  # cụm trước nằm trên: rãnh bóng
+            if up or (dy < -0.6 and dx < -0.1):
+                c = CLOUD_LIGHT
+            elif y >= base:
+                c = CLOUD_DEEP
+            elif seam or (dx > 0.5 and dy > 0.0):
+                c = CLOUD_SHADE
+            elif y >= base - 2 or (y >= base - 4 and (x + y) % 2 == 0):
+                c = CLOUD_SHADE
+            else:
+                c = CLOUD
+            px[x, y] = c + (255,)
     return img
 
 
@@ -390,15 +446,13 @@ def draw_near_hill(d: ImageDraw.ImageDraw, curve, rng: random.Random) -> None:
 
 
 def draw_meadow(d: ImageDraw.ImageDraw, rng: random.Random) -> None:
-    """Đồng cỏ phía trước: mép trên gợn sóng, vệt cỏ sáng nằm ngang, nét cỏ đậm, vài mảng bóng tối."""
+    """Đồng cỏ phía trước: mép trên gợn sóng, vệt cỏ sáng nằm ngang, nét cỏ đậm."""
     for x in range(W):
         top = MEADOW_TOP + round(2 * math.sin(x / 23))
         d.line((x, top, x, H), fill=MEADOW)
         d.point((x, top), fill=MEADOW_LIGHT)
-    for _ in range(14):  # mảng bóng tối dẹt
-        x, y = rng.randrange(W), rng.randrange(MEADOW_TOP + 10, H)
-        w = rng.randint(10, 26)
-        d.ellipse((x, y, x + w, y + w // 5 + 1), fill=MEADOW_SHADOW)
+    for _ in range(14):  # (bỏ mảng bóng tối dẹt: trông như vết bẩn) - vẫn rút số ngẫu nhiên để cỏ còn lại giữ nguyên
+        rng.randrange(W), rng.randrange(MEADOW_TOP + 10, H), rng.randint(10, 26)
     for _ in range(90):  # vệt sáng ngang
         x, y = rng.randrange(W), rng.randrange(MEADOW_TOP + 3, H)
         d.line((x, y, x + rng.randint(3, 9), y), fill=MEADOW_LIGHT)
@@ -434,6 +488,245 @@ def make_landscape() -> Image.Image:
     draw_near_hill(d, right_hill_curve, rng)
     draw_trees(d, right_hill_curve, [x + SIDE for x in (236, 244, 350, 360)], rng)
     draw_meadow(d, rng)
+    return img
+
+
+# --- Mèo nhảy góc trái menu ---------------------------------------------------------------------
+# Mèo nhảy (góc trái menu): mèo đứng 2 chân, mỗi ảnh là dải 8 khung 24x28 một điệu nhảy lặp lại.
+# Mỗi khung: (nhún xuống, bật lên, nghiêng, tay trái, tay phải); tay = điểm bàn tay so với vai (dx, dy).
+DANCE_W, DANCE_H = 24, 28
+DANCE_POSES = [
+    (0, 0, 0, (-6, -6), (6, -6)),   # giơ 2 tay lên
+    (2, 0, 0, (-5, 1), (5, 1)),     # nhún, dang tay
+    (0, 0, -1, (-6, -6), (4, 3)),   # nghiêng trái, tay trái giơ
+    (2, 0, 0, (-4, 3), (4, 3)),     # nhún
+    (0, 0, 1, (-4, 3), (6, -6)),    # nghiêng phải, tay phải giơ
+    (2, 0, 0, (-5, 1), (5, 1)),     # nhún, dang tay
+    (0, 3, 0, (-7, -5), (7, -5)),   # bật nhảy
+    (1, 0, 0, (-4, 3), (4, 3)),     # tiếp đất
+]
+DANCE_CATS = {
+    "orange": {"O": (74, 40, 22), "B": (232, 142, 58), "L": (252, 218, 166), "S": (196, 104, 40), "E": (36, 28, 24)},
+    "black": {"O": (20, 16, 24), "B": (60, 56, 70), "L": (236, 232, 240), "S": (40, 36, 48), "E": (250, 214, 80)},
+    "grey": {"O": (40, 40, 52), "B": (150, 152, 168), "L": (240, 240, 246), "S": (110, 112, 130), "E": (36, 28, 24)},
+}
+CAT_PINK = (240, 128, 140)
+CAT_EYE = (36, 28, 24)
+
+
+SUN_RIM = (255, 240, 196)  # Nắng chiều ấm hắt lên mép phải / đỉnh (mặt trời ở góc trên bên phải menu).
+
+
+def shade_volume(layer: Image.Image) -> None:
+    """Đổ sáng tối cho khối màu (trước khi viền): mặt trời ở trên bên phải nên mép phải + đỉnh phía phải
+    sáng lên pha màu nắng, 2 điểm ảnh sát mép trái tối đi như mặt khuất nắng."""
+    w, h = layer.size
+    src = layer.copy().load()
+    px = layer.load()
+
+    def empty(x, y):
+        return not (0 <= x < w and 0 <= y < h) or src[x, y][3] == 0
+
+    def mix(c, t, a):
+        return tuple(round(ci * (1 - a) + ti * a) for ci, ti in zip(c[:3], t)) + (c[3],)
+
+    for y in range(h):
+        for x in range(w):
+            c = src[x, y]
+            if c[3] == 0:
+                continue
+            if empty(x + 1, y) or (empty(x, y - 1) and not empty(x - 1, y) and empty(x + 1, y - 1)):
+                px[x, y] = mix(c, SUN_RIM, 0.38)  # mép đón nắng
+            elif empty(x - 1, y):
+                px[x, y] = mix(c, (0, 0, 0), 0.30)  # mép khuất nắng
+            elif empty(x - 2, y):
+                px[x, y] = mix(c, (0, 0, 0), 0.15)
+
+
+def draw_dance_frame(img: Image.Image, ox: int, pose: tuple, pal: dict) -> None:
+    """Vẽ 1 khung mèo nhảy tại cột ox: tô thân bằng màu lông rồi tự viền 1 điểm ảnh quanh hình, sau đó vẽ mặt + bụng."""
+    squat, jump, lean, hand_l, hand_r = pose
+    body = Image.new("RGBA", (DANCE_W, DANCE_H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(body)
+    feet = DANCE_H - 2 - jump
+    cx = DANCE_W // 2 + lean
+    hip = feet - 4 + squat
+    # chân (nhún thì chân ngắn lại, hai bàn chân dạng ra)
+    spread = 2 + squat
+    d.rectangle((cx - spread - 1, hip, cx - spread + 1, feet), fill=pal["B"])
+    d.rectangle((cx + spread - 1, hip, cx + spread + 1, feet), fill=pal["B"])
+    # đuôi vẫy theo hướng nghiêng
+    tail = -1 if lean > 0 else 1
+    d.line((cx + 3 * tail, hip - 1, cx + 6 * tail, hip - 4, cx + 6 * tail, hip - 7), fill=pal["B"], width=2)
+    # thân
+    top = hip - 7
+    d.ellipse((cx - 4, top, cx + 4, hip + 1), fill=pal["B"])
+    # tay từ vai ra bàn tay
+    shoulder_y = top + 2
+    for side, (hx, hy) in ((-1, hand_l), (1, hand_r)):
+        sx = cx + 3 * side
+        d.line((sx, shoulder_y, sx + hx, shoulder_y + hy), fill=pal["B"], width=2)
+    # đầu + tai
+    head_top = top - 8
+    d.ellipse((cx - 5, head_top, cx + 5, top + 1), fill=pal["B"])
+    d.polygon([(cx - 5, head_top + 3), (cx - 4, head_top - 2), (cx - 1, head_top + 1)], fill=pal["B"])
+    d.polygon([(cx + 5, head_top + 3), (cx + 4, head_top - 2), (cx + 1, head_top + 1)], fill=pal["B"])
+    shade_volume(body)
+    # viền: điểm trong suốt kề điểm có màu
+    src = body.load()
+    out = body.copy()
+    o = out.load()
+    for y in range(DANCE_H):
+        for x in range(DANCE_W):
+            if src[x, y][3]:
+                continue
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < DANCE_W and 0 <= ny < DANCE_H and src[nx, ny][3]:
+                    o[x, y] = pal["O"] + (255,)
+                    break
+    d = ImageDraw.Draw(out)
+    d.ellipse((cx - 2, top + 2, cx + 2, hip), fill=pal["L"])  # bụng
+    for ex in (cx - 3, cx + 3):  # mắt 1x2
+        d.line((ex, head_top + 3, ex, head_top + 4), fill=pal["E"])
+    d.point((cx, top - 3), fill=CAT_PINK)  # mũi
+    d.point((cx - 4, head_top), fill=CAT_PINK)  # lòng tai
+    d.point((cx + 4, head_top), fill=CAT_PINK)
+    d.point((cx - 1, top - 2), fill=pal["O"])  # miệng chữ w
+    d.point((cx + 1, top - 2), fill=pal["O"])
+    img.alpha_composite(out, (ox, 0))
+
+
+# Trâu Thần Tài nhảy (đứng sau 3 mèo): người tròn mập bụng phệ, áo đỏ viền vàng thắt đai vàng, má hồng cười tươi,
+# mũ đỏ đai vàng có 2 cánh chuồn vàng, tay phải cầm thỏi vàng; nhảy cùng DANCE_POSES.
+BUF_W, BUF_H = 50, 54
+BUF_SKIN = (84, 88, 104)
+BUF_SKIN_LIGHT = (120, 124, 140)
+BUF_MUZZLE = (186, 176, 178)
+BUF_HORN = (236, 224, 192)
+BUF_HOOF = (40, 34, 38)
+BUF_RED = (204, 36, 36)
+BUF_RED_LIGHT = (238, 84, 72)
+BUF_RED_DARK = (150, 24, 30)
+BUF_GOLD = (250, 196, 60)
+BUF_GOLD_LIGHT = (255, 236, 150)
+BUF_CHEEK = (236, 120, 130)
+BUF_OUTLINE = (30, 24, 30)
+
+
+def outline_layer(layer: Image.Image, color) -> Image.Image:
+    """Viền 1 điểm ảnh quanh mọi điểm có màu của layer (điểm trong suốt kề điểm có màu thành màu viền)."""
+    w, h = layer.size
+    src = layer.load()
+    out = layer.copy()
+    o = out.load()
+    for y in range(h):
+        for x in range(w):
+            if src[x, y][3]:
+                continue
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < w and 0 <= ny < h and src[nx, ny][3]:
+                    o[x, y] = color + (255,)
+                    break
+    return out
+
+
+def draw_buffalo_frame(img: Image.Image, ox: int, pose: tuple) -> None:
+    """Một khung trâu Thần Tài nhảy, cùng tư thế với mèo nhưng to và tròn hơn."""
+    squat, jump, lean, hand_l, hand_r = pose
+    layer = Image.new("RGBA", (BUF_W, BUF_H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    feet = BUF_H - 2 - round(jump * 1.4)
+    cx = BUF_W // 2 + lean
+    hip = feet - 4 + squat
+    spread = 4 + squat
+    for side in (-1, 1):  # chân ngắn mập + móng
+        x = cx + spread * side
+        d.rectangle((x - 2, hip, x + 2, feet), fill=BUF_SKIN)
+        d.rectangle((x - 2, feet - 1, x + 2, feet), fill=BUF_HOOF)
+    top = hip - 17
+    d.ellipse((cx - 11, top, cx + 11, hip + 3), fill=BUF_RED)  # thân tròn bụng phệ trong áo đỏ
+    shoulder_y = top + 5
+    ingot = None
+    for side, (hx, hy) in ((-1, hand_l), (1, hand_r)):
+        sx = cx + 8 * side
+        ex, ey = sx + round(hx * 1.5), shoulder_y + round(hy * 1.5)
+        mx, my = (sx * 2 + ex) // 3, (shoulder_y * 2 + ey) // 3
+        d.line((sx, shoulder_y, mx, my), fill=BUF_RED, width=5)  # ống tay áo rộng
+        d.line((mx, my, ex, ey), fill=BUF_SKIN, width=3)
+        d.rectangle((ex - 1, ey - 1, ex + 1, ey + 1), fill=BUF_HOOF)
+        if side == 1:
+            ingot = (ex, ey)
+    head_top = top - 14
+    for side in (-1, 1):  # sừng cong ra ngoài rồi vểnh lên
+        hx = cx + 7 * side
+        d.line((hx, head_top + 6, hx + 4 * side, head_top + 5, hx + 6 * side, head_top + 2), fill=BUF_HORN, width=2)
+    d.ellipse((cx - 8, head_top, cx + 8, top + 3), fill=BUF_SKIN)  # đầu tròn
+    d.ellipse((cx - 6, top - 5, cx + 6, top + 3), fill=BUF_MUZZLE)  # mõm
+    d.ellipse((cx - 6, head_top - 5, cx + 6, head_top + 4), fill=BUF_RED)  # mũ tròn
+    d.rectangle((cx - 7, head_top + 1, cx + 7, head_top + 3), fill=BUF_RED)
+    for side in (-1, 1):  # 2 cánh chuồn
+        d.rectangle((cx + 8 * side - (2 if side > 0 else 0), head_top - 1, cx + 8 * side + (0 if side > 0 else 2), head_top + 1), fill=BUF_GOLD)
+        d.rectangle((cx + 11 * side - 1, head_top - 2, cx + 11 * side + 1, head_top + 2), fill=BUF_GOLD)
+    if ingot:  # thỏi vàng hình thuyền trên tay phải
+        ix, iy = ingot
+        d.polygon([(ix - 4, iy - 4), (ix + 4, iy - 4), (ix + 3, iy - 1), (ix - 3, iy - 1)], fill=BUF_GOLD)
+        d.rectangle((ix - 1, iy - 6, ix + 1, iy - 4), fill=BUF_GOLD)
+    shade_volume(layer)
+    out = outline_layer(layer, BUF_OUTLINE)
+    d = ImageDraw.Draw(out)
+    # áo: viền vàng ở gấu, vạt giữa, đai vàng ngang bụng, bóng tối bên phải
+    d.arc((cx - 11, top, cx + 11, hip + 3), 20, 160, fill=BUF_GOLD)
+    d.line((cx, top + 2, cx, hip + 1), fill=BUF_GOLD)
+    d.rectangle((cx - 10, top + 9, cx + 10, top + 10), fill=BUF_GOLD)
+    d.rectangle((cx - 2, top + 8, cx + 2, top + 11), fill=BUF_GOLD_LIGHT)  # khoá đai
+    d.arc((cx - 11, top, cx + 11, hip + 3), 190, 240, fill=BUF_RED_DARK)
+    d.line((cx + 5, top + 2, cx + 7, top + 3), fill=BUF_RED_LIGHT)
+    # mũ: đai vàng, chấm ngọc, ánh sáng
+    d.line((cx - 7, head_top + 2, cx + 7, head_top + 2), fill=BUF_GOLD)
+    d.point((cx, head_top - 2), fill=BUF_GOLD_LIGHT)
+    d.line((cx + 1, head_top - 4, cx + 3, head_top - 3), fill=BUF_RED_LIGHT)
+    # mặt: mắt cười cong, má hồng, lỗ mũi, miệng cười
+    for ex in (cx - 4, cx + 4):
+        d.point((ex - 1, head_top + 7), fill=BUF_OUTLINE)
+        d.point((ex, head_top + 6), fill=BUF_OUTLINE)
+        d.point((ex + 1, head_top + 7), fill=BUF_OUTLINE)
+    for chx in (cx - 6, cx + 5):
+        d.rectangle((chx, head_top + 9, chx + 1, head_top + 9), fill=BUF_CHEEK)
+    d.point((cx - 2, top - 2), fill=BUF_OUTLINE)
+    d.point((cx + 2, top - 2), fill=BUF_OUTLINE)
+    d.line((cx - 3, top, cx - 1, top + 1, cx + 1, top + 1, cx + 3, top), fill=(120, 80, 90))
+    if ingot:
+        ix, iy = ingot
+        d.line((ix - 3, iy - 4, ix + 3, iy - 4), fill=BUF_GOLD_LIGHT)
+    img.alpha_composite(out, (ox, 0))
+
+
+def make_buffalo_dance_sheet() -> Image.Image:
+    img = Image.new("RGBA", (BUF_W * len(DANCE_POSES), BUF_H), (0, 0, 0, 0))
+    for i, pose in enumerate(DANCE_POSES):
+        draw_buffalo_frame(img, i * BUF_W, pose)
+    return img
+
+
+GAME_SHADOW = (0, 0, 0, 71)  # Bóng chung của mọi nhân vật trong game (đen mờ, xem ảnh characters/, monsters/).
+
+
+def make_pixel_shadow(width: int) -> Image.Image:
+    """Bóng dưới chân đúng kiểu chung của game: 2 hàng rộng width, 1 hàng ngắn bằng 1/3 ở giữa phía dưới."""
+    img = Image.new("RGBA", (width, 3), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rectangle((0, 0, width - 1, 1), fill=GAME_SHADOW)
+    short = max(2, width // 3)
+    d.line(((width - short) // 2, 2, (width + short) // 2 - 1, 2), fill=GAME_SHADOW)
+    return img
+
+
+def make_dance_sheet(pal: dict) -> Image.Image:
+    img = Image.new("RGBA", (DANCE_W * len(DANCE_POSES), DANCE_H), (0, 0, 0, 0))
+    for i, pose in enumerate(DANCE_POSES):
+        draw_dance_frame(img, i * DANCE_W, pose, pal)
     return img
 
 
@@ -536,11 +829,16 @@ if __name__ == "__main__":
         "đổi vị trí quán thì sửa cả DOOR_LEFT_LEAF trong main_menu.gd"
     landscape.save(SCENERY_DIR + "landscape.png")
     make_kitchen_clutter().save(SCENERY_DIR + "kitchen_clutter.png")
+    for name, pal in DANCE_CATS.items():
+        make_dance_sheet(pal).save(SCENERY_DIR + "cat_dance_%s.png" % name)
+    make_buffalo_dance_sheet().save(SCENERY_DIR + "buffalo_dance.png")
+    make_pixel_shadow(14).save(SCENERY_DIR + "shadow_cat.png")
+    make_pixel_shadow(28).save(SCENERY_DIR + "shadow_buffalo.png")
     make_sky().save(SCENERY_DIR + "sky.png")
     make_sun().save(SCENERY_DIR + "sun.png")
     make_sun_glow().save(SCENERY_DIR + "sun_glow.png")
-    make_cloud(48, 4, 1).save(SCENERY_DIR + "cloud_big.png")
-    make_cloud(30, 3, 2).save(SCENERY_DIR + "cloud_small.png")
+    make_cloud(44, 1).save(SCENERY_DIR + "cloud_big.png")
+    make_cloud(28, 2).save(SCENERY_DIR + "cloud_small.png")
     for name in BUTTON_STYLES:
         button = make_button(name)
         assert button.getpixel((0, 0))[3] == 0, "góc nút phải trong suốt (vát góc)"
