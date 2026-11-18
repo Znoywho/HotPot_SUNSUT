@@ -113,6 +113,7 @@ var _cloud_speeds: Array[float] = []
 
 ## Dựng toàn bộ giao diện bằng code, xếp từ xa tới gần.
 func _ready() -> void:
+	SettingsPanel.load_and_apply() # âm lượng đã lưu (game luôn mở từ menu chính)
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	_add_cover_layer(SKY)
 	_build_clouds()
@@ -652,7 +653,7 @@ func _spawn_title_bubble(logo: Control, text_size: Vector2) -> void:
 	tween.chain().tween_callback(bubble.queue_free)
 
 
-## Cột nút pixel ở giữa màn hình: Chơi mới, Tiếp tục, Thoát.
+## Cột nút pixel ở giữa màn hình: Chơi mới, Tiếp tục, Cài đặt, Thoát.
 func _build_buttons() -> void:
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", button_gap)
@@ -661,6 +662,7 @@ func _build_buttons() -> void:
 	_add_menu_button(list, "CHƠI MỚI", _enter_game.bind(DayManager.start_new_game))
 	var continue_button := _add_menu_button(list, "TIẾP TỤC", _enter_game.bind(DayManager.continue_game))
 	continue_button.disabled = not SaveManager.has_save()
+	_add_menu_button(list, "CÀI ĐẶT", func(): get_tree().root.add_child(SettingsPanel.new()))
 	if not OS.has_feature("web"): # Trên web không thoát được tab, nên ẩn nút.
 		_add_menu_button(list, "THOÁT", get_tree().quit)
 
@@ -668,6 +670,8 @@ func _build_buttons() -> void:
 	list.grow_horizontal = GROW_DIRECTION_BOTH
 	list.grow_vertical = GROW_DIRECTION_BOTH
 	list.position.y += buttons_offset_y
+	# Mép trên giữ như cột 3 nút (không đè cửa quán): nút thứ 4 (THOÁT, chỉ có trên máy tính) nối xuống dưới.
+	list.position.y += maxi(0, _buttons.size() - 3) * (button_size.y + button_gap) / 2.0
 
 
 ## Thêm một PixelButton (nút dùng chung) vào cột, cỡ theo button_size.

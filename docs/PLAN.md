@@ -8,6 +8,40 @@
 | **Nên có** | Boss + nguyên liệu hoàng kim, chí mạng, Thú cưỡi, Lầu 2, mốc ngày 5/10/15, save/load |
 | **Nếu dư thời gian** | Bản tiến hóa max cấp, nhân viên, phòng riêng + lẩu 4 ngăn, nhiệm vụ, dọn bếp buổi tối (đoạn ngắn sau khi bán xong để thấy cửa sổ bếp đổi màu đêm; thêm một giai đoạn vào `DayManager` nên cần cả nhóm đồng ý) |
 
+## Tiến độ (cập nhật 18/11, ngày 18/21)
+
+Đã gộp vào `main` tới PR #14. Chờ review: #15 (cuộn cửa hàng trên điện thoại), #16 (Game Over + `PixelBar`), #17 (menu cài đặt, cần #16 trước), #18 (nguồn icon HUD). Kiểm tra headless: không lỗi script.
+
+| Việc | Trạng thái | Còn thiếu |
+|---|---|---|
+| S01 HUD chung | Xong | |
+| S02 Sổ tổng kết + Game Over | Xong (PR #16) | KPI ngày 1 chốt 300.000đ |
+| S03 Shop chia tab | Xong | Cân bằng giá |
+| S04 Nối hiệu ứng nâng cấp | Gần xong | Nồi, Bếp, Dao, Giáp, Nội thất, Thêm bàn, Phí phục vụ đã chạy |
+| S05 Save/load, cài đặt | Xong (PR #17) | Tự lưu đầu ngày; menu cài đặt có âm lượng chung. Khi có nhạc thì tách Nhạc / Hiệu ứng |
+| S06 Mốc ngày 5/10/15 | Gần xong | Quái mạnh dần, thêm quái/trận, mở nước cốt theo ngày đã có; chưa có thông báo khi tới mốc |
+| S07 Lầu 2, phòng riêng | Chưa làm | Nhân viên bếp đã có (`staff.tres`) |
+| S08 Build web, itch.io | Đang làm | Đã sửa cuộn cửa hàng trên điện thoại (PR #15); còn làm trang itch |
+| S10–S12 Nội tại, battle view, nhiều quái | Xong | Chốt tỷ lệ độc Nấm, số nổ Bò tót |
+| S13 Nâng cấp chiến đấu | **Thiếu data** | Code đọc `sharp_mind`, `hawk_eye`, `mount`, `battle_robe`, `dragon_blade` nhưng chưa có file `.tres` nên shop không bán được |
+| S14 Boss, hoàng kim | Xong | Chốt chỉ số boss |
+| S15 Asset | Gần xong | **Chưa có nhạc nền**; nguồn icon HUD đã ghi (PR #18) |
+| S20–S24 Bếp, khách, xe đẩy, tip, sao | Xong | Test cảm ứng trên điện thoại |
+| S25 Thêm nước cốt | Xong | 5 nước cốt |
+| S16 Chuyển cảnh giữa các buổi (Hải) | Chưa làm | Màn chuyển sáng » trưa » tối » tổng kết |
+| Thanh tiến độ thống nhất | Một phần | `PixelBar` (PR #16) dùng cho HUD, Game Over, Cài đặt; Hải đổi thanh máu, Tuấn đổi thanh nấu/sơ chế |
+| Tutorial | Chưa làm | |
+
+**Việc giao tiếp (18–19/11):**
+
+| Người | Việc |
+|---|---|
+| Hải | (1) Tạo 5 file `.tres` nâng cấp chiến đấu: `sharp_mind`, `hawk_eye`, `mount`, `battle_robe`, `dragon_blade` (báo Hạo đăng ký vào `database.gd`). (2) **S16 Chuyển cảnh giữa các buổi**: sáng săn » trưa nấu » tối bán » sổ tổng kết, ví dụ màn tối dần/sáng dần hoặc trượt, kèm chữ "Buổi trưa", "Buổi tối". Làm thành scene riêng (vd `scenes/common/phase_transition.tscn`), gọi được từ `DayManager.go_to()`; phần sửa `DayManager` thì báo Hạo. Phải chạy mượt trên web, không chặn bấm sau khi chuyển xong. (3) Chốt tỷ lệ độc Nấm, số nổ Bò tót, chỉ số boss. (4) Nhạc nền `.ogg` 2–3 bài, ghi `CREDITS.md`. |
+| Tuấn | (1) Test bếp và màn bán bằng cảm ứng (kéo thả, xe đẩy) trên điện thoại. (2) Chốt tỉ lệ số người mỗi nhóm khách (`sell_phase.gd:28`). (3) Cân bằng doanh thu cùng Hạo (doanh thu tăng khoảng 4 lần sau khi làm lại bếp). |
+| Hạo | ~~Game Over UI thật~~, ~~menu cài đặt~~, ~~chốt KPI ngày 1~~, ~~nguồn icon HUD~~ (xong). Còn: trang itch, review/merge PR. |
+
+**Ưu tiên còn lại:** (1) thêm `.tres` cho 5 nâng cấp chiến đấu, (2) chốt số `TODO(nhóm)` còn lại + cân bằng (ngày 19), (3) nhạc nền, (4) chuyển cảnh S16, (5) test web trên điện thoại, trang itch. Lầu 2/phòng riêng: cắt nếu không kịp.
+
 ## Tuần 1: Bản chơi được (xấu cũng được)
 
 Khung project và vòng lặp tạm đã xong.
@@ -106,10 +140,10 @@ Quy tắc UI cảm ứng cho cả nhóm:
 
 ## Cần chốt
 
-- KPI ngày 1 (đang để tạm 300.000đ).
-- Nồi: doc ghi "15 → 20 món" nhưng cũng ghi "mỗi bậc +10".
+- ~~KPI ngày 1~~: đã chốt 300.000đ.
+- ~~Nồi~~: đã chốt, số phần mỗi lần nấu `[4, 5, 6, 7, 8, 10]`.
 - Linh hồn đầu bếp: "lần thua đầu tiên" tính theo trận, theo buổi sáng hay theo cả game?
 - Bò tót: nội năng tích lũy dùng để làm gì?
 - Tỷ lệ gây độc của Nấm dược sư.
-- Nước cốt thừa có giữ sang ngày sau không?
+- ~~Nước cốt thừa~~: đã chốt, giữ trong kho lạnh 3–6 ngày theo cấp Kho lạnh.
 - Chỉ số boss.
