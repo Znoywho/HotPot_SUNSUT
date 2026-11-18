@@ -32,6 +32,8 @@ const CARD_POP_STAGGER := 0.07 ## Thẻ sau nảy ra trễ hơn thẻ trước c
 var _tab: UpgradeData.Category = UpgradeData.Category.KITCHEN
 var _tab_buttons := {} ## Category -> PixelButton
 var _cards: GridContainer
+var _scroll: ScrollContainer
+var _scroll_at_press := 0 ## Vị trí cuộn lúc ngón tay chạm nút mua: đã cuộn thì thả tay không tính là mua.
 var _money_label: Label
 var _message: Label
 
@@ -121,7 +123,9 @@ func _build_board() -> void:
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.scroll_deadzone = 12 # chạm hơi rung tay vẫn là bấm, không bị tính là vuốt
 	column.add_child(scroll)
+	_scroll = scroll
 	_cards = GridContainer.new()
 	_cards.columns = 2
 	_cards.size_flags_horizontal = SIZE_EXPAND_FILL
@@ -185,6 +189,7 @@ func _make_card(upgrade: UpgradeData) -> Control:
 	var cost := upgrade.cost_for_next(level)
 	var card := PanelContainer.new()
 	card.size_flags_horizontal = SIZE_EXPAND_FILL
+	card.mouse_filter = MOUSE_FILTER_PASS # cho cú vuốt trên thẻ đi tiếp lên ScrollContainer (điện thoại)
 	card.add_theme_stylebox_override("panel", _box_style(CARD_COLOR, CARD_BORDER, 4, 16))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
@@ -205,6 +210,8 @@ func _make_card(upgrade: UpgradeData) -> Control:
 	var buy := PixelButton.new("ĐÃ TỐI ĐA" if cost < 0 else "MUA · %s" % GameState.format_money(cost), 22)
 	buy.custom_minimum_size = Vector2(0, 56)
 	buy.disabled = cost < 0 or not GameState.can_afford(cost)
+	buy.mouse_filter = MOUSE_FILTER_PASS # vuốt bắt đầu trên nút vẫn cuộn được
+	buy.button_down.connect(func(): _scroll_at_press = _scroll.scroll_vertical)
 	buy.pressed.connect(_buy_upgrade.bind(upgrade))
 	box.add_child(buy)
 	return card
@@ -212,6 +219,8 @@ func _make_card(upgrade: UpgradeData) -> Control:
 
 ## Mua 1 cấp: trừ tiền, lên cấp, cập nhật số bàn nếu là "Thêm bàn", báo mở khóa tiến hóa khi max cấp.
 func _buy_upgrade(upgrade: UpgradeData) -> void:
+	if _scroll.scroll_vertical != _scroll_at_press:
+		return # ngón tay vừa vuốt cuộn rồi thả trên nút: không mua nhầm
 	var level := GameState.get_upgrade_level(upgrade.id)
 	var cost := upgrade.cost_for_next(level)
 	if cost < 0 or not GameState.spend_money(cost):
