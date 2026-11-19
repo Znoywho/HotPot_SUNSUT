@@ -1,7 +1,7 @@
 extends Control
 ## Cửa hàng nâng cấp: mở trước ngày 1 (Chơi mới), sau mỗi ngày đạt KPI (game vừa được lưu) và khi Tiếp tục.
 ## Nền dùng lại phong cảnh của menu chính (phủ tối), bảng giữa có 3 tab Bếp / Chiến đấu / Quán theo
-## UpgradeData.category. Mỗi nâng cấp là một thẻ: tên, cấp, mô tả luôn hiện (điện thoại không có hover), nút mua đỏ.
+## UpgradeData.category, cùng tab Vũ khí (data/weapons/, mua một lần, chọn 1 cái để cầm). Mỗi nâng cấp là một thẻ: tên, cấp, mô tả luôn hiện (điện thoại không có hover), nút mua đỏ.
 ## Giá và hiệu ứng nằm trong data/upgrades/*.tres. TODO(Hạo): tiến hóa khi max cấp, Lầu 2, phòng riêng, nhân viên.
 ##
 ## Số bàn tầng 1 là nâng cấp "Thêm bàn" (data/upgrades/tables.tres, tối đa 10 bàn); đủ 10 bàn thì
@@ -14,7 +14,9 @@ const TAB_NAMES := {
 	UpgradeData.Category.KITCHEN: "BẾP",
 	UpgradeData.Category.COMBAT: "CHIẾN ĐẤU",
 	UpgradeData.Category.RESTAURANT: "QUÁN",
+	TAB_WEAPONS: "VŨ KHÍ",
 }
+const TAB_WEAPONS := 3 ## Tab thứ 4 không phải UpgradeData.Category: vũ khí mua một lần, chọn 1 cái để cầm.
 const BOARD_COLOR := Color("2b1a14", 0.94)
 const BOARD_BORDER := Color("6b2a22")
 const CARD_COLOR := Color("f1e3c4")
@@ -36,7 +38,7 @@ const BOARD_DROP_SECONDS := 0.7 ## Bảng rơi từ trên xuống, trượt quá
 const CARD_POP_SECONDS := 0.45
 const CARD_POP_STAGGER := 0.07 ## Thẻ sau nảy ra trễ hơn thẻ trước chừng này giây.
 
-var _tab: UpgradeData.Category = UpgradeData.Category.KITCHEN
+var _tab: int = UpgradeData.Category.KITCHEN ## UpgradeData.Category hoặc TAB_WEAPONS
 var _tab_buttons := {} ## Category -> PixelButton
 var _cards: GridContainer
 var _scroll: ScrollContainer
@@ -154,7 +156,7 @@ func _build_board() -> void:
 
 
 ## Chọn tab: tab đang chọn sáng, tab khác tối đi, rồi đổ lại thẻ.
-func _select_tab(category: UpgradeData.Category) -> void:
+func _select_tab(category: int) -> void:
 	_tab = category
 	for key in _tab_buttons:
 		(_tab_buttons[key] as Control).modulate = Color.WHITE if key == category else TAB_DIM
@@ -169,6 +171,13 @@ func _rebuild_cards(pop_in := true) -> void:
 		_cards.remove_child(child) # gỡ ngay để lưới xếp lại chỉ với thẻ mới
 		child.queue_free()
 	var new_cards: Array[Control] = []
+	if _tab == TAB_WEAPONS:
+		for weapon in Database.weapons:
+			var weapon_card := _make_weapon_card(weapon)
+			if pop_in:
+				weapon_card.modulate.a = 0.0
+			_cards.add_child(weapon_card)
+			new_cards.append(weapon_card)
 	for upgrade in Database.upgrades:
 		if upgrade.category == _tab and not _is_locked(upgrade):
 			var card := _make_card(upgrade)
@@ -232,6 +241,19 @@ func _make_card(upgrade: UpgradeData) -> Control:
 ## Ô hiệu ứng trong thẻ: "Hiện tại" (đang được gì) và "Cấp sau" (sẽ được gì, phần cộng thêm tô xanh).
 ## Đã max thì chỉ còn "Hiện tại" + chữ "Đã tối đa" màu cam.
 func _make_effect_box(upgrade: UpgradeData, level: int) -> Control:
+	var now := _effect_at(upgrade, level)
+	var now_bb := "[color=#%s]%s[/color]" % [NONE_COLOR.to_html(false), now] if now == "Chưa có" else "[b]%s[/b]" % now
+	var lines := "[color=#%s]Hiện tại:[/color] %s" % [INK_SOFT.to_html(false), now_bb]
+	if level >= upgrade.max_level():
+		lines += "  [color=#%s][b]Đã tối đa[/b][/color]" % MAXED_COLOR.to_html(false)
+	else:
+		lines += "\n[color=#%s]Cấp %d:[/color] [b]%s[/b]  [color=#%s][b]%s[/b][/color]" % [
+			INK_SOFT.to_html(false), level + 1, _effect_at(upgrade, level + 1), GAIN_COLOR.to_html(false), _gain_text(upgrade, level)]
+	return _make_rich_box(lines)
+
+
+## Ô chữ màu (BBCode) nền kem đậm trong thẻ: dùng cho hiệu ứng nâng cấp và chỉ số vũ khí.
+func _make_rich_box(bbcode: String) -> Control:
 	var panel := PanelContainer.new()
 	panel.mouse_filter = MOUSE_FILTER_PASS
 	var style := _box_style(EFFECT_BG, Color(CARD_BORDER, 0.35), 2, 8)
@@ -248,17 +270,86 @@ func _make_effect_box(upgrade: UpgradeData, level: int) -> Control:
 	text.add_theme_font_size_override("bold_font_size", 18)
 	text.add_theme_font_override("bold_font", BOLD_FONT)
 	text.add_theme_color_override("default_color", INK)
-	var now := _effect_at(upgrade, level)
-	var now_bb := "[color=#%s]%s[/color]" % [NONE_COLOR.to_html(false), now] if now == "Chưa có" else "[b]%s[/b]" % now
-	var lines := "[color=#%s]Hiện tại:[/color] %s" % [INK_SOFT.to_html(false), now_bb]
-	if level >= upgrade.max_level():
-		lines += "  [color=#%s][b]Đã tối đa[/b][/color]" % MAXED_COLOR.to_html(false)
-	else:
-		lines += "\n[color=#%s]Cấp %d:[/color] [b]%s[/b]  [color=#%s][b]%s[/b][/color]" % [
-			INK_SOFT.to_html(false), level + 1, _effect_at(upgrade, level + 1), GAIN_COLOR.to_html(false), _gain_text(upgrade, level)]
-	text.text = lines
+	text.text = bbcode
 	panel.add_child(text)
 	return panel
+
+
+# --- Tab Vũ khí ----------------------------------------------------------------
+
+## Thẻ một vũ khí: tên + trạng thái, mô tả, chỉ số (cộng xanh, trừ đỏ), so với vũ khí đang cầm, nút Mua / Cầm.
+func _make_weapon_card(weapon: WeaponData) -> Control:
+	var owned := GameState.owns_weapon(weapon.id)
+	var equipped := GameState.equipped_weapon == weapon.id
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = SIZE_EXPAND_FILL
+	card.mouse_filter = MOUSE_FILTER_PASS
+	card.add_theme_stylebox_override("panel", _box_style(CARD_COLOR, MAXED_COLOR if equipped else CARD_BORDER, 4, 16))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	card.add_child(box)
+
+	var top := HBoxContainer.new()
+	box.add_child(top)
+	var name_label := _make_label(weapon.display_name, 24, INK, true)
+	name_label.size_flags_horizontal = SIZE_EXPAND_FILL
+	top.add_child(name_label)
+	if equipped:
+		top.add_child(_make_label("Đang cầm", 20, MAXED_COLOR, true))
+	elif owned:
+		top.add_child(_make_label("Đã có", 20, GAIN_COLOR))
+
+	var description := _make_label(weapon.description, 18, INK)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description.size_flags_vertical = SIZE_EXPAND_FILL
+	box.add_child(description)
+
+	var lines := "[color=#%s]Chỉ số:[/color] %s" % [INK_SOFT.to_html(false), _weapon_stats_bbcode(
+			weapon.damage_bonus, weapon.speed_bonus, weapon.crit_chance_bonus, "[b]Không cộng gì[/b]")]
+	if not equipped:
+		var current := Database.equipped_weapon()
+		lines += "\n[color=#%s]So với %s:[/color] %s" % [INK_SOFT.to_html(false), current.display_name, _weapon_stats_bbcode(
+				weapon.damage_bonus - current.damage_bonus, weapon.speed_bonus - current.speed_bonus,
+				weapon.crit_chance_bonus - current.crit_chance_bonus, "[b]Như nhau[/b]")]
+	box.add_child(_make_rich_box(lines))
+
+	var affordable := GameState.can_afford(weapon.cost)
+	var text := "ĐANG CẦM" if equipped else ("CẦM VŨ KHÍ NÀY" if owned else (
+			("MUA · %s" if affordable else "THIẾU TIỀN · %s") % GameState.format_money(weapon.cost)))
+	var button := PixelButton.new(text, 22)
+	button.custom_minimum_size = Vector2(0, 56)
+	button.disabled = equipped or (not owned and not affordable)
+	button.mouse_filter = MOUSE_FILTER_PASS
+	button.button_down.connect(func(): _scroll_at_press = _scroll.scroll_vertical)
+	button.pressed.connect(_on_weapon_pressed.bind(weapon))
+	box.add_child(button)
+	return card
+
+
+## "Dame +6 · Tốc -3 · Chí mạng +5%": số cộng màu xanh, số trừ màu đỏ, bỏ qua chỉ số bằng 0.
+func _weapon_stats_bbcode(damage: int, speed: int, crit: float, when_zero: String) -> String:
+	var parts: Array[String] = []
+	for stat in [["Dame", damage, ""], ["Tốc", speed, ""], ["Chí mạng", roundi(crit * 100.0), "%"]]:
+		var value: int = stat[1]
+		if value == 0:
+			continue
+		var color := GAIN_COLOR if value > 0 else POOR_COLOR
+		parts.append("%s [color=#%s][b]%+d%s[/b][/color]" % [stat[0], color.to_html(false), value, stat[2]])
+	return when_zero if parts.is_empty() else "  ·  ".join(parts)
+
+
+## Bấm nút vũ khí: chưa có thì mua (mua xong cầm luôn), có rồi thì đổi sang cầm.
+func _on_weapon_pressed(weapon: WeaponData) -> void:
+	if _scroll.scroll_vertical != _scroll_at_press:
+		return # vừa vuốt cuộn rồi thả trên nút: không mua nhầm
+	if GameState.owns_weapon(weapon.id):
+		GameState.equip_weapon(weapon.id)
+		_message.text = "Đã cầm %s." % weapon.display_name
+	elif GameState.buy_weapon(weapon.id, weapon.cost):
+		_message.text = "Đã mua và cầm %s!" % weapon.display_name
+	else:
+		return
+	_rebuild_cards(false)
 
 
 ## Hiệu ứng ở một cấp, viết cho người chơi đọc (giá trị lấy từ values[] trong .tres).

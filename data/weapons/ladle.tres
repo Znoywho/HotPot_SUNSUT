@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ladle"
+display_name = "Muôi canh"
+description = "Muôi múc lẩu của sếp. Đánh không đau lắm nhưng cầm quen tay."
+cost = 0
+damage_bonus = 0
+speed_bonus = 0
+crit_chance_bonus = 0.0

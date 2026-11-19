@@ -22,7 +22,7 @@ const PAGES := {
 		"lines": [
 			"Mỗi ngày gồm 3 buổi: Sáng đi săn nguyên liệu » Trưa nấu lẩu » Chiều tối bán hàng.",
 			"Cuối ngày phải đạt KPI doanh thu (ô KPI trên cùng). Không đạt là quán đóng cửa.",
-			"Đạt KPI thì vào cửa hàng này: mua nâng cấp ở 3 tab Bếp, Chiến đấu, Quán.",
+			"Đạt KPI thì vào cửa hàng này: mua nâng cấp ở các tab Bếp, Chiến đấu, Quán, và chọn vũ khí ở tab Vũ khí.",
 			"KPI ngày sau cao hơn doanh thu hôm nay, nên nâng cấp đều tay. Bấm \"Bắt đầu ngày\" để đi săn.",
 		],
 	},

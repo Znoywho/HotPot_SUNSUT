@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "skewer"
+display_name = "Xiên nướng"
+description = "Nhẹ, nhanh, chuyên đâm trúng chỗ hiểm của rau củ."
+cost = 700000
+damage_bonus = 3
+speed_bonus = 4
+crit_chance_bonus = 0.05

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "golden_cleaver"
+display_name = "Dao bầu hoàng kim"
+description = "Báu vật của nghề lẩu: sắc, nhẹ, sáng loá cả bãi săn."
+cost = 3000000
+damage_bonus = 18
+speed_bonus = 2
+crit_chance_bonus = 0.08

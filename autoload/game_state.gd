@@ -42,6 +42,7 @@ const GOLDEN_PREFIX := "golden_" ## vd "golden_tomato" = cà chua hoàng kim.
 const GOLDEN_PRICE_MULTIPLIER := 3.0
 const PREPPED_PREFIX := "prepped_" ## Tên hiển thị / đồ nhúng: "prepped_squid" = mực đã sơ chế (kho vẫn lưu theo id thô).
 const QUALITY_NAMES := ["Kém", "Thường", "Thượng hạng"] ## Chất lượng đồ đã sơ chế: 0, 1, 2.
+const DEFAULT_WEAPON := "ladle" ## Muôi canh: có sẵn từ đầu, cầm khi chưa mua gì.
 const SHELF_DAYS := 3 ## Nguyên liệu / nước cốt giữ được tối đa 3 ngày (tính cả ngày nhập), chưa tính Kho lạnh.
 
 var money: int
@@ -62,6 +63,8 @@ var broth_batches: Dictionary
 var prepped: Dictionary ## id -> tổng số phần đã sơ chế (chỉ đọc; tính từ prepped_batches)
 var prepped_batches: Dictionary
 var upgrades: Dictionary ## id nâng cấp (String) -> cấp hiện tại
+var weapons_owned: Array[String] = [] ## id vũ khí đã mua (luôn có vũ khí mặc định)
+var equipped_weapon: String = "" ## id vũ khí đang cầm khi đi săn
 var tables_floor1: int
 var tables_floor2: int
 
@@ -85,6 +88,8 @@ func reset_new_game() -> void:
 	prepped = {}
 	prepped_batches = {}
 	upgrades = {}
+	weapons_owned = [DEFAULT_WEAPON]
+	equipped_weapon = DEFAULT_WEAPON
 	tables_floor1 = START_TABLES_FLOOR1
 	tables_floor2 = 0
 	money_changed.emit(money)
@@ -571,6 +576,27 @@ func set_upgrade_level(id: String, level: int) -> void:
 	upgrades[id] = level
 
 
+# --- Vũ khí -------------------------------------------------------------------
+
+func owns_weapon(id: String) -> bool:
+	return id in weapons_owned
+
+
+## Mua vũ khí (trừ tiền) rồi cầm luôn. Trả về false nếu đã có hoặc không đủ tiền.
+func buy_weapon(id: String, cost: int) -> bool:
+	if owns_weapon(id) or not spend_money(cost):
+		return false
+	weapons_owned.append(id)
+	equipped_weapon = id
+	return true
+
+
+## Đổi sang vũ khí đã mua.
+func equip_weapon(id: String) -> void:
+	if owns_weapon(id):
+		equipped_weapon = id
+
+
 # --- Quán / sao -------------------------------------------------------------
 
 func lose_star(amount := 0.5) -> void:
@@ -642,6 +668,8 @@ func to_dict() -> Dictionary:
 		"prepped_batches": prepped_batches,
 		"broth_batches": broth_batches,
 		"upgrades": upgrades,
+		"weapons_owned": weapons_owned,
+		"equipped_weapon": equipped_weapon,
 		"tables_floor1": tables_floor1,
 		"tables_floor2": tables_floor2,
 	}
@@ -660,6 +688,11 @@ func load_from_dict(data: Dictionary) -> void:
 	prepped_batches = _to_batches(data.get("prepped_batches", null), {})
 	_sync_totals()
 	upgrades = _to_int_dict(data.get("upgrades", {}))
+	# Save cũ chưa có vũ khí: giữ Muôi canh mặc định từ reset_new_game().
+	for id in data.get("weapons_owned", []):
+		if not owns_weapon(str(id)):
+			weapons_owned.append(str(id))
+	equip_weapon(str(data.get("equipped_weapon", DEFAULT_WEAPON)))
 	tables_floor1 = mini(int(data.get("tables_floor1", START_TABLES_FLOOR1)), MAX_TABLES_FLOOR1)
 	# Save cũ mua bàn kiểu cũ (chưa có nâng cấp "tables"): đổi số bàn đã mua thành cấp nâng cấp.
 	if not upgrades.has("tables") and tables_floor1 > START_TABLES_FLOOR1:

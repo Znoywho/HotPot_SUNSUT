@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "cast_pan"
+display_name = "Chảo gang"
+description = "Nặng trịch, vung chậm. Nhưng quái nào trúng là xỉu."
+cost = 1200000
+damage_bonus = 14
+speed_bonus = -3
+crit_chance_bonus = 0.0
