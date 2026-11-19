@@ -306,6 +306,40 @@ func consume_for_cook(requirements: Dictionary) -> Dictionary:
 		"raw_units": raw_units, "taken": taken}
 
 
+## Số bộ nguyên liệu nấu được (1 bộ = 1 phần lẩu): sets = min theo từng loại của floor((sơ chế + thô) / cần).
+func cookable_sets(requirements: Dictionary) -> int:
+	return _sets_from(requirements, true)
+
+
+## Số bộ nấu được chỉ bằng đồ đã sơ chế: sets = min theo từng loại của floor(sơ chế / cần).
+func prepped_sets(requirements: Dictionary) -> int:
+	return _sets_from(requirements, false)
+
+
+## Công thức 1 phần nhân lên `sets` phần: cần[id] × sets.
+static func scale_requirements(requirements: Dictionary, sets: int) -> Dictionary:
+	var scaled := {}
+	for id in requirements:
+		scaled[id] = int(requirements[id]) * sets
+	return scaled
+
+
+## Lấy `sets` bộ nguyên liệu một lần (ưu tiên đồ sơ chế), trả về giống consume_for_cook().
+func consume_sets_for_cook(requirements: Dictionary, sets: int) -> Dictionary:
+	return consume_for_cook(scale_requirements(requirements, sets))
+
+
+func _sets_from(requirements: Dictionary, include_raw: bool) -> int:
+	var sets := -1
+	for id in requirements:
+		var need := int(requirements[id])
+		if need <= 0:
+			continue
+		var have := get_prepped_count(id) + (get_item_count(id) if include_raw else 0)
+		sets = have / need if sets < 0 else mini(sets, have / need)
+	return maxi(sets, 0)
+
+
 ## Hoàn lại đúng các phần đã lấy bằng consume_for_cook().
 func refund_cook(taken: Dictionary) -> void:
 	var prepped_part: Dictionary = taken.get("prepped", {})

@@ -85,16 +85,23 @@ func servings() -> int:
 	return v if v > 0 else 4
 
 
+## Số phần của mẻ nấu món này: 1 bộ nguyên liệu = 1 phần, tối đa sức chứa Nồi.
+## Bếp phó chỉ nấu bằng đồ đã sơ chế (không đụng đồ thô người chơi để dành).
+func batch_sets(broth: BrothData, prepped_only := false) -> int:
+	var have := GameState.prepped_sets(broth.ingredients) if prepped_only else GameState.cookable_sets(broth.ingredients)
+	return mini(servings(), have)
+
+
 func staff_level() -> int:
 	return int(Database.upgrade_value("staff"))
 
 
-## Nguyên liệu cần cho 1 mẻ của các món hôm nay (mỗi loại lấy món cần nhiều nhất).
+## Nguyên liệu cần cho 1 mẻ đầy nồi của các món hôm nay (mỗi loại lấy món cần nhiều nhất): cần 1 phần × số phần.
 func needs() -> Dictionary:
 	var result := {}
 	for broth in Database.broths_for_day(GameState.day):
 		for id in broth.ingredients:
-			result[id] = maxi(int(result.get(id, 0)), int(broth.ingredients[id]))
+			result[id] = maxi(int(result.get(id, 0)), int(broth.ingredients[id]) * servings())
 	return result
 
 
@@ -374,10 +381,11 @@ func _refresh_cards() -> void:
 			# Xanh: đủ đồ đã sơ chế; cam: phải dùng đồ thô; đỏ: thiếu.
 			var col := HuntUI.GOOD if prepped >= need else (Color("d9822b") if have >= need else HuntUI.BAD)
 			label.add_theme_color_override("font_color", col)
-		(ui["sub"] as Label).text = "%s · %d phần" % [GameState.format_money(broth.price), servings()]
+		var sets := batch_sets(broth)
+		(ui["sub"] as Label).text = "%s · %d/%d phần" % [GameState.format_money(broth.price), sets, servings()]
 		var button: Button = ui["button"]
-		var can := GameState.can_cook(broth.ingredients)
-		var prepped_ok := GameState.has_prepped(broth.ingredients)
+		var can := sets > 0
+		var prepped_ok := can and GameState.has_prepped(GameState.scale_requirements(broth.ingredients, sets))
 		var pc := Database.prep_config
 		var secs := ceili(broth.cook_time * Database.upgrade_value("stove") * (1.0 if prepped_ok else pc.raw_cook_time))
 		if can and free:
@@ -397,7 +405,7 @@ func _update_info() -> void:
 		if not slot.is_idle():
 			cooking += 1
 	var staff := _prep_staff.size() + (1 if _sous != null else 0)
-	_info.text = "Bếp đang nấu: %d/%d  ·  Nhân viên: %d  ·  Mỗi mẻ ra %d phần  ·  Kho lạnh giữ %d ngày" % [
+	_info.text = "Bếp đang nấu: %d/%d  ·  Nhân viên: %d  ·  Mỗi mẻ tối đa %d phần  ·  Kho lạnh giữ %d ngày" % [
 		cooking, _stoves.size(), staff, servings(), GameState.shelf_days()]
 	var has_hud := get_tree().get_first_node_in_group("hud") != null
 	_timer_label.visible = DayManager.timer_running and not has_hud
@@ -426,14 +434,17 @@ func _cook(broth: BrothData, actor: KitchenActor, on_slot: StoveSlot = null) -> 
 	var slot := on_slot if on_slot != null and on_slot.is_idle() else _free_stove()
 	if slot == null:
 		return false
-	var used := GameState.consume_for_cook(broth.ingredients)
+	var sets := batch_sets(broth, actor == _sous)
+	if sets <= 0:
+		return false
+	var used := GameState.consume_sets_for_cook(broth.ingredients, sets)
 	if not bool(used["ok"]):
 		return false
 	# Chất lượng sơ chế đổi thời gian nấu; có đồ thô thì nấu chậm hơn (PrepConfig).
 	var pc := Database.prep_config
 	var raw_units := int(used["raw_units"])
 	var mult := pc.raw_cook_time if raw_units > 0 else pc.cook_time_mult(roundi(float(used["quality"])))
-	slot.start(broth, broth.cook_time * Database.upgrade_value("stove") * mult, servings(), bool(used["expired"]), used["taken"])
+	slot.start(broth, broth.cook_time * Database.upgrade_value("stove") * mult, sets, bool(used["expired"]), used["taken"])
 	slot.cook_actor = actor
 	if bool(used["expired"]):
 		actor.say("Đồ cũ, coi chừng!", Color("ffab91"))
