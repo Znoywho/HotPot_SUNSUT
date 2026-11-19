@@ -25,6 +25,10 @@ const TITLE_COLOR := Color("f3e2c0")
 const OUTLINE := Color("1a0f0a")
 const MONEY_COLOR := Color("ffd34e")
 const TEXT_COLOR := Color("f5f1e6")
+const GAIN_COLOR := Color("8fe388") ## Tiền cộng: chữ xanh bay vào ô Tiền.
+const LOSS_COLOR := Color("ff7a66") ## Tiền trừ: chữ đỏ rơi ra khỏi ô Tiền.
+const DELTA_SECONDS := 0.9
+const KPI_BANNER_HOLD := 1.6 ## Dòng "ĐẠT KPI!" đứng yên chừng này giây rồi mờ đi.
 
 var _money_label: Label
 var _day_label: Label
@@ -40,6 +44,7 @@ var _shown_day := -1
 var _sun_progress := 0.0
 var _storage_alert: Label ## Dấu "!" trên nút Kho khi có món sắp/đã hết hạn.
 var _pause_menu: PauseMenu ## Menu tạm dừng (ESC hoặc nút "II").
+var _kpi_celebrated := false ## Hôm nay đã chúc "ĐẠT KPI!" chưa (đạt rồi thì không chúc lại).
 
 
 func _ready() -> void:
@@ -89,10 +94,12 @@ func _process(delta: float) -> void:
 
 func _refresh(force: bool) -> void:
 	if force or GameState.money != _shown_money:
+		var delta := GameState.money - _shown_money
 		_shown_money = GameState.money
 		_money_label.text = _money_text(GameState.money)
 		if not force:
 			_play_icon(0)
+			_show_money_delta(delta)
 	if force or GameState.day != _shown_day:
 		_shown_day = GameState.day
 		_day_label.text = "Ngày %02d" % GameState.day
@@ -102,6 +109,10 @@ func _refresh(force: bool) -> void:
 	_kpi_bar.value = mini(GameState.today_revenue, target)
 	_kpi_label.text = "%s / %s" % [_short_money(GameState.today_revenue), _short_money(GameState.kpi_target)]
 	_kpi_bar.fill_color = PixelBar.GOLD if GameState.is_kpi_reached() else PixelBar.GREEN
+	var reached := GameState.is_kpi_reached() and GameState.today_revenue > 0
+	if reached and not _kpi_celebrated and DayManager.current_phase == DayManager.Phase.SELL:
+		_celebrate_kpi()
+	_kpi_celebrated = reached # ngày mới doanh thu về 0 -> lại chúc được
 	_update_stars()
 	_update_time()
 	_update_storage_alert()
@@ -151,6 +162,64 @@ func _update_time() -> void:
 	var hour := minutes / 60
 	_time_label.text = "%02d:%02d" % [hour, minutes % 60]
 	_phase_label.text = _part_of_day(hour)
+
+
+## Số tiền vừa cộng / trừ: cộng thì chữ xanh bay vào ô Tiền, trừ thì chữ đỏ rơi ra; ô Tiền nảy nhẹ.
+## HUD đang ẩn (menu chính, nạp save) thì bỏ qua.
+func _show_money_delta(delta: int) -> void:
+	if delta == 0 or not visible:
+		return
+	_pop(_money_label, 1.15)
+	var gain := delta > 0
+	var label := _floating_label(("+" if gain else "") + GameState.format_money(delta), 22, GAIN_COLOR if gain else LOSS_COLOR)
+	var box := _money_label.get_global_rect()
+	var near := box.end.y + 4.0 # sát dưới ô Tiền
+	var far := near + 26.0
+	label.position = Vector2(box.position.x, far if gain else near)
+	var tween := label.create_tween().set_parallel(true)
+	tween.tween_property(label, "position:y", near if gain else far, DELTA_SECONDS) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, DELTA_SECONDS * 0.5).set_delay(DELTA_SECONDS * 0.5)
+	tween.chain().tween_callback(label.queue_free)
+
+
+## Doanh thu vừa chạm KPI trong buổi bán: thanh KPI nảy, dòng "ĐẠT KPI!" bật ra giữa màn rồi mờ đi, kèm tiếng "ting".
+func _celebrate_kpi() -> void:
+	_pop(_kpi_bar, 1.2)
+	Sfx.play(self, Sfx.LOOT)
+	var banner := _floating_label("ĐẠT KPI!", 44, MONEY_COLOR)
+	banner.reset_size()
+	banner.position = Vector2((get_viewport().get_visible_rect().size.x - banner.size.x) / 2.0, HEIGHT + 24.0)
+	banner.pivot_offset = banner.size / 2.0
+	banner.scale = Vector2.ZERO
+	var tween := banner.create_tween()
+	tween.tween_property(banner, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(KPI_BANNER_HOLD)
+	tween.tween_property(banner, "modulate:a", 0.0, 0.4)
+	tween.tween_callback(banner.queue_free)
+
+
+## Chữ nổi đậm có viền tối, không chặn chạm, gắn thẳng lên HUD (toạ độ màn hình).
+func _floating_label(text: String, font_size: int, color: Color) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.process_mode = Node.PROCESS_MODE_ALWAYS # sổ tổng kết dừng game: chữ vẫn bay hết rồi tự xoá
+	label.add_theme_font_override("font", PixelButton.BOLD_FONT)
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", OUTLINE)
+	label.add_theme_constant_override("outline_size", PixelButton.outline_for(font_size))
+	add_child(label)
+	return label
+
+
+## Nảy nhẹ một control: phóng to `amount` lần rồi về cỡ cũ quanh tâm.
+func _pop(control: Control, amount: float) -> void:
+	control.pivot_offset = control.size / 2.0
+	control.scale = Vector2.ONE * amount
+	control.create_tween().tween_property(control, "scale", Vector2.ONE, 0.25) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 ## Giờ (6..29) -> progress của đồng hồ mặt trời.

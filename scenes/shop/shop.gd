@@ -74,6 +74,7 @@ const FLASH_COLOR := Color("fff4d6") ## Màu ánh sáng khi rời menu (khớp F
 const BOARD_DROP_SECONDS := 0.7 ## Bảng rơi từ trên xuống, trượt quá một chút rồi êm về chỗ.
 const CARD_POP_SECONDS := 0.45
 const CARD_POP_STAGGER := 0.07 ## Thẻ sau nảy ra trễ hơn thẻ trước chừng này giây.
+const PURCHASE_FLASH := Color(1.35, 1.25, 0.9) ## Thẻ vừa mua loé sáng màu vàng ấm rồi về màu thường.
 
 var _tab: int = UpgradeData.Category.KITCHEN ## UpgradeData.Category, TAB_WEAPONS, TAB_MOUNT hoặc TAB_DECOR
 var _tab_buttons := {} ## khoá tab con -> Button (chỉ các tab con của nhóm đang chọn)
@@ -278,15 +279,18 @@ func _select_tab(category: int) -> void:
 
 
 ## Đổ thẻ cho các nâng cấp thuộc tab đang chọn (bỏ qua nâng cấp tiến hóa chưa mở khóa).
-## pop_in = thẻ lần lượt nảy ra (mở màn, đổi tab); mua xong thì vẽ lại thẳng, không nảy.
-func _rebuild_cards(pop_in := true) -> void:
+## pop_in = thẻ lần lượt nảy ra (mở màn, đổi tab); mua xong thì vẽ lại thẳng, chỉ thẻ `bought_id` nảy + loé.
+func _rebuild_cards(pop_in := true, bought_id := "") -> void:
 	for child in _cards.get_children():
 		_cards.remove_child(child) # gỡ ngay để lưới xếp lại chỉ với thẻ mới
 		child.queue_free()
 	var new_cards: Array[Control] = []
+	var bought: Control = null
 	if _tab == TAB_DECOR:
 		for decor in Database.decors:
 			var decor_card := _make_decor_card(decor)
+			if decor.id == bought_id:
+				bought = decor_card
 			if pop_in:
 				decor_card.modulate.a = 0.0
 			_cards.add_child(decor_card)
@@ -294,6 +298,8 @@ func _rebuild_cards(pop_in := true) -> void:
 	if _tab == TAB_WEAPONS:
 		for weapon in Database.weapons:
 			var weapon_card := _make_weapon_card(weapon)
+			if weapon.id == bought_id:
+				bought = weapon_card
 			if pop_in:
 				weapon_card.modulate.a = 0.0
 			_cards.add_child(weapon_card)
@@ -301,6 +307,8 @@ func _rebuild_cards(pop_in := true) -> void:
 	for upgrade in Database.upgrades:
 		if _tab_of(upgrade) == _tab and not _is_locked(upgrade):
 			var card := _make_card(upgrade)
+			if upgrade.id == bought_id:
+				bought = card
 			if pop_in:
 				card.modulate.a = 0.0
 			_cards.add_child(card)
@@ -312,6 +320,8 @@ func _rebuild_cards(pop_in := true) -> void:
 		_cards.add_child(preview)
 		new_cards.append(preview)
 	if not pop_in:
+		if bought != null:
+			_celebrate_purchase(bought)
 		return
 	await get_tree().process_frame # chờ lưới xếp chỗ để biết cỡ thẻ (tâm phóng to)
 	for i in new_cards.size():
@@ -324,6 +334,20 @@ func _rebuild_cards(pop_in := true) -> void:
 		tween.tween_property(card, "scale", Vector2.ONE, CARD_POP_SECONDS).set_delay(i * CARD_POP_STAGGER) \
 				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tween.tween_property(card, "modulate:a", 1.0, 0.2).set_delay(i * CARD_POP_STAGGER)
+
+
+## Thẻ vừa mua: kêu "ting", nảy lên và loé sáng rồi về như cũ.
+func _celebrate_purchase(card: Control) -> void:
+	Sfx.play(self, Sfx.LOOT)
+	await get_tree().process_frame # chờ lưới xếp chỗ để biết cỡ thẻ (tâm phóng to)
+	if not is_instance_valid(card):
+		return
+	card.pivot_offset = card.size / 2.0
+	card.scale = Vector2.ONE * 1.06
+	card.modulate = PURCHASE_FLASH
+	var tween := card.create_tween().set_parallel(true)
+	tween.tween_property(card, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(card, "modulate", Color.WHITE, 0.35)
 
 
 ## Tab chứa nâng cấp này: thú cưỡi tách sang tab riêng, còn lại theo category.
@@ -551,6 +575,8 @@ func _on_decor_pressed(decor: DecorData) -> void:
 		_message.text = "Đã đặt %s vào quán." % decor.display_name
 	elif GameState.buy_decor(decor.id, decor.slot, decor.cost):
 		_message.text = "Đã mua và đặt %s! Khách tip thêm %d%%." % [decor.display_name, roundi(decor.tip_bonus * 100.0)]
+		_rebuild_cards(false, decor.id)
+		return
 	else:
 		return
 	_rebuild_cards(false)
@@ -630,6 +656,8 @@ func _on_weapon_pressed(weapon: WeaponData) -> void:
 		_message.text = "Đã cầm %s." % weapon.display_name
 	elif GameState.buy_weapon(weapon.id, weapon.cost):
 		_message.text = "Đã mua và cầm %s!" % weapon.display_name
+		_rebuild_cards(false, weapon.id)
+		return
 	else:
 		return
 	_rebuild_cards(false)
@@ -717,7 +745,7 @@ func _buy_upgrade(upgrade: UpgradeData) -> void:
 	if level + 1 == upgrade.max_level() and upgrade.evolves_into != "":
 		var next := Database.get_upgrade(upgrade.evolves_into)
 		_message.text = "%s đã max cấp! Mở khóa %s." % [upgrade.display_name, next.display_name if next else upgrade.evolves_into]
-	_rebuild_cards(false)
+	_rebuild_cards(false, upgrade.id)
 
 
 ## Nâng cấp mở khóa nhờ tiến hóa (vd Phí phục vụ) chỉ hiện khi nâng cấp gốc đã max cấp.

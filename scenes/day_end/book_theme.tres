@@ -1,49 +1,42 @@
 [gd_resource type="Theme" format=3]
 
 [ext_resource type="FontFile" path="res://assets/fonts/BeVietnamPro-Bold.ttf" id="1_bold"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/result/pill.png" id="2_pill"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/result/book_button.png" id="3_button"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/result/book_button_pressed.png" id="4_button_pressed"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_pill_heading"]
-bg_color = Color(0.6392157, 0.27450982, 0.101960786, 1)
-corner_radius_top_left = 26
-corner_radius_top_right = 26
-corner_radius_bottom_right = 26
-corner_radius_bottom_left = 26
+[sub_resource type="StyleBoxTexture" id="StyleBox_pill_heading"]
 content_margin_left = 20.0
 content_margin_top = 2.0
 content_margin_right = 20.0
 content_margin_bottom = 2.0
+texture = ExtResource("2_pill")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 12.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_button_normal"]
-bg_color = Color(0.6392157, 0.27450982, 0.101960786, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.2901961, 0.18431373, 0.13333334, 1)
-corner_radius_top_left = 32
-corner_radius_top_right = 32
-corner_radius_bottom_right = 32
-corner_radius_bottom_left = 32
+[sub_resource type="StyleBoxTexture" id="StyleBox_button_normal"]
 content_margin_left = 20.0
-content_margin_top = 4.0
+content_margin_top = 2.0
 content_margin_right = 20.0
-content_margin_bottom = 4.0
+content_margin_bottom = 6.0
+texture = ExtResource("3_button")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 12.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_button_pressed"]
-bg_color = Color(0.45882353, 0.19607843, 0.07450981, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.2901961, 0.18431373, 0.13333334, 1)
-corner_radius_top_left = 32
-corner_radius_top_right = 32
-corner_radius_bottom_right = 32
-corner_radius_bottom_left = 32
+[sub_resource type="StyleBoxTexture" id="StyleBox_button_pressed"]
 content_margin_left = 20.0
-content_margin_top = 4.0
+content_margin_top = 8.0
 content_margin_right = 20.0
-content_margin_bottom = 4.0
+content_margin_bottom = 0.0
+texture = ExtResource("4_button_pressed")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxEmpty" id="StyleBox_focus"]
 
