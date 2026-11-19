@@ -20,10 +20,10 @@ const ACTIONS := {
 	"roll_ball": preload("res://scenes/cook/prep_actions/roll_ball.gd"),
 	"skewer": preload("res://scenes/cook/prep_actions/skewer.gd"),
 }
-const PANEL_SIZE := Vector2(1200, 540)
+const PANEL_SIZE := Vector2(1210, 570) ## Vừa danh sách + vùng chơi 780x300 với lề >= viền khung (24 px).
 const BAR_HEIGHT := 28.0 ## Đủ cao để chữ 18px nằm trong thanh tiến độ.
 const HUD_SHIFT := 46.0 ## Dời khung xuống dưới thanh HUD.
-const LIST_W := 330.0
+const LIST_W := 300.0
 const GRADE_TEXT := ["HỎNG!", "ỔN", "HOÀN HẢO!"]
 const GRADE_COLOR := [Color("ff8a80"), Color("fff59d"), Color("ffd54f")]
 
@@ -67,7 +67,7 @@ func open(needs: Dictionary) -> void:
 			close_panel())
 
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_panel", 8, Vector2(22, 16)))
+	panel.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_panel", 8, Vector2(28, 24))) # lề >= viền khung 8x3 px để chữ không đè viền
 	# Khung vừa tầm mắt: giữa màn, chừa chỗ cho thanh HUD phía trên.
 	panel.anchor_left = 0.5
 	panel.anchor_right = 0.5
@@ -118,11 +118,13 @@ func open(needs: Dictionary) -> void:
 	list_margin.add_child(_list)
 
 	var game_card := PanelContainer.new()
-	game_card.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_card", 8, Vector2(16, 10)))
+	game_card.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_card", 8, Vector2(26, 24)))
 	game_card.size_flags_horizontal = SIZE_EXPAND_FILL
 	body.add_child(game_card)
 	var gbox := VBoxContainer.new()
 	gbox.add_theme_constant_override("separation", 4)
+	gbox.size_flags_horizontal = SIZE_SHRINK_CENTER ## Tiêu đề, gợi ý, thanh tiến độ rộng đúng bằng vùng chơi.
+	gbox.custom_minimum_size.x = PrepAction.AREA.x
 	game_card.add_child(gbox)
 	var banner := PanelContainer.new()
 	var bs := StyleBoxFlat.new()
@@ -164,7 +166,7 @@ func open(needs: Dictionary) -> void:
 	_bar.add_theme_stylebox_override("fill", bar_fill)
 	_bar.max_value = 1.0
 	_bar.custom_minimum_size = Vector2(0, BAR_HEIGHT)
-	gbox.add_child(_bar) # Thanh chạy hết bề ngang thẻ, số Hoàn hảo/Ổn/Hỏng nằm gọn trong thanh.
+	gbox.add_child(_bar) # Thanh rộng bằng vùng chơi, số Hoàn hảo/Ổn/Hỏng nằm gọn trong thanh.
 	_status = HuntUI.outlined_label("", 18, Color("fbe9d0"))
 	_status.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
