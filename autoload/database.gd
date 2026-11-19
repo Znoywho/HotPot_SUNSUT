@@ -106,6 +106,29 @@ func get_broth(id: String) -> BrothData:
 	return null
 
 
+## Vũ khí trong tab Vũ khí của cửa hàng (data/weapons/), xếp theo giá tăng dần.
+var weapons: Array[WeaponData] = [
+	preload("res://data/weapons/ladle.tres"),
+	preload("res://data/weapons/cleaver.tres"),
+	preload("res://data/weapons/skewer.tres"),
+	preload("res://data/weapons/cast_pan.tres"),
+	preload("res://data/weapons/golden_cleaver.tres"),
+]
+
+
+func get_weapon(id: String) -> WeaponData:
+	for w in weapons:
+		if w.id == id:
+			return w
+	return null
+
+
+## Vũ khí đầu bếp đang cầm (không tìm thấy thì trả về vũ khí mặc định).
+func equipped_weapon() -> WeaponData:
+	var weapon := get_weapon(GameState.equipped_weapon)
+	return weapon if weapon != null else get_weapon(GameState.DEFAULT_WEAPON)
+
+
 func get_upgrade(id: String) -> UpgradeData:
 	for u in upgrades:
 		if u.id == id:

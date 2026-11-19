@@ -42,6 +42,11 @@ func create_player() -> Combatant:
 	chef.damage += roundi(Database.upgrade_value("knife") + Database.upgrade_value("dragon_blade"))
 	chef.crit_chance = config.base_crit_chance + Database.upgrade_value("sharp_mind")
 	chef.crit_multiplier = config.base_crit_multiplier + Database.upgrade_value("hawk_eye")
+	# Vũ khí đang cầm (tab Vũ khí ở cửa hàng) cộng thêm vào chỉ số.
+	var weapon := Database.equipped_weapon()
+	chef.damage += weapon.damage_bonus
+	chef.speed = maxi(1, chef.speed + weapon.speed_bonus)
+	chef.crit_chance += weapon.crit_chance_bonus
 	return chef
 
 

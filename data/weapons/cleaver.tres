@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "cleaver"
+display_name = "Dao phay"
+description = "Dao chặt xương to bản. Chém cái nào chắc cái đó."
+cost = 400000
+damage_bonus = 6
+speed_bonus = 0
+crit_chance_bonus = 0.0
