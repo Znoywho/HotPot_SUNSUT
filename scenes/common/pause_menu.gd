@@ -18,6 +18,18 @@ const BUTTON_WIDTH := 320
 
 var _was_paused := false ## Sổ tổng kết ngày cũng dừng game; đóng menu thì trả lại đúng trạng thái cũ.
 var _box: VBoxContainer
+var _confirm_only := false ## Chỉ là hộp xác nhận (tạo bằng confirm()): "Quay lại" đóng và xoá hộp.
+
+
+## Hộp xác nhận đứng riêng, cùng kiểu với menu tạm dừng (vd menu chính hỏi trước khi Chơi mới).
+static func confirm(parent: Node, message: String, confirm_text: String, action: Callable) -> void:
+	var menu := PauseMenu.new()
+	menu._confirm_only = true
+	parent.add_child(menu)
+	menu.visible = true
+	menu._show_confirm(message, confirm_text, func():
+		menu.close()
+		action.call())
 
 
 func _ready() -> void:
@@ -99,6 +111,8 @@ func close() -> void:
 		return
 	visible = false
 	get_tree().paused = _was_paused
+	if _confirm_only:
+		queue_free()
 
 
 # --- Các trang của menu -----------------------------------------------------
@@ -126,7 +140,7 @@ func _show_confirm(message: String, confirm_text: String, action: Callable) -> v
 	label.add_theme_color_override("font_color", TEXT_COLOR)
 	_box.add_child(label)
 	_add_button(confirm_text, action, BUTTON_DANGER)
-	_add_button("Quay lại", _show_main)
+	_add_button("Quay lại", close if _confirm_only else _show_main)
 
 
 ## Đóng menu rồi mở bảng "Cách chơi" của buổi đang chơi (bảng tự tạm dừng game).

@@ -73,15 +73,21 @@ func _process(delta: float) -> void:
 
 
 ## Chơi mới: mở cửa hàng trước để tiêu tiền khởi nghiệp chuẩn bị ngày 1, rồi mới đi săn.
+## Lưu ngay để lần chơi mới thay hẳn save cũ: "Tiếp tục" không mở lại lần chơi đã bỏ.
 func start_new_game() -> void:
 	GameState.reset_new_game()
+	SaveManager.save_game()
 	go_to(Phase.SHOP)
 
 
 ## Tiếp tục từ file save (save được ghi lúc vào cửa hàng nâng cấp).
+## Save hỏng thì xoá rồi về menu (nút "Tiếp tục" bị khoá) thay vì kẹt ở màn sáng của menu.
 func continue_game() -> void:
 	if SaveManager.load_game():
 		go_to(Phase.SHOP)
+	else:
+		SaveManager.delete_save()
+		go_to_main_menu()
 
 
 func start_day() -> void:
