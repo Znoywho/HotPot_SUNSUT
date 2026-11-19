@@ -1,14 +1,52 @@
-# Sôi Sùng Sục
+<div align="center">
 
-Game quản lý quán lẩu kết hợp chiến đấu theo lượt. Đồ án Godot.
+<img src="docs/screenshots/logo.png" alt="Sôi Sùng Sục" width="560">
+
+**Săn nguyên liệu bằng đánh theo lượt · Nấu lẩu · Bán cho khách · Đạt KPI mỗi ngày**
+
+[![Chơi trên itch.io](https://img.shields.io/badge/Ch%C6%A1i%20ngay-itch.io-FA5C5C?style=for-the-badge&logo=itchdotio&logoColor=white)](https://znoywho.itch.io/soi-sung-suc)
+<br>
+![Godot 4.7.2](https://img.shields.io/badge/Godot-4.7.2-478CBF?logo=godotengine&logoColor=white)
+![GDScript](https://img.shields.io/badge/GDScript-355570)
+![Web](https://img.shields.io/badge/N%E1%BB%81n%20t%E1%BA%A3ng-Web%20%C2%B7%20Desktop%20%C2%B7%20Mobile-2ea44f)
+
+<img src="docs/screenshots/main_menu.png" alt="Menu chính" width="100%">
+
+</div>
+
+## Giới thiệu
+
+**Sôi Sùng Sục** là game 2D pixel về một quán lẩu trên đỉnh núi. Mỗi ngày gồm 3 buổi:
+
+| Buổi | Việc cần làm |
+|---|---|
+| **Sáng · Đi săn** (2:30) | Chọn bụi cỏ, đánh quái rau củ theo lượt để lấy nguyên liệu; đủ trận thì mở Boss |
+| **Trưa · Nấu** (2:30) | Sơ chế nguyên liệu bằng mini-game, nấu nước cốt trên nhiều bếp |
+| **Chiều tối · Bán** (3:15) | Xếp khách vào bàn, bưng lẩu, dọn bàn và sàn, giữ sao đánh giá |
+
+Cuối ngày tổng kết **KPI**: không đạt là thua, đạt thì vào **cửa hàng nâng cấp** (Bếp · Chiến đấu · Quán) rồi sang ngày mới — KPI tăng dần theo doanh thu.
+Chơi được bằng chuột trên máy tính và **cảm ứng trên điện thoại** (màn ngang).
+
+## Ảnh chụp
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/hunt_map.png" alt="Chọn bụi cỏ để săn"><p align="center"><b>Sáng:</b> chọn bụi cỏ để săn</p></td>
+    <td width="50%"><img src="docs/screenshots/battle.png" alt="Trận đánh theo lượt"><p align="center"><b>Đánh theo lượt</b> với quái rau củ</p></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/cook.png" alt="Bếp"><p align="center"><b>Trưa:</b> sơ chế và nấu nước cốt</p></td>
+    <td><img src="docs/screenshots/sell.png" alt="Quán lẩu"><p align="center"><b>Chiều tối:</b> phục vụ 10 bàn khách</p></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/clean_panel.png" alt="Dọn dẹp"><p align="center"><b>Dọn dẹp</b> bàn, rác, vũng nước</p></td>
+    <td><img src="docs/screenshots/shop.png" alt="Cửa hàng nâng cấp"><p align="center"><b>Cửa hàng nâng cấp</b> sau mỗi ngày</p></td>
+  </tr>
+</table>
+
+<sub>Ảnh chụp ở Ngày 8, đã nâng cấp bàn, bếp và nhân viên.</sub>
 
 **Nhóm:** Lê Thiên Hạo · Đỗ Hoàng Hải · Nguyễn Ngọc Minh Tuấn
-
-**Chơi thử:** https://znoywho.itch.io/soi-sung-suc
-
-![Menu chính](docs/screenshots/main_menu.png)
-
-![Dọn dẹp ở màn bán](docs/screenshots/clean_panel.png)
 
 ## Cài đặt
 
@@ -35,8 +73,6 @@ Menu → [Sáng: Săn 2:30] → [Trưa: Nấu] → [Chiều tối: Bán 4:00] �
                                                     không đạt → Game Over
 ```
 
-Hiện tại mọi màn đều là **bản tạm**: nút bấm và log, kế thừa `ScreenBase`. Đủ để chơi thử trọn vòng lặp. Mỗi người thay màn của mình bằng UI thật.
-
 ## Cấu trúc
 
 | Thư mục | Nội dung |
@@ -45,7 +81,7 @@ Hiện tại mọi màn đều là **bản tạm**: nút bấm và log, kế th�
 | `data/classes/` | Class Resource: `CombatantData`, `BrothData`, `UpgradeData` |
 | `data/combatants/`, `broths/`, `upgrades/` | File `.tres` chứa **số liệu cân bằng**. Chỉnh trong Inspector, không cần sửa code |
 | `scenes/hunt/combat/` | `Battle` (ATB theo tốc đánh), `Combatant`, `Passive`, `StatusEffect` |
-| `scenes/hunt/combat/passives/` | Nội tại từng quái (đang là TODO) |
+| `scenes/hunt/combat/passives/` | Nội tại từng quái |
 | `scenes/common/screen_base.gd` | Khung UI tạm |
 | `assets/` | Hình, âm thanh, font (Be Vietnam Pro: có dấu tiếng Việt, dùng làm font mặc định) |
 | `tools/build_web.sh` | Export bản Web và push lên itch.io |
