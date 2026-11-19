@@ -1,6 +1,7 @@
 class_name RoomDecor
 extends Control
-## Đồ trang trí nhà hàng đổi theo cấp Nội thất (RestaurantDecor): đèn treo, rèm cửa sổ, chậu cây, thảm lối đi.
+## Đồ trang trí nhà hàng đổi theo cấp Nội thất (RestaurantDecor): đèn treo, rèm cửa sổ, chậu cây, thảm lối đi;
+## cùng đồ người chơi tự mua ở tab Trang trí (GameState.decor_placed, vẽ bằng DecorArt).
 ## Vẽ theo lưới điểm ảnh của nền (1 điểm ảnh nền = 4 px), toạ độ theo sân khấu 1280x720 của màn bán.
 ## Nằm trên nền, dưới bàn và nhân vật. Dây đèn trang trí (cấp cao) nằm ở lớp FairyLights riêng phía trên ánh sáng.
 
@@ -9,6 +10,16 @@ const LAMP_X := [38, 100, 172] ## Cột (điểm ảnh nền) của các đèn t
 const WINDOWS := [Rect2i(46, 22, 43, 35), Rect2i(112, 22, 43, 35)] ## Khung 2 cửa sổ (điểm ảnh nền).
 const PLANTS := [Vector2i(176, 81), Vector2i(311, 81)] ## Gốc chậu cây (giữa đáy chậu) trên sàn, sát chân tường.
 const CARPET_ROWS := Vector2i(82, 88) ## Thảm lối đi từ cửa vào (hàng điểm ảnh nền).
+## Góc trái trên (điểm ảnh nền) của từng chỗ đặt đồ trang trí người chơi mua (DecorArt.BOX là cỡ khung),
+## đặt vào các mảng tường / sàn còn trống, tránh đèn treo, rèm, bàn và lối đi.
+const DECOR_SPOTS := {
+	"clock": Vector2i(34, 45), ## tường gạch giữa cửa ra vào và cửa sổ 1, dưới đèn
+	"painting": Vector2i(158, 43), ## tường giữa cửa sổ 2 và ô cửa bếp, dưới đèn
+	"shelf": Vector2i(120, 51), ## dải tường ốp bên phải bảng thực đơn
+	"cat": Vector2i(154, 48), ## bục nhỏ cạnh kệ
+	"corner": Vector2i(190, 63), ## sàn dưới ô cửa bếp
+	"door": Vector2i(13, 47), ## cánh cửa ra vào
+}
 const CORD := Color("2e1a10")
 const RED := Color("c4342b")
 const RED_DARK := Color("8c201c")
@@ -57,6 +68,10 @@ func _draw() -> void:
 	if _fur["plants"]:
 		for p in PLANTS:
 			_draw_plant(p)
+	for slot in GameState.decor_placed: # đồ trang trí người chơi mua (tab Trang trí ở cửa hàng)
+		var decor := Database.get_decor(str(GameState.decor_placed[slot]))
+		if decor != null and DECOR_SPOTS.has(slot):
+			DecorArt.draw(self, slot, decor.style, Vector2(DECOR_SPOTS[slot]) * PX, PX)
 
 
 func _draw_bulb(x: int) -> void:

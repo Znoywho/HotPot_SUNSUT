@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DecorData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/decor_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "shelf_bowls"
+slot = "shelf"
+style = "bowls"
+display_name = "Kệ bát đĩa"
+description = "Chồng bát viền xanh và ấm trà đất."
+cost = 200000
+tip_bonus = 0.01

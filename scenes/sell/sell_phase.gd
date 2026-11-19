@@ -763,7 +763,7 @@ func _finish_eating(table: TableNode) -> void:
 	if broth:
 		# Hoá đơn = 1 nồi lẩu + các đĩa đồ nhúng (nhóm đông gọi nhiều đĩa hơn).
 		var bill := broth.price + dish_total
-		var tip_rate := randf_range(TIP_MIN, TIP_MAX) + Database.upgrade_value("furniture")
+		var tip_rate := randf_range(TIP_MIN, TIP_MAX) + Database.upgrade_value("furniture") + GameState.decor_tip_bonus()
 		var tip := roundi(bill * tip_rate / 1000.0) * 1000
 		# Phí phục vụ (nâng cấp mở khi đủ 10 bàn): cộng % vào hoá đơn.
 		var service := roundi(bill * Database.upgrade_value("service") / 1000.0) * 1000

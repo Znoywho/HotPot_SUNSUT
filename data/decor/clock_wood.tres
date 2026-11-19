@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DecorData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/decor_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "clock_wood"
+slot = "clock"
+style = "wood"
+display_name = "Đồng hồ gỗ"
+description = "Đồng hồ treo tường viền gỗ, nhìn là biết quán mở cửa đúng giờ."
+cost = 100000
+tip_bonus = 0.01
