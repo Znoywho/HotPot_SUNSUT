@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = "furniture"
 display_name = "Nội thất"
-description = "+5% tip mỗi cấp (doc: mỗi cấp tăng sao, tăng giá, +5% tip)."
+description = "Bàn ghế, đèn lồng đẹp hơn: khách vui lòng tip thêm 5% mỗi cấp."
 category = 2
 costs = Array[int]([300000, 700000, 1600000, 3600000, 8000000])
 values = Array[float]([0.0, 0.05, 0.1, 0.15, 0.2, 0.25])
