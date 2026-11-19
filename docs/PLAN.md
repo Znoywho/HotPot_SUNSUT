@@ -10,9 +10,9 @@
 
 ## Tiến độ (cập nhật 19/11 trưa, ngày 19/21)
 
-Đã gộp vào `main` tới PR #28, không còn PR chờ (ngoài PR cập nhật tiến độ này). Kiểm tra headless: không lỗi script; export web chạy được. **Bản trên itch.io vẫn là bản cũ** (chưa push).
+Đã gộp vào `main` tới PR #28. **Chờ merge:** #30 (issue #19), #31 (bảng Cách chơi), cùng PR cập nhật tiến độ này. Kiểm tra headless: không lỗi script; export web chạy được. **Bản trên itch.io vẫn là bản cũ** (chưa push).
 
-**Tổng:** 22 việc (không tính 3 mục đã cắt) → 18 xong, 2 đang làm (S08, S15), 2 chưa làm (lượng rơi, số người mỗi nhóm khách); tính việc dở là ½ ≈ **86%**. Vòng chơi chính (săn → nấu → bán → KPI → nâng cấp) đã đủ, phần còn lại chủ yếu là nhạc, test điện thoại và trang itch.
+**Tổng:** 24 việc (không tính Lầu 2 đã cắt) → 20 xong (2 đang chờ merge), 2 đang làm (S08, S15), 2 chưa làm (lượng rơi, số người mỗi nhóm khách); tính việc dở là ½ ≈ **88%**. Vòng chơi chính (săn → nấu → bán → KPI → nâng cấp) đã đủ, phần còn lại chủ yếu là nhạc, test điện thoại và trang itch.
 
 | Việc | Ai | Trạng thái | Còn thiếu |
 |---|---|---|---|
@@ -33,22 +33,22 @@
 | S14 Boss, hoàng kim | Hải | Xong | Chốt chỉ số boss |
 | S15 Asset | Hải | Gần xong | **Chưa có nhạc nền** (mới có 7 hiệu ứng `.ogg`) |
 | S16 Chuyển cảnh giữa các buổi | Hạo (thay Hải) | Xong (#28) | Mờ tối + thẻ tên buổi; đồng hồ chạy khi màn mới đã hiện. **Hải không cần làm nữa** |
-| Lượng rơi, phạt khi thua | Hải | Chưa làm | `drop_amount_multiplier` vẫn 3.0 (`scenes/hunt/hunt_config.gd:32`), đề xuất 2.0; phạt mất nửa đồ có thể cắt |
+| Lượng rơi, phạt khi thua | Hải | Chưa làm | Sau #30 mỗi nồi tốn nhiều nguyên liệu hơn: **giữ `drop_amount_multiplier` = 3.0** (không giảm xuống 2.0), chơi thử rồi chỉnh. Phạt mất nửa đồ có thể cắt |
 | Menu chính mới (mèo, trâu Thần Tài) | Hải | Xong | |
 | S20–S24 Bếp, khách, xe đẩy, tip, sao | Tuấn | Xong | **Test cảm ứng trên điện thoại** |
 | Dọn bàn, quét rác, lau vũng nước | Hải, Hạo | Xong (#22, #24) | Giảm tần suất bẩn, sửa bố cục bảng Dọn dẹp. Phần của Tuấn: **Tuấn cần xem lại** |
 | S25 Thêm nước cốt | Tuấn | Xong | 5 nước cốt |
 | Chốt số người mỗi nhóm khách | Tuấn | Chưa làm | `TODO(nhóm)` ở `sell_phase.gd:32` |
-| Số phần theo nguyên liệu (issue #19) | Tuấn | **Cắt** | Đổi luật nấu sát ngày đóng băng dễ sinh lỗi |
-| Tutorial | Nhóm | **Cắt** | Thay bằng mục "Cách chơi" trong mô tả trang itch |
+| Số phần theo nguyên liệu (issue #19) | Hạo (thay Tuấn) | Xong, chờ merge (#30) | 1 bộ nguyên liệu = 1 phần, Nồi = số phần tối đa; công thức 5 nước cốt đổi sang 1 phần. **Tuấn xem lại** (đụng `scenes/cook/`, `data/broths/`) |
+| Tutorial | Hạo | Xong, chờ merge (#31) | Bảng "Cách chơi" lần đầu vào mỗi buổi (game tạm dừng), xem lại trong menu tạm dừng. Cả nhóm đọc lại nội dung |
 
 **Việc còn lại (19–20/11):**
 
 | Người | Việc, theo thứ tự ưu tiên |
 |---|---|
-| Hạo | (1) Đẩy bản mới lên itch (`./tools/build_web.sh push`) để cả nhóm chơi thử. (2) Trang itch: ảnh bìa, ảnh chụp, mô tả + "Cách chơi". (3) Review/merge PR. |
-| Hải | (1) Nhạc nền `.ogg` 2–3 bài, ghi `CREDITS.md`. (2) `drop_amount_multiplier` 3.0 » 2.0. (3) Chơi thử Trâu chiến + chí mạng (PR #27). (4) Thanh máu sang `PixelBar` nếu còn thời gian. |
-| Tuấn | (1) Test bếp và màn bán bằng cảm ứng trên điện thoại. (2) Xem lại PR #22, #24 (đụng `scenes/sell/`). (3) Chốt tỉ lệ số người mỗi nhóm khách. (4) Thanh nấu / sơ chế sang `PixelBar` nếu còn thời gian. |
+| Hạo | (0) Merge #30, #31 sau khi Tuấn/Hải xem. (1) Đẩy bản mới lên itch (`./tools/build_web.sh push`) để cả nhóm chơi thử. (2) Trang itch: ảnh bìa, ảnh chụp, mô tả + "Cách chơi". (3) Review/merge PR. |
+| Hải | (1) Nhạc nền `.ogg` 2–3 bài, ghi `CREDITS.md`. (2) Chơi thử lượng rơi sau #30 (giữ 3.0, chỉnh nếu thiếu/dư). (3) Chơi thử Trâu chiến + chí mạng (PR #27). (4) Thanh máu sang `PixelBar` nếu còn thời gian. |
+| Tuấn | (1) Test bếp và màn bán bằng cảm ứng trên điện thoại. (2) Xem lại PR #22, #24 (`scenes/sell/`) và **#30** (`scenes/cook/`, `data/broths/`). (3) Chốt tỉ lệ số người mỗi nhóm khách. (4) Thanh nấu / sơ chế sang `PixelBar` nếu còn thời gian. |
 | Cả nhóm | Chơi thử 3–5 ngày bản mới, ghi lỗi và cảm giác khó/dễ, nhất là giá 5 nâng cấp chiến đấu mới. |
 
 **Mốc cuối:** ngày 20 đóng băng tính năng, sửa bug, export bản cuối, đổi trang itch sang Public. Ngày 21 báo cáo, slide, video demo.
