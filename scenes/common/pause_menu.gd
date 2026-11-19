@@ -1,7 +1,7 @@
 class_name PauseMenu
 extends CanvasLayer
 ## Menu tạm dừng: ESC (hoặc nút "II" trên HUD, nút Back trên Android) để mở/đóng.
-## Chơi tiếp / Cài đặt / Chơi mới / Thoát ra menu chính. Chơi mới và Thoát phải xác nhận lần nữa.
+## Chơi tiếp / Cách chơi / Cài đặt / Chơi mới / Thoát ra menu chính. Chơi mới và Thoát phải xác nhận lần nữa.
 ## HUD tạo sẵn menu này; chỉ mở được khi HUD đang hiện (tức là đang trong ngày chơi).
 
 const LAYER := 110 ## Trên cả sổ tổng kết ngày (DayManager.DAY_END_LAYER = 100).
@@ -107,6 +107,8 @@ func _show_main() -> void:
 	_clear()
 	_add_title("TẠM DỪNG")
 	_add_button("Chơi tiếp", close)
+	if HowToPlay.has_page(DayManager.current_phase):
+		_add_button("Cách chơi", _show_how_to_play)
 	_add_button("Cài đặt", func(): get_tree().root.add_child(SettingsPanel.new()))
 	_add_button("Chơi mới", _show_confirm.bind(
 			"Bắt đầu lại từ Ngày 1?\nTiến độ hiện tại sẽ mất.", "Bắt đầu lại", _new_game))
@@ -125,6 +127,12 @@ func _show_confirm(message: String, confirm_text: String, action: Callable) -> v
 	_box.add_child(label)
 	_add_button(confirm_text, action, BUTTON_DANGER)
 	_add_button("Quay lại", _show_main)
+
+
+## Đóng menu rồi mở bảng "Cách chơi" của buổi đang chơi (bảng tự tạm dừng game).
+func _show_how_to_play() -> void:
+	close()
+	get_tree().root.add_child(HowToPlay.new(DayManager.current_phase))
 
 
 func _new_game() -> void:
