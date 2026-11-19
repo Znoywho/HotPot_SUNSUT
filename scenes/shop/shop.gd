@@ -23,6 +23,13 @@ const INK := Color("3a2418") ## Chữ tối trên thẻ màu kem.
 const TEXT_LIGHT := Color("fbecd2")
 const ACCENT := Color("f2a33a")
 const TAB_DIM := Color(0.55, 0.55, 0.55) ## Tab chưa chọn tối đi.
+const INK_SOFT := Color("7a5a44") ## Chữ phụ ("Hiện tại", "Cấp sau") nhạt hơn chữ chính.
+const GAIN_COLOR := Color("2e7d32") ## Phần cộng thêm khi lên cấp: xanh lá, nổi trên nền kem.
+const MAXED_COLOR := Color("c77a12") ## Cấp tối đa: cam vàng.
+const NONE_COLOR := Color("9a8a7a") ## Chưa có hiệu ứng (cấp 0).
+const POOR_COLOR := Color("c62828") ## Thiếu tiền.
+const EFFECT_BG := Color("e6d3a8") ## Ô hiệu ứng trong thẻ, đậm hơn nền thẻ một chút.
+const HUNT_CONFIG: HuntConfig = preload("res://data/combatants/hunt_config.tres") ## Chí mạng gốc, trâu +%/cấp.
 const FADE_IN_SECONDS := 0.5
 const FLASH_COLOR := Color("fff4d6") ## Màu ánh sáng khi rời menu (khớp FLASH_COLOR trong main_menu.gd): màn tan dần từ màu này.
 const BOARD_DROP_SECONDS := 0.7 ## Bảng rơi từ trên xuống, trượt quá một chút rồi êm về chỗ.
@@ -151,6 +158,7 @@ func _select_tab(category: UpgradeData.Category) -> void:
 	_tab = category
 	for key in _tab_buttons:
 		(_tab_buttons[key] as Control).modulate = Color.WHITE if key == category else TAB_DIM
+	_scroll.scroll_vertical = 0 # tab mới bắt đầu từ thẻ đầu tiên
 	_rebuild_cards()
 
 
@@ -200,21 +208,123 @@ func _make_card(upgrade: UpgradeData) -> Control:
 	var name_label := _make_label(upgrade.display_name, 24, INK, true)
 	name_label.size_flags_horizontal = SIZE_EXPAND_FILL
 	top.add_child(name_label)
-	top.add_child(_make_label("Cấp %d/%d" % [level, upgrade.max_level()], 20, INK))
+	var maxed := level >= upgrade.max_level()
+	top.add_child(_make_label("Cấp %d/%d" % [level, upgrade.max_level()], 20, MAXED_COLOR if maxed else INK, maxed))
 
 	var description := _make_label(upgrade.description, 18, INK)
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	description.size_flags_vertical = SIZE_EXPAND_FILL
 	box.add_child(description)
+	box.add_child(_make_effect_box(upgrade, level))
 
-	var buy := PixelButton.new("ĐÃ TỐI ĐA" if cost < 0 else "MUA · %s" % GameState.format_money(cost), 22)
+	var affordable := cost >= 0 and GameState.can_afford(cost)
+	var buy_text := "ĐÃ TỐI ĐA" if cost < 0 else ("MUA · %s" if affordable else "THIẾU TIỀN · %s") % GameState.format_money(cost)
+	var buy := PixelButton.new(buy_text, 22)
 	buy.custom_minimum_size = Vector2(0, 56)
-	buy.disabled = cost < 0 or not GameState.can_afford(cost)
+	buy.disabled = not affordable
 	buy.mouse_filter = MOUSE_FILTER_PASS # vuốt bắt đầu trên nút vẫn cuộn được
 	buy.button_down.connect(func(): _scroll_at_press = _scroll.scroll_vertical)
 	buy.pressed.connect(_buy_upgrade.bind(upgrade))
 	box.add_child(buy)
 	return card
+
+
+## Ô hiệu ứng trong thẻ: "Hiện tại" (đang được gì) và "Cấp sau" (sẽ được gì, phần cộng thêm tô xanh).
+## Đã max thì chỉ còn "Hiện tại" + chữ "Đã tối đa" màu cam.
+func _make_effect_box(upgrade: UpgradeData, level: int) -> Control:
+	var panel := PanelContainer.new()
+	panel.mouse_filter = MOUSE_FILTER_PASS
+	var style := _box_style(EFFECT_BG, Color(CARD_BORDER, 0.35), 2, 8)
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	panel.add_theme_stylebox_override("panel", style)
+	var text := RichTextLabel.new()
+	text.bbcode_enabled = true
+	text.fit_content = true
+	text.scroll_active = false
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.mouse_filter = MOUSE_FILTER_PASS
+	text.add_theme_font_size_override("normal_font_size", 18)
+	text.add_theme_font_size_override("bold_font_size", 18)
+	text.add_theme_font_override("bold_font", BOLD_FONT)
+	text.add_theme_color_override("default_color", INK)
+	var now := _effect_at(upgrade, level)
+	var now_bb := "[color=#%s]%s[/color]" % [NONE_COLOR.to_html(false), now] if now == "Chưa có" else "[b]%s[/b]" % now
+	var lines := "[color=#%s]Hiện tại:[/color] %s" % [INK_SOFT.to_html(false), now_bb]
+	if level >= upgrade.max_level():
+		lines += "  [color=#%s][b]Đã tối đa[/b][/color]" % MAXED_COLOR.to_html(false)
+	else:
+		lines += "\n[color=#%s]Cấp %d:[/color] [b]%s[/b]  [color=#%s][b]%s[/b][/color]" % [
+			INK_SOFT.to_html(false), level + 1, _effect_at(upgrade, level + 1), GAIN_COLOR.to_html(false), _gain_text(upgrade, level)]
+	text.text = lines
+	panel.add_child(text)
+	return panel
+
+
+## Hiệu ứng ở một cấp, viết cho người chơi đọc (giá trị lấy từ values[] trong .tres).
+func _effect_at(upgrade: UpgradeData, level: int) -> String:
+	var v := upgrade.value_at(level)
+	match upgrade.id:
+		"pot":
+			return "%d phần mỗi mẻ" % v
+		"stove":
+			var speed := roundi((1.0 - v) * 100.0)
+			return "%d bếp, %s" % [1 + level, "nấu tốc độ gốc" if speed == 0 else "nấu nhanh hơn %d%%" % speed]
+		"staff":
+			return ["Chưa có", "1 phụ bếp", "2 phụ bếp", "2 phụ bếp + bếp phó"][clampi(level, 0, 3)]
+		"cold_storage":
+			return "Giữ đồ %d ngày" % (GameState.SHELF_DAYS + int(v))
+		"knife", "dragon_blade":
+			return "Chưa có" if v == 0.0 else "+%d dame" % v
+		"armor", "battle_robe":
+			return "Chưa có" if v == 0.0 else "+%d máu" % v
+		"sharp_mind":
+			return "Chí mạng %d%%" % roundi((HUNT_CONFIG.base_crit_chance + v) * 100.0)
+		"hawk_eye":
+			return "Chí mạng gây x%s dame" % _short_number(HUNT_CONFIG.base_crit_multiplier + v)
+		"mount":
+			if level <= 0:
+				return "Chưa có"
+			return "Có trâu chiến" if level == 1 else "Trâu khỏe thêm %d%%" % roundi(HUNT_CONFIG.mount_bonus_per_level * (level - 1) * 100.0)
+		"tables":
+			return "%d bàn" % v
+		"furniture":
+			return "Chưa có" if v == 0.0 else "+%d%% tip" % roundi(v * 100.0)
+		"service":
+			return "Chưa có" if v == 0.0 else "+%d%% phí phục vụ" % roundi(v * 100.0)
+	return _short_number(v)
+
+
+## Phần cộng thêm khi lên từ `level` lên level + 1 (chữ xanh trên thẻ): cộng = giá trị cấp sau - giá trị cấp này.
+func _gain_text(upgrade: UpgradeData, level: int) -> String:
+	var diff := upgrade.value_at(level + 1) - upgrade.value_at(level)
+	match upgrade.id:
+		"pot":
+			return "+%d phần" % diff
+		"stove":
+			return "+1 bếp, +%d%%" % roundi(-diff * 100.0)
+		"staff":
+			return "+ bếp phó" if level + 1 >= 3 else "+1 phụ bếp"
+		"cold_storage":
+			return "+%d ngày" % diff
+		"knife", "dragon_blade":
+			return "+%d" % diff
+		"armor", "battle_robe":
+			return "+%d" % diff
+		"sharp_mind", "furniture", "service":
+			return "+%d%%" % roundi(diff * 100.0)
+		"hawk_eye":
+			return "+%s" % _short_number(diff)
+		"mount":
+			return "Mở khoá" if level == 0 else "+%d%%" % roundi(HUNT_CONFIG.mount_bonus_per_level * 100.0)
+		"tables":
+			return "+%d bàn" % diff
+	return "+%s" % _short_number(diff)
+
+
+## Số gọn cho người đọc: số nguyên thì bỏ phần thập phân (2 thay vì 2.0), còn lại giữ 1 chữ số (1.9).
+static func _short_number(x: float) -> String:
+	return str(roundi(x)) if is_equal_approx(x, roundf(x)) else "%.1f" % x
 
 
 ## Mua 1 cấp: trừ tiền, lên cấp, cập nhật số bàn nếu là "Thêm bàn", báo mở khóa tiến hóa khi max cấp.
