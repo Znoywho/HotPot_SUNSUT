@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/upgrade_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "sharp_mind"
+display_name = "Đầu óc sắc bén"
+description = "+ tỷ lệ chí mạng khi đi săn: +3% mỗi cấp đầu, tối đa +15%."
+category = 1
+costs = Array[int]([200000, 500000, 1200000, 2500000])
+values = Array[float]([0.0, 0.03, 0.06, 0.1, 0.15])
+evolves_into = ""

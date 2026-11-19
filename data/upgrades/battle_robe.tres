@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/upgrade_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "battle_robe"
+display_name = "Chiến bào"
+description = "Mở khi Giáp phòng hộ max cấp. + máu tối đa, cộng thêm vào Giáp (tối đa +250)."
+category = 1
+costs = Array[int]([3000000, 6000000, 10000000])
+values = Array[float]([0.0, 80.0, 160.0, 250.0])
+evolves_into = ""

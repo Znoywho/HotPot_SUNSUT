@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/upgrade_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "mount"
+display_name = "Trâu chiến"
+description = "Cấp 1: trâu đánh cùng đầu bếp và đứng trước chịu đòn. Mỗi cấp sau trâu khỏe thêm 25%."
+category = 1
+costs = Array[int]([600000, 1500000, 3000000])
+values = Array[float]([0.0, 1.0, 2.0, 3.0])
+evolves_into = ""
