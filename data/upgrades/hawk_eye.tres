@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/upgrade_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "hawk_eye"
+display_name = "Mắt diều hâu"
+description = "Chí mạng đau hơn: hệ số chí mạng gốc x1.5, tối đa x2.5."
+category = 1
+costs = Array[int]([200000, 500000, 1200000, 2500000])
+values = Array[float]([0.0, 0.2, 0.4, 0.7, 1.0])
+evolves_into = ""
