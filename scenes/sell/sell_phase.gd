@@ -34,10 +34,10 @@ const GROUP_SIZE_WEIGHTS := [0, 15, 30, 15, 25, 8, 7]
 const TABLE_SEATS := 6 ## Bàn tròn nào cũng 6 ghế (nhóm đông nhất 6 người).
 ## TODO(nhóm): cân bằng dọn dẹp.
 const STAR_CLEAN_PERFECT := 0.03 ## Dọn Hoàn hảo: cộng sao.
-const MESS_INTERVAL := 14.0 ## Trung bình mấy giây sàn tự bẩn thêm 1 chỗ.
+const MESS_INTERVAL := 22.0 ## Trung bình mấy giây sàn tự bẩn thêm 1 chỗ.
 const PUDDLE_CHANCE := 0.35 ## Tỉ lệ chỗ bẩn tự có là vũng nước (còn lại là rác).
-const TRASH_LEAVE_CHANCE := 0.5 ## Tỉ lệ khách về làm rơi rác cạnh bàn.
-const SPILL_LEAVE_CHANCE := 0.2 ## Tỉ lệ khách về làm đổ nước cạnh bàn.
+const TRASH_LEAVE_CHANCE := 0.3 ## Tỉ lệ khách về làm rơi rác cạnh bàn.
+const SPILL_LEAVE_CHANCE := 0.1 ## Tỉ lệ khách về làm đổ nước cạnh bàn.
 const MAX_MESS := 6
 const MESS_PATIENCE_DRAIN := 0.15 ## Mỗi chỗ bẩn dưới sàn làm khách chờ ở quầy mất kiên nhẫn nhanh thêm 15%.
 const STAR_MESS_LEFT := 0.05 ## Đóng cửa còn chỗ bẩn dưới sàn: trừ sao mỗi chỗ.

@@ -10,7 +10,7 @@ extends Control
 signal finished(grade: int)
 signal closed
 
-const PANEL_SIZE := Vector2(900, 520)
+const PANEL_SIZE := Vector2(960, 560)
 const HUD_SHIFT := 46.0
 const BAR_HEIGHT := 28.0
 const PENALTY := 25 ## Điểm trừ mỗi lỗi (điểm bước = 100 - PENALTY × số lỗi).
@@ -56,7 +56,7 @@ func open(mess_kind: String, title: String) -> void:
 			close_panel())
 
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_panel", 8, Vector2(22, 16)))
+	panel.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_panel", 8, Vector2(28, 24))) # lề >= viền khung 8×3 px để chữ không đè lên viền
 	panel.anchor_left = 0.5
 	panel.anchor_right = 0.5
 	panel.anchor_top = 0.5
@@ -82,11 +82,13 @@ func open(mess_kind: String, title: String) -> void:
 	head.add_child(later)
 
 	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_card", 8, Vector2(16, 10)))
+	card.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_card", 8, Vector2(28, 24)))
 	card.size_flags_vertical = SIZE_EXPAND_FILL
 	root.add_child(card)
 	var gbox := VBoxContainer.new()
 	gbox.add_theme_constant_override("separation", 4)
+	gbox.size_flags_horizontal = SIZE_SHRINK_CENTER ## Tiêu đề, gợi ý, thanh tiến độ rộng bằng vùng chơi.
+	gbox.custom_minimum_size.x = CleanGame.AREA.x
 	card.add_child(gbox)
 	var banner := PanelContainer.new()
 	var bs := StyleBoxFlat.new()
