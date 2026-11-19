@@ -31,11 +31,23 @@
 | Buổi | Việc cần làm |
 |---|---|
 | **Sáng · Đi săn** (2:30) | Chọn bụi cỏ, đánh quái rau củ theo lượt để lấy nguyên liệu; đủ trận thì mở Boss |
-| **Trưa · Nấu** (2:30) | Sơ chế nguyên liệu bằng mini-game, nấu nước cốt trên nhiều bếp |
+| **Trưa · Nấu** (2:30) | Sơ chế nguyên liệu bằng mini-game, nấu nước cốt trên nhiều bếp (1 bộ nguyên liệu = 1 phần lẩu) |
 | **Chiều tối · Bán** (3:15) | Xếp khách vào bàn, bưng lẩu, dọn bàn và sàn, giữ sao đánh giá |
 
-Cuối ngày tổng kết **KPI**: không đạt là thua, đạt thì vào **cửa hàng nâng cấp** (Bếp · Chiến đấu · Quán) rồi sang ngày mới — KPI tăng dần theo doanh thu.
+Cuối ngày tổng kết **KPI**: không đạt là thua, đạt thì vào **cửa hàng** rồi sang ngày mới — KPI tăng dần theo doanh thu.
 Chơi được bằng chuột trên máy tính và **cảm ứng trên điện thoại** (màn ngang).
+
+## Tính năng
+
+- **Đánh theo lượt (ATB theo tốc độ):** 20 loại quái rau củ có nội tại riêng (độc, nổ, hồi máu, cuộn tròn…), Boss rơi **nguyên liệu hoàng kim** giá gấp 3, chế độ Tự đánh và tua x2.
+- **Cửa hàng 2 nhóm:**
+  - **Quán lẩu:** Bếp (nồi, bếp, nhân viên, kho lạnh) · Quán (nội thất, thêm bàn, phí phục vụ) · **Trang trí**
+  - **Đi săn:** Chiến đấu (dao, giáp, chí mạng, Long đao, Chiến bào) · **Vũ khí** · **Thú cưỡi**
+- **Vũ khí:** Muôi canh, Dao phay, Xiên nướng, Chảo gang, Dao bầu hoàng kim — mua một lần, chọn 1 cái để cầm, mỗi món một kiểu (mạnh, nhanh, chí mạng).
+- **Thú cưỡi:** Trâu nước đánh cùng đầu bếp và đứng trước chịu đòn, mạnh dần theo cấp.
+- **Trang trí quán:** 17 món cho 6 chỗ (đồng hồ, tranh, kệ, mèo thần tài, góc quán, trên cửa), đặt món nào thấy món đó trong quán, mỗi món cộng tip.
+- **Quán sống động:** nhóm khách 1–6 người, bàn tròn 6 ghế, sự kiện khách đặc biệt, dọn bàn / quét rác / lau sàn, mặc cả khi hết món.
+- **Lưu tự động** sau mỗi ngày, bảng **Cách chơi** lần đầu vào mỗi buổi, **chuyển cảnh** có thẻ tên buổi, mốc ngày 5/10/15 quái mạnh hơn.
 
 ## Ảnh chụp
 
@@ -46,15 +58,23 @@ Chơi được bằng chuột trên máy tính và **cảm ứng trên điện t
   </tr>
   <tr>
     <td><img src="docs/screenshots/cook.png" alt="Bếp"><p align="center"><b>Trưa:</b> sơ chế và nấu nước cốt</p></td>
-    <td><img src="docs/screenshots/sell.png" alt="Quán lẩu"><p align="center"><b>Chiều tối:</b> phục vụ 10 bàn khách</p></td>
+    <td><img src="docs/screenshots/sell.png" alt="Quán lẩu"><p align="center"><b>Chiều tối:</b> 10 bàn khách, quán có đồ trang trí</p></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/shop.png" alt="Cửa hàng"><p align="center"><b>Cửa hàng</b> 2 nhóm: Quán lẩu / Đi săn</p></td>
+    <td><img src="docs/screenshots/shop_decor.png" alt="Trang trí"><p align="center"><b>Trang trí:</b> mua đồ đặt trong quán</p></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/shop_weapons.png" alt="Vũ khí"><p align="center"><b>Vũ khí:</b> chọn 1 món để cầm đi săn</p></td>
+    <td><img src="docs/screenshots/shop_mount.png" alt="Thú cưỡi"><p align="center"><b>Thú cưỡi:</b> trâu nước đánh cùng</p></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/clean_panel.png" alt="Dọn dẹp"><p align="center"><b>Dọn dẹp</b> bàn, rác, vũng nước</p></td>
-    <td><img src="docs/screenshots/shop.png" alt="Cửa hàng nâng cấp"><p align="center"><b>Cửa hàng nâng cấp</b> sau mỗi ngày</p></td>
+    <td><img src="docs/screenshots/cover_630x500.png" alt="Ảnh bìa"><p align="center">Ảnh bìa trên itch.io</p></td>
   </tr>
 </table>
 
-<sub>Ảnh chụp ở Ngày 8, đã nâng cấp bàn, bếp và nhân viên.</sub>
+<sub>Ảnh chụp ở Ngày 8, đã nâng cấp bàn, bếp, nhân viên, nội thất và đặt đồ trang trí.</sub>
 
 **Nhóm:** Lê Thiên Hạo · Đỗ Hoàng Hải · Nguyễn Ngọc Minh Tuấn
 
@@ -77,9 +97,9 @@ Asset bên ngoài phải ghi vào [`CREDITS.md`](CREDITS.md).
 ## Vòng lặp game
 
 ```
-Menu → [Sáng: Săn 2:30] → [Trưa: Nấu] → [Chiều tối: Bán 4:00] → Tổng kết KPI
+Menu → [Sáng: Săn 2:30] → [Trưa: Nấu 2:30] → [Chiều tối: Bán 3:15] → Tổng kết KPI
                 ↑                                                   │
-                └──────────── Cửa hàng nâng cấp ←── đạt ────────────┤
+                └──────────────── Cửa hàng ←── đạt ─────────────────┤
                                                     không đạt → Game Over
 ```
 
@@ -87,14 +107,16 @@ Menu → [Sáng: Săn 2:30] → [Trưa: Nấu] → [Chiều tối: Bán 4:00] �
 
 | Thư mục | Nội dung |
 |---|---|
-| `autoload/` | `GameState` (tiền, ngày, KPI, kho, nâng cấp), `DayManager` (chuyển phase, đồng hồ), `SaveManager`, `Database` (danh sách dữ liệu) |
-| `data/classes/` | Class Resource: `CombatantData`, `BrothData`, `UpgradeData` |
-| `data/combatants/`, `broths/`, `upgrades/` | File `.tres` chứa **số liệu cân bằng**. Chỉnh trong Inspector, không cần sửa code |
+| `autoload/` | `GameState` (tiền, ngày, KPI, kho, nâng cấp, vũ khí, đồ trang trí), `DayManager` (chuyển buổi + chuyển cảnh, đồng hồ), `SaveManager`, `Database` (danh sách dữ liệu) |
+| `data/classes/` | Class Resource: `CombatantData`, `BrothData`, `UpgradeData`, `WeaponData`, `DecorData` |
+| `data/combatants/`, `broths/`, `upgrades/`, `weapons/`, `decor/` | File `.tres` chứa **số liệu cân bằng** (giá, chỉ số, % tip). Chỉnh trong Inspector, không cần sửa code |
 | `scenes/hunt/combat/` | `Battle` (ATB theo tốc đánh), `Combatant`, `Passive`, `StatusEffect` |
 | `scenes/hunt/combat/passives/` | Nội tại từng quái |
-| `scenes/common/screen_base.gd` | Khung UI tạm |
+| `scenes/common/` | HUD, nút pixel (`PixelButton`), menu tạm dừng, cài đặt, bảng Cách chơi, `DecorArt` (vẽ đồ trang trí) |
+| `scenes/shop/`, `cook/`, `sell/`, `hunt/` | Cửa hàng, bếp, quán, đi săn |
 | `assets/` | Hình, âm thanh, font (Be Vietnam Pro: có dấu tiếng Việt, dùng làm font mặc định) |
 | `tools/build_web.sh` | Export bản Web và push lên itch.io |
+| `tools/make_cover.py`, `make_shop_icons.py` | Vẽ ảnh bìa itch và icon pixel cửa hàng |
 
 **Thêm dữ liệu mới:** tạo `.tres` (chuột phải → New Resource → chọn class), rồi thêm vào `autoload/database.gd`.
 
