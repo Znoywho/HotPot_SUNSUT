@@ -31,6 +31,8 @@ var cfg: PrepConfig
 var _needs: Dictionary = {} ## id -> số phần cần cho 1 mẻ món hôm nay.
 var _ids: Array[String] = []
 var _list: VBoxContainer
+var _scroll: ScrollContainer
+var _scroll_at_press := 0 ## Vị trí cuộn lúc chạm thẻ: vuốt cuộn rồi thả trên thẻ thì không tính là chọn.
 var _buttons: Dictionary = {} ## id -> Button
 var _host: Control
 var _view: Control = null ## Màn giới thiệu / kết quả / sơ chế nhanh (trong khung phải).
@@ -101,11 +103,19 @@ func open(needs: Dictionary) -> void:
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(LIST_W, 0)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll = scroll
+	_style_scrollbar(scroll.get_v_scroll_bar())
 	body.add_child(scroll)
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", 6)
-	scroll.add_child(_list)
+	# Chừa chỗ bên phải cho thanh cuộn to để không đè lên thẻ.
+	var list_margin := MarginContainer.new()
+	list_margin.size_flags_horizontal = SIZE_EXPAND_FILL
+	list_margin.mouse_filter = MOUSE_FILTER_PASS
+	list_margin.add_theme_constant_override("margin_right", 30)
+	scroll.add_child(list_margin)
+	list_margin.add_child(_list)
 
 	var game_card := PanelContainer.new()
 	game_card.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_card", 8, Vector2(16, 10)))
@@ -172,6 +182,25 @@ func open(needs: Dictionary) -> void:
 func select(id: String) -> void:
 	if _buttons.has(id) and not _busy:
 		_select(id)
+
+
+## Thanh cuộn to, dễ kéo bằng ngón tay (mặc định quá mảnh trên điện thoại).
+func _style_scrollbar(bar: VScrollBar) -> void:
+	bar.custom_minimum_size.x = 24
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color(0.23, 0.14, 0.09, 0.35)
+	track.set_corner_radius_all(6)
+	bar.add_theme_stylebox_override("scroll", track)
+	bar.add_theme_stylebox_override("scroll_focus", track)
+	for state in ["grabber", "grabber_highlight", "grabber_pressed"]:
+		var g := StyleBoxFlat.new()
+		g.bg_color = Color("8a5a3c") if state == "grabber" else Color("a6714c")
+		g.border_color = Color("5a3820")
+		g.set_border_width_all(2)
+		g.set_corner_radius_all(6)
+		g.content_margin_left = 10
+		g.content_margin_right = 10
+		bar.add_theme_stylebox_override(state, g)
 
 
 func close_panel() -> void:
@@ -246,7 +275,11 @@ func _rebuild_list() -> void:
 		var b := HuntUI.card_button()
 		b.custom_minimum_size = Vector2(0, 80)
 		b.size_flags_horizontal = SIZE_EXPAND_FILL
+		b.mouse_filter = MOUSE_FILTER_PASS # Vuốt bắt đầu trên thẻ vẫn cuộn được danh sách (điện thoại).
+		b.button_down.connect(func(): _scroll_at_press = _scroll.scroll_vertical)
 		b.pressed.connect(func():
+			if _scroll.scroll_vertical != _scroll_at_press:
+				return # Ngón tay vừa vuốt cuộn rồi thả trên thẻ: không chọn nhầm.
 			if not _busy:
 				_select(id))
 		var row := HBoxContainer.new()

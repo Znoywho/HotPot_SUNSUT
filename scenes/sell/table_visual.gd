@@ -21,9 +21,6 @@ const SEAT_ANGLES := {
 }
 const GUEST_SIZE := 96.0 ## Cỡ hình khách ở tỉ lệ 1 (32 x 3).
 const POT_SIZE := Vector2(64, 56)
-const SMOKE_TEXTURE := "res://assets/sprites/fx/smoke.png"
-const SMOKE_FRAME := 48
-const SMOKE_FPS := 10.0
 const BAR_SIZE := Vector2(104, 12)
 const SPRITE_PX := 32.0
 const POT_PX := Vector2(32, 28)
@@ -32,7 +29,7 @@ var seats := 4
 var number := 1
 var guests: Array[TextureRect] = [] ## Một hình cho mỗi ghế.
 var pot: TextureRect
-var smoke: TextureRect
+var smoke: Control ## Hơi nóng bốc lên + đũa khách gắp đồ trong nồi lúc đang ăn (_EatFx).
 var bubble: PanelContainer
 var _fur: Dictionary
 var _rx := 74.0
@@ -41,8 +38,6 @@ var _angles: Array[float] = []
 var _seat_order: Array[int] = [] ## Thứ tự ngồi: ghế phía sau trước (thấy mặt khách), phía trước sau cùng.
 var _looks: Array = [] ## Hình mặt trước của khách ở từng ghế (để đi ra cửa).
 var _base_y: Array[float] = [] ## Vị trí y gốc của hình khách từng ghế (trước khi nhún).
-var _smoke_atlas: AtlasTexture
-var _smoke_time := 0.0
 var _top: Control
 var _front_chairs: Control
 var _number: Label
@@ -105,16 +100,10 @@ func _init(table_number := 1, seat_count := 4) -> void:
 	pot.mouse_filter = MOUSE_FILTER_IGNORE
 	pot.visible = false
 	add_child(pot)
-	_smoke_atlas = AtlasTexture.new()
-	_smoke_atlas.atlas = load(SMOKE_TEXTURE)
-	_smoke_atlas.region = Rect2(0, 0, SMOKE_FRAME, SMOKE_FRAME)
-	smoke = TextureRect.new()
-	smoke.texture = _smoke_atlas
-	smoke.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	smoke.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	smoke.size = Vector2(48, 48)
-	smoke.mouse_filter = MOUSE_FILTER_IGNORE
-	smoke.visible = false
+	var fx := _EatFx.new()
+	fx.owner_table = self
+	fx.visible = false
+	smoke = fx
 	add_child(smoke)
 
 	# Khách phía trước (quay lưng) nằm trên mặt bàn, lưng ghế phía trước che nửa dưới họ.
@@ -266,7 +255,6 @@ func set_display_scale(sc: float) -> void:
 	var pk := maxi(1, roundi(2.0 * sc - 0.1))
 	pot.size = POT_PX * pk / sc
 	pot.position = Vector2(center().x - pot.size.x / 2.0, CENTER_Y + 8.0 - pot.size.y)
-	smoke.position = Vector2(center().x - 24.0, pot.position.y - 40.0)
 
 
 ## Cho nhóm khách ngồi: ghế phía sau trước (thấy mặt), phía trước sau cùng (quay lưng).
@@ -474,11 +462,6 @@ func _process(delta: float) -> void:
 	# Chữ số bàn ngay dưới mép trước mặt bàn (giữa hai ghế phía trước), cỡ 18px trên màn hình.
 	var label_at := get_global_transform() * Vector2(center().x, CENTER_Y + _ry + 6.0)
 	_number.position = (label_at - parent_origin - Vector2(_number.size.x * 0.5, 0)).round()
-	if smoke.visible:
-		_smoke_time += delta
-		var frame_count := maxi(1, int(_smoke_atlas.atlas.get_width()) / SMOKE_FRAME)
-		var frame := int(_smoke_time * SMOKE_FPS) % frame_count
-		_smoke_atlas.region = Rect2(frame * SMOKE_FRAME, 0, SMOKE_FRAME, SMOKE_FRAME)
 
 
 func _exit_tree() -> void:
@@ -651,3 +634,80 @@ class _Mess extends Control:
 			var n := c + Vector2(rng.randf_range(-0.6, 0.6) * t._rx, rng.randf_range(-0.4, 0.5) * t._ry)
 			draw_rect(Rect2(n.x - 5, n.y - 4, 10, 7), Color("f2eee4"))
 			draw_rect(Rect2(n.x - 3, n.y - 1, 6, 2), Color("c9c2b2"))
+
+
+## Lúc đang ăn: hơi nóng mỏng bốc lên từ nồi (lượn nhẹ, mờ dần) và đũa của từng khách lần lượt
+## thò vào nồi gắp đồ nhúng rồi đưa về bát. Vẽ ô vuông pixel, toạ độ bàn.
+class _EatFx extends Control:
+	const FOOD := [Color("c0392b"), Color("6cc27a"), Color("e8c56a"), Color("f2a07b"), Color("f4eee0")]
+	const STICK := Color("e0b878")
+	const STICK_DARK := Color("8a6a3a")
+	var owner_table: TableVisual
+	var _t := 0.0
+
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+		size = owner_table.size
+
+	func _process(delta: float) -> void:
+		if not visible:
+			return
+		_t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var tv := owner_table
+		var rim := Vector2(tv.center().x, tv.pot.position.y + tv.pot.size.y * 0.3)
+		_draw_steam(rim)
+		_draw_chopsticks(tv, rim + Vector2(0, 4))
+
+	## 4 làn hơi: mỗi làn là chuỗi ô bay lên, lượn sin, to dần và mờ dần (có viền xám nhạt cho nổi trên nền gỗ).
+	func _draw_steam(rim: Vector2) -> void:
+		const RISE := 70.0
+		for w in 4:
+			for k in 6:
+				var h := fmod(_t * 26.0 + k * (RISE / 6.0) + w * 9.0, RISE)
+				var f := h / RISE
+				var x := rim.x + (w - 1.5) * 12.0 + sin(h * 0.12 + w * 1.7) * 6.0
+				var sz := roundf(5.0 + f * 6.0)
+				var a := 0.85 * (1.0 - f) * clampf(h / 8.0, 0.0, 1.0)
+				var r := Rect2(Vector2(x, rim.y - 6.0 - h).round() - Vector2(sz, sz) / 2.0, Vector2(sz, sz))
+				draw_rect(r.grow(1), Color(0.55, 0.5, 0.48, a * 0.5))
+				draw_rect(r, Color(1, 1, 1, a))
+		# Bọt sôi lăn tăn trên mặt nồi: nở to rồi vỡ.
+		for k in 5:
+			var ph := fmod(_t * 1.6 + k * 0.37, 1.0)
+			var bx := rim.x + sin(k * 2.3) * 16.0
+			var by := rim.y + 2.0 + cos(k * 1.7) * 3.0
+			var br := roundf(1.0 + ph * 3.0)
+			if ph < 0.85:
+				draw_rect(Rect2(Vector2(bx - br, by - br).round(), Vector2(br * 2, br * 2)), Color(1, 0.95, 0.85, 0.85))
+			else:
+				for d in [Vector2(-4, -3), Vector2(4, -3), Vector2(0, -5)]:
+					draw_rect(Rect2((Vector2(bx, by) + d).round(), Vector2(2, 2)), Color(1, 1, 1, 0.8))
+
+	## Đũa từng khách đang ngồi: thò vào nồi, gắp 1 miếng, đưa về. Mỗi người lệch nhịp, có lúc nghỉ ăn.
+	func _draw_chopsticks(tv: TableVisual, dip_at: Vector2) -> void:
+		var j := 0
+		for i in tv.seats:
+			if not tv.guests[i].visible:
+				continue
+			var cyc := fmod(_t * 0.7 + j * 0.41, 1.0)
+			j += 1
+			if cyc > 0.7:
+				continue # đang nhai, đũa để trên bát
+			var k := sin(cyc / 0.7 * PI) # 0 -> 1 (trong nồi) -> 0
+			var a: float = tv._angles[i]
+			var hand := tv.center() + Vector2(cos(a) * tv._rx * 0.62, sin(a) * tv._ry * 0.55 - 12.0)
+			var dip := dip_at + Vector2(cos(a) * 8.0, sin(a) * 3.0)
+			var tip := hand.lerp(dip, k)
+			var back := tip + (hand - dip).normalized() * 38.0 + Vector2(0, -12)
+			for off in [Vector2.ZERO, Vector2(3, 2)]:
+				draw_line((tip + off).round(), (back + off).round(), Color("3b2416"), 5.0)
+				draw_line((tip + off).round(), (back + off).round(), STICK if off == Vector2.ZERO else STICK_DARK, 3.0)
+			if cyc > 0.35:
+				# Đang gắp miếng đồ nhúng về.
+				var food: Color = FOOD[(i + int(_t * 0.7 + j * 0.41)) % FOOD.size()]
+				draw_rect(Rect2((tip + Vector2(-5, -5)).round(), Vector2(11, 9)), Color("3b2416"))
+				draw_rect(Rect2((tip + Vector2(-4, -4)).round(), Vector2(9, 7)), food)
+				draw_rect(Rect2((tip + Vector2(-3, -4)).round(), Vector2(4, 2)), food.lightened(0.35))
