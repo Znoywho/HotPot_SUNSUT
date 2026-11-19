@@ -104,6 +104,7 @@ var _clouds: Array[TextureRect] = []
 var _dance_frames: Array[AtlasTexture] = []
 var _dance_time := 0.0
 var _cloud_speeds: Array[float] = []
+var _resize_timer: SceneTreeTimer = null ## Đang chờ dựng lại menu sau khi đổi cỡ màn.
 
 
 ## Dựng toàn bộ giao diện bằng code, xếp từ xa tới gần.
@@ -122,6 +123,19 @@ func _ready() -> void:
 	_build_title()
 	_build_buttons()
 	add_child(RotateHint.new())
+	get_viewport().size_changed.connect(_on_viewport_resized)
+
+
+## Mọi thứ trên menu đặt theo cỡ màn lúc _ready; web/điện thoại còn đổi cỡ canvas sau khi mở (hoặc xoay máy)
+## nên dựng lại menu cho khớp. Đợi cỡ màn đứng yên một chút để không dựng lại liên tục khi kéo cửa sổ.
+func _on_viewport_resized() -> void:
+	if _leaving:
+		return
+	if _resize_timer == null:
+		_resize_timer = get_tree().create_timer(0.2)
+		_resize_timer.timeout.connect(func() -> void:
+			if not _leaving:
+				get_tree().reload_current_scene())
 
 
 ## Mây trôi sang phải, ra khỏi mép phải thì quay lại từ mép trái; mèo góc trái nhảy.

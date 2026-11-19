@@ -4,6 +4,12 @@ Game quản lý quán lẩu kết hợp chiến đấu theo lượt. Đồ án G
 
 **Nhóm:** Lê Thiên Hạo · Đỗ Hoàng Hải · Nguyễn Ngọc Minh Tuấn
 
+**Chơi thử:** https://znoywho.itch.io/soi-sung-suc
+
+![Menu chính](docs/screenshots/main_menu.png)
+
+![Dọn dẹp ở màn bán](docs/screenshots/clean_panel.png)
+
 ## Cài đặt
 
 - **Godot 4.7.2** (bản thường, không phải .NET). Cả nhóm dùng **cùng phiên bản**.
