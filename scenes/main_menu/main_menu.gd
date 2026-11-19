@@ -121,6 +121,7 @@ func _ready() -> void:
 	_build_fight()
 	_build_chef()
 	_build_title()
+	_build_record()
 	_build_buttons()
 	add_child(RotateHint.new())
 	get_viewport().size_changed.connect(_on_viewport_resized)
@@ -585,6 +586,24 @@ func _respawn_monster(monster: TextureRect) -> void:
 	tween.tween_property(monster, "modulate:a", 1.0, 0.15)
 	tween.parallel().tween_property(monster, "position", home, 0.25).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	tween.tween_callback(monster.set_meta.bind("hp", MONSTER_HP))
+
+
+## Dòng "Kỷ lục: trụ được N ngày" giữa đáy màn (chưa có lần chơi nào kết thúc thì không hiện).
+func _build_record() -> void:
+	var best := BestRecord.best_days()
+	if best <= 0:
+		return
+	var label := Label.new()
+	label.text = "Kỷ lục: trụ được %d ngày" % best
+	label.mouse_filter = MOUSE_FILTER_IGNORE
+	label.add_theme_font_override("font", PixelButton.BOLD_FONT)
+	label.add_theme_font_size_override("font_size", 24)
+	label.add_theme_color_override("font_color", PixelButton.TEXT_COLOR)
+	label.add_theme_color_override("font_outline_color", PixelButton.TEXT_OUTLINE_COLOR)
+	label.add_theme_constant_override("outline_size", PixelButton.outline_for(24))
+	add_child(label)
+	label.set_anchors_and_offsets_preset(PRESET_CENTER_BOTTOM, PRESET_MODE_MINSIZE, 16)
+	label.grow_horizontal = GROW_DIRECTION_BOTH
 
 
 ## Logo pixel mập "SÔI SÙNG SỤC" (Ô = nồi lẩu, dấu huyền = ớt, dấu nặng = cà chua) có ánh kim lướt qua chữ

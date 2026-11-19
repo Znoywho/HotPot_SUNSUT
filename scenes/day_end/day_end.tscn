@@ -9,14 +9,20 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/ui/book/bar_under.png" id="7_under"]
 [ext_resource type="Texture2D" path="res://assets/sprites/ui/book/bar_fill_pass.png" id="8_pass"]
 [ext_resource type="Texture2D" path="res://assets/sprites/ui/book/bar_fill_over.png" id="9_over"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/result/stamp_frame.png" id="10_stamp"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_stamp"]
-bg_color = Color(1, 1, 1, 0)
-border_width_left = 6
-border_width_top = 6
-border_width_right = 6
-border_width_bottom = 6
-border_color = Color(1, 1, 1, 1)
+[sub_resource type="StyleBoxTexture" id="StyleBox_stamp"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+texture = ExtResource("10_stamp")
+texture_margin_left = 18.0
+texture_margin_top = 18.0
+texture_margin_right = 18.0
+texture_margin_bottom = 18.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
 
 [node name="DayEnd" type="Control"]
 layout_mode = 3
