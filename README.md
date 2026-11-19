@@ -7,8 +7,18 @@
 [![Chơi trên itch.io](https://img.shields.io/badge/Ch%C6%A1i%20ngay-itch.io-FA5C5C?style=for-the-badge&logo=itchdotio&logoColor=white)](https://znoywho.itch.io/soi-sung-suc)
 <br>
 ![Godot 4.7.2](https://img.shields.io/badge/Godot-4.7.2-478CBF?logo=godotengine&logoColor=white)
-![GDScript](https://img.shields.io/badge/GDScript-355570)
-![Web](https://img.shields.io/badge/N%E1%BB%81n%20t%E1%BA%A3ng-Web%20%C2%B7%20Desktop%20%C2%B7%20Mobile-2ea44f)
+![GDScript](https://img.shields.io/badge/GDScript-355570?logo=godotengine&logoColor=white)
+![WebGL 2](https://img.shields.io/badge/WebGL%202-GL%20Compatibility-990000?logo=webgl&logoColor=white)
+![Nền tảng](https://img.shields.io/badge/N%E1%BB%81n%20t%E1%BA%A3ng-Web%20%C2%B7%20Desktop%20%C2%B7%20Mobile-2ea44f)
+<br>
+![Thể loại](https://img.shields.io/badge/Th%E1%BB%83%20lo%E1%BA%A1i-Qu%E1%BA%A3n%20l%C3%BD%20qu%C3%A1n%20%2B%20%C4%90%C3%A1nh%20theo%20l%C6%B0%E1%BB%A3t-orange)
+![Pixel art](https://img.shields.io/badge/%C4%90%E1%BB%93%20ho%E1%BA%A1-Pixel%20art%2032%C3%9732-ff69b4)
+![Cảm ứng](https://img.shields.io/badge/C%E1%BA%A3m%20%E1%BB%A9ng-M%C3%A0n%20ngang-8a2be2)
+![Ngôn ngữ](https://img.shields.io/badge/Ng%C3%B4n%20ng%E1%BB%AF-Ti%E1%BA%BFng%20Vi%E1%BB%87t-da251d)
+<br>
+![Đồ án](https://img.shields.io/badge/%C4%90%E1%BB%93%20%C3%A1n-3%20tu%E1%BA%A7n%20%C2%B7%203%20ng%C6%B0%E1%BB%9Di-blueviolet)
+![Commit gần nhất](https://img.shields.io/github/last-commit/Znoywho/HotPot_SUNSUT?label=Commit%20g%E1%BA%A7n%20nh%E1%BA%A5t)
+![PR đã merge](https://img.shields.io/github/issues-pr-closed/Znoywho/HotPot_SUNSUT?label=PR%20%C4%91%C3%A3%20%C4%91%C3%B3ng)
 
 <img src="docs/screenshots/main_menu.png" alt="Menu chính" width="100%">
 
