@@ -288,7 +288,7 @@ func _make_boss_card() -> Button:
 	row.set_anchors_and_offsets_preset(PRESET_FULL_RECT, PRESET_MODE_MINSIZE, 8)
 	row.add_theme_constant_override("separation", 12)
 	card.add_child(row)
-	var boss_data: CombatantData = session.boss_pool[0] if not session.boss_pool.is_empty() else null
+	var boss_data := session.today_boss() # Hiện đúng con boss sẽ đánh.
 	row.add_child(HuntUI.texture_rect(HuntUI.combatant_texture(boss_data), 76))
 	var text := VBoxContainer.new()
 	text.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -303,7 +303,7 @@ func _make_boss_card() -> Button:
 		state = "Sẵn sàng! Boss luôn rơi nguyên liệu hoàng kim (giá x3)"
 	else:
 		state = "Thắng thêm %d trận để mở" % (session.config.boss_unlock_wins - session.wins)
-	text.add_child(HuntUI.label("BOSS", 24, HuntUI.BAD))
+	text.add_child(HuntUI.label("BOSS: " + boss_data.display_name if boss_data != null else "BOSS", 24, HuntUI.BAD))
 	var s := HuntUI.label(state, HuntUI.FONT_SMALL)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text.add_child(s)

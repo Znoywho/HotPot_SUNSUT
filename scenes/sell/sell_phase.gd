@@ -35,9 +35,10 @@ const TABLE_SEATS := 6 ## Bàn tròn nào cũng 6 ghế (nhóm đông nhất 6 n
 ## TODO(nhóm): cân bằng dọn dẹp.
 const STAR_CLEAN_PERFECT := 0.03 ## Dọn Hoàn hảo: cộng sao.
 const MESS_INTERVAL := 22.0 ## Trung bình mấy giây sàn tự bẩn thêm 1 chỗ.
-const PUDDLE_CHANCE := 0.35 ## Tỉ lệ chỗ bẩn tự có là vũng nước (còn lại là rác).
-const TRASH_LEAVE_CHANCE := 0.3 ## Tỉ lệ khách về làm rơi rác cạnh bàn.
-const SPILL_LEAVE_CHANCE := 0.1 ## Tỉ lệ khách về làm đổ nước cạnh bàn.
+const PUDDLE_CHANCE := 0.15 ## Tỉ lệ chỗ bẩn tự có là vũng nước (còn lại là rác).
+const TRASH_LEAVE_CHANCE := 0.2 ## Tỉ lệ khách về làm rơi rác cạnh bàn.
+const SPILL_LEAVE_CHANCE := 0.05 ## Tỉ lệ khách về làm đổ nước cạnh bàn.
+const TABLE_DIRTY_CHANCE := 0.5 ## Tỉ lệ khách ăn xong để lại bàn bẩn (còn lại bàn gọn, đón khách mới ngay).
 const MAX_MESS := 6
 const MESS_PATIENCE_DRAIN := 0.15 ## Mỗi chỗ bẩn dưới sàn làm khách chờ ở quầy mất kiên nhẫn nhanh thêm 15%.
 const STAR_MESS_LEFT := 0.05 ## Đóng cửa còn chỗ bẩn dưới sàn: trừ sao mỗi chỗ.
@@ -87,9 +88,6 @@ var _mess_timer := MESS_INTERVAL
 var _cleaning: Dictionary = {} ## TableNode đang mở bảng Dọn dẹp.
 var _clean_panel: Control = null ## Bảng Dọn dẹp đang mở.
 
-var _tray_icon: TextureRect
-var _tray_label: Label
-var _notification_label: Label
 
 
 func _ready() -> void:
@@ -201,46 +199,8 @@ func _art(name: String, px_size: Vector2, pos: Vector2) -> TextureRect:
 	return r
 
 
-## Thanh dưới: khay đang bưng gì, thông báo, nút đóng cửa (cùng kiểu dải thông tin + nút cam của màn bếp).
+## Nút đóng cửa ở góc dưới phải (bỏ dải thông tin khay / thông báo cho thoáng màn).
 func _build_bar() -> void:
-	var strip := PanelContainer.new()
-	var ss := StyleBoxFlat.new()
-	ss.bg_color = Color(0.17, 0.1, 0.07, 0.88)
-	ss.border_color = Color("8a5a3c")
-	ss.set_border_width_all(3)
-	ss.set_corner_radius_all(6)
-	ss.content_margin_left = 10
-	ss.content_margin_right = 6
-	ss.content_margin_top = 4
-	ss.content_margin_bottom = 4
-	strip.add_theme_stylebox_override("panel", ss)
-	strip.position = Vector2(16, BAR_Y)
-	strip.size = Vector2(1248, 64)
-	_stage.add_child(strip)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	strip.add_child(row)
-
-	_tray_icon = TextureRect.new()
-	_tray_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_tray_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_tray_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_tray_icon.custom_minimum_size = Vector2(56, 48)
-	_tray_icon.size_flags_vertical = SIZE_SHRINK_CENTER
-	_tray_icon.texture = load("res://assets/sprites/kitchen/tray.png")
-	row.add_child(_tray_icon)
-	_tray_label = HuntUI.outlined_label("", 18, HuntUI.GOLD)
-	_tray_label.custom_minimum_size = Vector2(250, 0)
-	_tray_label.clip_text = true
-	_tray_label.size_flags_vertical = SIZE_SHRINK_CENTER
-	row.add_child(_tray_label)
-
-	_notification_label = HuntUI.outlined_label("Quán mở cửa! Khách tới thì chạm bàn trống đủ ghế để xếp chỗ.", 18, Color("f3e2c0"))
-	_notification_label.size_flags_horizontal = SIZE_EXPAND_FILL
-	_notification_label.size_flags_vertical = SIZE_SHRINK_CENTER
-	_notification_label.clip_text = true
-	row.add_child(_notification_label)
-
 	var close := Button.new()
 	close.text = "Đóng cửa, tổng kết  »"
 	close.focus_mode = Control.FOCUS_NONE
@@ -248,7 +208,8 @@ func _build_bar() -> void:
 	close.add_theme_font_size_override("font_size", 20)
 	_style_button(close, Color("f2a33a"), Color("8a5a3c"), HuntUI.INK)
 	close.pressed.connect(_close_shop)
-	row.add_child(close)
+	close.position = Vector2(STAGE.x - 16 - close.custom_minimum_size.x, BAR_Y + 4)
+	_stage.add_child(close)
 
 
 func _style_button(b: Button, bg: Color, border: Color, font: Color) -> void:
@@ -377,6 +338,7 @@ func _try_spawn_group() -> void:
 			_reception.greet("Xin chào quý khách!"))
 	if special == "critic":
 		_notify("Nhà phê bình ẩm thực tới! Xếp bàn và phục vụ thật nhanh!", Color("e0b0ff"))
+		_events.critic_arrived(mess_count())
 	elif special == "michelin":
 		_notify("Có khách lạ vào quán, cứ lặng lẽ ghi chép...", HuntUI.GOLD)
 	else:
@@ -462,6 +424,8 @@ func _remove_from_queue(group: Dictionary) -> void:
 
 func _on_table_tapped(table: TableNode) -> void:
 	if table.state == TableNode.State.DIRTY:
+		if not _queue.is_empty():
+			_notify("Bàn %d còn bẩn, chưa đón khách được. Dọn sạch rồi xếp chỗ." % (tables.find(table) + 1), Color("ffccbc"))
 		if not _cleaning.has(table):
 			var index := tables.find(table)
 			_cleaning[table] = true
@@ -794,9 +758,23 @@ func _customer_timeout(table: TableNode) -> void:
 
 # --- Dọn dẹp ------------------------------------------------------------------------
 
-## Khách ăn xong rời bàn: bàn bẩn + có khi làm rơi rác / đổ nước cạnh bàn.
+## Số chỗ bẩn trong quán: bàn chưa dọn + rác / vũng nước dưới sàn (nhà phê bình, thanh tra soi).
+func mess_count() -> Dictionary:
+	var dirty := 0
+	for t in tables:
+		if t.state == TableNode.State.DIRTY:
+			dirty += 1
+	var on_floor := 0
+	for m in _mess:
+		if is_instance_valid(m) and not m.is_gone():
+			on_floor += 1
+	return {"tables": dirty, "floor": on_floor}
+
+
+## Khách ăn xong rời bàn: có khi để lại bàn bẩn, có khi làm rơi rác / đổ nước cạnh bàn (tung riêng từng cái).
 func _leave_mess(table: TableNode, visual: TableVisual) -> void:
-	table.make_dirty()
+	if randf() < TABLE_DIRTY_CHANCE:
+		table.make_dirty()
 	for kind in ["trash", "puddle"]:
 		if randf() < (TRASH_LEAVE_CHANCE if kind == "trash" else SPILL_LEAVE_CHANCE):
 			var near := visual.get_global_transform() * Vector2(visual.size.x * randf_range(0.1, 0.9), TableVisual.HEIGHT * 0.9)
@@ -904,12 +882,6 @@ func _close_shop() -> void:
 
 func _update_ui() -> void:
 	_pass.refresh(cart.carrying_broth_id)
-	if cart.carrying_broth_id == "":
-		_tray_icon.texture = load("res://assets/sprites/kitchen/tray.png")
-		_tray_label.text = "Khay: trống"
-	else:
-		_tray_icon.texture = KitchenPass.pot_texture(cart.carrying_broth_id)
-		_tray_label.text = "Khay: %s" % _broth_name(cart.carrying_broth_id)
 
 	# Thanh kiên nhẫn dưới chân nhóm đang chờ.
 	var smallest := 99
@@ -960,9 +932,9 @@ func _update_ui() -> void:
 					visual.set_highlight(0)
 
 
-func _notify(text: String, color := Color("f3e2c0")) -> void:
-	_notification_label.text = text
-	_notification_label.add_theme_color_override("font_color", color)
+## Không còn dải thông báo trên màn; giữ hàm để các chỗ gọi khỏi phải đổi (in ra console để dò lỗi).
+func _notify(text: String, _color := Color("f3e2c0")) -> void:
+	print_verbose(text)
 
 
 func _float_text(text: String, visual: TableVisual, color: Color) -> void:
