@@ -380,5 +380,5 @@ func _make_label(text: String, font_size: int, color: Color, bold := false) -> L
 		label.add_theme_font_override("font", BOLD_FONT)
 		if color != INK:
 			label.add_theme_color_override("font_outline_color", Color("2b1a14"))
-			label.add_theme_constant_override("outline_size", 8)
+			label.add_theme_constant_override("outline_size", PixelButton.outline_for(font_size))
 	return label

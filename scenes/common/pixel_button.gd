@@ -14,6 +14,8 @@ const PRESS_DEPTH := 6.0 ## Chữ lún xuống chừng này px khi bấm.
 const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
 const TEXT_COLOR := Color("fbecd2")
 const TEXT_OUTLINE_COLOR := Color("461619")
+## Chữ nút bị khoá: màu ĐẶC (không trong suốt), nếu trong suốt thì viền tối lộ qua ruột chữ, nét mảnh như mất.
+const TEXT_DISABLED_COLOR := Color("cdbba6")
 const DEFAULT_SIZE := Vector2(340, 68) ## Quy tắc cảm ứng: nút cao >= 56px.
 
 
@@ -23,10 +25,10 @@ func _init(label := "", font_size := 30) -> void:
 	custom_minimum_size = DEFAULT_SIZE
 	add_theme_font_override("font", BOLD_FONT)
 	add_theme_font_size_override("font_size", font_size)
-	add_theme_constant_override("outline_size", 8)
+	add_theme_constant_override("outline_size", outline_for(font_size))
 	for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		add_theme_color_override(color_name, TEXT_COLOR)
-	add_theme_color_override("font_disabled_color", Color(TEXT_COLOR, 0.6))
+	add_theme_color_override("font_disabled_color", TEXT_DISABLED_COLOR)
 	add_theme_color_override("font_outline_color", TEXT_OUTLINE_COLOR)
 	add_theme_stylebox_override("normal", _make_style("normal"))
 	add_theme_stylebox_override("hover", _make_style("normal", Color(1.15, 1.15, 1.15)))
@@ -34,6 +36,12 @@ func _init(label := "", font_size := 30) -> void:
 	add_theme_stylebox_override("hover_pressed", _make_style("pressed", Color.WHITE, PRESS_DEPTH))
 	add_theme_stylebox_override("disabled", _make_style("disabled"))
 	add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+
+## Độ dày viền chữ theo cỡ chữ: viền = cỡ chữ / 4, trong khoảng 3..8 px.
+## Viền dày cố định sẽ lấp khoảng hở 1-2 px giữa các dấu chồng (Ế, Ề, Ẫ) và thanh ngang chữ "đ" ở chữ nhỏ.
+static func outline_for(font_size: int) -> int:
+	return clampi(font_size / 4, 3, 8)
 
 
 ## Khung nút từ ảnh pixel, kéo dãn phần giữa, giữ nguyên góc vát; push_down = chữ lún xuống khi bấm.
