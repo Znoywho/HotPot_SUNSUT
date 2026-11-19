@@ -644,7 +644,7 @@ func _build_buttons() -> void:
 	list.add_theme_constant_override("separation", button_gap)
 	add_child(list)
 
-	_add_menu_button(list, "CHƠI MỚI", _enter_game.bind(DayManager.start_new_game))
+	_add_menu_button(list, "CHƠI MỚI", _on_new_game_pressed)
 	var continue_button := _add_menu_button(list, "TIẾP TỤC", _enter_game.bind(DayManager.continue_game))
 	continue_button.disabled = not SaveManager.has_save()
 	_add_menu_button(list, "CÀI ĐẶT", func(): get_tree().root.add_child(SettingsPanel.new()))
@@ -657,6 +657,17 @@ func _build_buttons() -> void:
 	list.position.y += buttons_offset_y
 	# Mép trên giữ như cột 3 nút (không đè cửa quán): nút thứ 4 (THOÁT, chỉ có trên máy tính) nối xuống dưới.
 	list.position.y += maxi(0, _buttons.size() - 3) * (button_size.y + button_gap) / 2.0
+
+
+## Chơi mới: đang có save thì hỏi trước, vì chơi mới ghi đè lần chơi đang lưu.
+func _on_new_game_pressed() -> void:
+	if _leaving:
+		return
+	if not SaveManager.has_save():
+		_enter_game(DayManager.start_new_game)
+		return
+	PauseMenu.confirm(self, "Chơi lại từ Ngày 1?\nLần chơi đang lưu sẽ bị xoá.", "Chơi mới",
+			_enter_game.bind(DayManager.start_new_game))
 
 
 ## Thêm một PixelButton (nút dùng chung) vào cột, cỡ theo button_size.
