@@ -129,6 +129,35 @@ func equipped_weapon() -> WeaponData:
 	return weapon if weapon != null else get_weapon(GameState.DEFAULT_WEAPON)
 
 
+## Đồ trang trí ở tab Trang trí của cửa hàng (data/decor/), xếp theo chỗ đặt rồi giá.
+var decors: Array[DecorData] = [
+	preload("res://data/decor/clock_wood.tres"),
+	preload("res://data/decor/clock_red.tres"),
+	preload("res://data/decor/clock_gold.tres"),
+	preload("res://data/decor/painting_mountain.tres"),
+	preload("res://data/decor/painting_sea.tres"),
+	preload("res://data/decor/painting_lotus.tres"),
+	preload("res://data/decor/shelf_spice.tres"),
+	preload("res://data/decor/shelf_wine.tres"),
+	preload("res://data/decor/shelf_bowls.tres"),
+	preload("res://data/decor/cat_white.tres"),
+	preload("res://data/decor/cat_black.tres"),
+	preload("res://data/decor/cat_gold.tres"),
+	preload("res://data/decor/corner_crates.tres"),
+	preload("res://data/decor/corner_barrel.tres"),
+	preload("res://data/decor/corner_aquarium.tres"),
+	preload("res://data/decor/door_phuc.tres"),
+	preload("res://data/decor/door_wreath.tres"),
+]
+
+
+func get_decor(id: String) -> DecorData:
+	for d in decors:
+		if d.id == id:
+			return d
+	return null
+
+
 func get_upgrade(id: String) -> UpgradeData:
 	for u in upgrades:
 		if u.id == id:

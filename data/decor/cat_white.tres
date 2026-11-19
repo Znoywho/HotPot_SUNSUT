@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DecorData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/decor_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "cat_white"
+slot = "cat"
+style = "white"
+display_name = "Mèo thần tài trắng"
+description = "Vẫy tay mời khách vào quán."
+cost = 200000
+tip_bonus = 0.01

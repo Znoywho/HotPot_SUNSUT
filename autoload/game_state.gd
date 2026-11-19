@@ -65,6 +65,8 @@ var prepped_batches: Dictionary
 var upgrades: Dictionary ## id nâng cấp (String) -> cấp hiện tại
 var weapons_owned: Array[String] = [] ## id vũ khí đã mua (luôn có vũ khí mặc định)
 var equipped_weapon: String = "" ## id vũ khí đang cầm khi đi săn
+var decor_owned: Array[String] = [] ## id đồ trang trí đã mua
+var decor_placed: Dictionary = {} ## chỗ đặt (DecorData.slot) -> id đồ đang đặt trong quán
 var tables_floor1: int
 var tables_floor2: int
 
@@ -90,6 +92,8 @@ func reset_new_game() -> void:
 	upgrades = {}
 	weapons_owned = [DEFAULT_WEAPON]
 	equipped_weapon = DEFAULT_WEAPON
+	decor_owned = []
+	decor_placed = {}
 	tables_floor1 = START_TABLES_FLOOR1
 	tables_floor2 = 0
 	money_changed.emit(money)
@@ -597,6 +601,42 @@ func equip_weapon(id: String) -> void:
 		equipped_weapon = id
 
 
+# --- Đồ trang trí ----------------------------------------------------------------
+
+func owns_decor(id: String) -> bool:
+	return id in decor_owned
+
+
+## Mua đồ trang trí (trừ tiền) rồi đặt luôn vào chỗ `slot`. Trả về false nếu đã có hoặc không đủ tiền.
+func buy_decor(id: String, slot: String, cost: int) -> bool:
+	if owns_decor(id) or not spend_money(cost):
+		return false
+	decor_owned.append(id)
+	decor_placed[slot] = id
+	return true
+
+
+## Đặt đồ đã mua vào chỗ của nó (thay món đang ở chỗ đó).
+func place_decor(id: String, slot: String) -> void:
+	if owns_decor(id):
+		decor_placed[slot] = id
+
+
+## Cất đồ ở chỗ `slot` (chỗ đó để trống).
+func remove_decor(slot: String) -> void:
+	decor_placed.erase(slot)
+
+
+## Tip cộng thêm từ đồ đang đặt: tổng tip_bonus các món đang đặt (vd 3 món +1% = +0.03).
+func decor_tip_bonus() -> float:
+	var total := 0.0
+	for slot in decor_placed:
+		var decor := Database.get_decor(str(decor_placed[slot]))
+		if decor != null:
+			total += decor.tip_bonus
+	return total
+
+
 # --- Quán / sao -------------------------------------------------------------
 
 func lose_star(amount := 0.5) -> void:
@@ -670,6 +710,8 @@ func to_dict() -> Dictionary:
 		"upgrades": upgrades,
 		"weapons_owned": weapons_owned,
 		"equipped_weapon": equipped_weapon,
+		"decor_owned": decor_owned,
+		"decor_placed": decor_placed,
 		"tables_floor1": tables_floor1,
 		"tables_floor2": tables_floor2,
 	}
@@ -693,6 +735,13 @@ func load_from_dict(data: Dictionary) -> void:
 		if not owns_weapon(str(id)):
 			weapons_owned.append(str(id))
 	equip_weapon(str(data.get("equipped_weapon", DEFAULT_WEAPON)))
+	# Save cũ chưa có đồ trang trí: quán để trống.
+	for id in data.get("decor_owned", []):
+		if not owns_decor(str(id)):
+			decor_owned.append(str(id))
+	var placed: Dictionary = data.get("decor_placed", {})
+	for slot in placed:
+		place_decor(str(placed[slot]), str(slot))
 	tables_floor1 = mini(int(data.get("tables_floor1", START_TABLES_FLOOR1)), MAX_TABLES_FLOOR1)
 	# Save cũ mua bàn kiểu cũ (chưa có nâng cấp "tables"): đổi số bàn đã mua thành cấp nâng cấp.
 	if not upgrades.has("tables") and tables_floor1 > START_TABLES_FLOOR1:

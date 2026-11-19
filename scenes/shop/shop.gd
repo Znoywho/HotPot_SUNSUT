@@ -10,13 +10,50 @@ extends Control
 const SKY := preload("res://assets/sprites/scenery/sky.png")
 const LANDSCAPE := preload("res://assets/sprites/scenery/landscape.png")
 const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
-const TAB_NAMES := {
-	UpgradeData.Category.KITCHEN: "BẾP",
-	UpgradeData.Category.COMBAT: "CHIẾN ĐẤU",
-	UpgradeData.Category.RESTAURANT: "QUÁN",
-	TAB_WEAPONS: "VŨ KHÍ",
+const TAB_WEAPONS := 3 ## Không phải UpgradeData.Category: vũ khí mua một lần, chọn 1 cái để cầm.
+const TAB_MOUNT := 4 ## Không phải UpgradeData.Category: nâng cấp thú cưỡi tách khỏi tab Chiến đấu cho dễ thấy.
+const TAB_DECOR := 5 ## Không phải UpgradeData.Category: đồ trang trí mua lẻ, mỗi chỗ trong quán đặt 1 món.
+const MOUNT_UPGRADES := ["mount"] ## Nâng cấp hiện ở tab Thú cưỡi thay vì tab theo category của nó.
+const ART := "res://assets/sprites/"
+const SHOP_ICONS := "res://assets/sprites/ui/shop/" ## Icon vẽ bằng tools/make_shop_icons.py.
+## Tab con: [khoá tab, chữ, icon].
+const TABS := [
+	[UpgradeData.Category.KITCHEN, "BẾP", ART + "ui/broth_pot.png"],
+	[UpgradeData.Category.COMBAT, "CHIẾN ĐẤU", SHOP_ICONS + "swords.png"],
+	[TAB_WEAPONS, "VŨ KHÍ", SHOP_ICONS + "cleaver.png"],
+	[TAB_MOUNT, "THÚ CƯỠI", ART + "characters/mount_buffalo.png"],
+	[UpgradeData.Category.RESTAURANT, "QUÁN", SHOP_ICONS + "table.png"],
+	[TAB_DECOR, "TRANG TRÍ", SHOP_ICONS + "lantern.png"],
+]
+## Tab 2 tầng: tầng trên chọn nhóm, tầng dưới là các tab con của nhóm đó. [chữ, icon, các khoá tab con theo thứ tự].
+const GROUPS := [
+	["QUÁN LẨU", ART + "ui/broth_pot.png", [UpgradeData.Category.KITCHEN, UpgradeData.Category.RESTAURANT, TAB_DECOR]],
+	["ĐI SĂN", SHOP_ICONS + "swords.png", [UpgradeData.Category.COMBAT, TAB_WEAPONS, TAB_MOUNT]],
+]
+## Hình đầu thẻ của từng nâng cấp: đường dẫn ảnh, hoặc [ảnh dải nhiều khung, cỡ 1 khung] thì lấy khung đầu.
+const UPGRADE_ICONS := {
+	"pot": ART + "kitchen/pot_empty.png",
+	"stove": ART + "kitchen/stove_gas.png",
+	"staff": ART + "characters/staff_lan.png",
+	"cold_storage": ART + "kitchen/fridge_closed.png",
+	"knife": ART + "kitchen/knife_big.png",
+	"armor": SHOP_ICONS + "armor.png",
+	"sharp_mind": SHOP_ICONS + "sharp_mind.png",
+	"hawk_eye": SHOP_ICONS + "hawk.png",
+	"dragon_blade": SHOP_ICONS + "dragon_blade.png",
+	"battle_robe": SHOP_ICONS + "battle_robe.png",
+	"mount": ART + "characters/mount_buffalo.png",
+	"tables": SHOP_ICONS + "table.png",
+	"furniture": SHOP_ICONS + "lantern.png",
+	"service": [ART + "ui/hud/hud_coin.png", 32],
 }
-const TAB_WEAPONS := 3 ## Tab thứ 4 không phải UpgradeData.Category: vũ khí mua một lần, chọn 1 cái để cầm.
+const CARD_ICON_SIZE := 44.0
+## Tab con kiểu "mép sổ" (khác hẳn nút pixel đỏ của tầng nhóm): nằm trong khay nâu tối.
+const SUB_TRAY_COLOR := Color("1e120d") ## Khay chứa hàng tab con.
+const SUB_TAB_IDLE := Color("6b4a33") ## Tab con chưa chọn: nâu, chữ kem.
+const SUB_TAB_IDLE_HOVER := Color("7d5a40")
+const SUB_TAB_ACTIVE_LINE := Color("f2a33a") ## Gạch chân cam dưới tab con đang chọn.
+const TAB_ICON_SIZE := 30
 const BOARD_COLOR := Color("2b1a14", 0.94)
 const BOARD_BORDER := Color("6b2a22")
 const CARD_COLOR := Color("f1e3c4")
@@ -38,8 +75,11 @@ const BOARD_DROP_SECONDS := 0.7 ## Bảng rơi từ trên xuống, trượt quá
 const CARD_POP_SECONDS := 0.45
 const CARD_POP_STAGGER := 0.07 ## Thẻ sau nảy ra trễ hơn thẻ trước chừng này giây.
 
-var _tab: int = UpgradeData.Category.KITCHEN ## UpgradeData.Category hoặc TAB_WEAPONS
-var _tab_buttons := {} ## Category -> PixelButton
+var _tab: int = UpgradeData.Category.KITCHEN ## UpgradeData.Category, TAB_WEAPONS, TAB_MOUNT hoặc TAB_DECOR
+var _tab_buttons := {} ## khoá tab con -> Button (chỉ các tab con của nhóm đang chọn)
+var _group := -1 ## Nhóm đang chọn (chỉ số trong GROUPS)
+var _group_buttons: Array[PixelButton] = []
+var _sub_tabs: HBoxContainer ## Hàng tab con, dựng lại mỗi lần đổi nhóm
 var _cards: GridContainer
 var _scroll: ScrollContainer
 var _scroll_at_press := 0 ## Vị trí cuộn lúc ngón tay chạm nút mua: đã cuộn thì thả tay không tính là mua.
@@ -111,23 +151,31 @@ func _build_board() -> void:
 	column.add_theme_constant_override("separation", 14)
 	board.add_child(column)
 
+	# Tầng trên: 2 nhóm (thay chỗ dòng tiêu đề để danh sách thẻ không bị hẹp lại), tiền ở góc phải.
 	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 12)
 	column.add_child(header)
-	var title := _make_label("CỬA HÀNG NÂNG CẤP · CHUẨN BỊ NGÀY %d" % GameState.day, 30, ACCENT, true)
-	title.size_flags_horizontal = SIZE_EXPAND_FILL
-	header.add_child(title)
+	for i in GROUPS.size():
+		var group_button := _make_tab_button(GROUPS[i][0], GROUPS[i][1], 24)
+		group_button.custom_minimum_size = Vector2(300, 60)
+		group_button.pressed.connect(_select_group.bind(i))
+		header.add_child(group_button)
+		_group_buttons.append(group_button)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = SIZE_EXPAND_FILL
+	header.add_child(spacer)
 	_money_label = _make_label("", 24, TEXT_LIGHT, true)
 	header.add_child(_money_label)
 
-	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 12)
-	column.add_child(tabs)
-	for category in TAB_NAMES:
-		var tab := PixelButton.new(TAB_NAMES[category], 24)
-		tab.custom_minimum_size = Vector2(220, 56)
-		tab.pressed.connect(_select_tab.bind(category))
-		tabs.add_child(tab)
-		_tab_buttons[category] = tab
+	# Tầng dưới: tab con của nhóm đang chọn (dựng trong _select_group).
+	var tray := PanelContainer.new()
+	var tray_style := _box_style(SUB_TRAY_COLOR, Color(BOARD_BORDER, 0.8), 2, 6)
+	tray_style.set_corner_radius_all(6)
+	tray.add_theme_stylebox_override("panel", tray_style)
+	column.add_child(tray)
+	_sub_tabs = HBoxContainer.new()
+	_sub_tabs.add_theme_constant_override("separation", 6)
+	tray.add_child(_sub_tabs)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = SIZE_EXPAND_FILL
@@ -155,11 +203,76 @@ func _build_board() -> void:
 	footer.add_child(start)
 
 
-## Chọn tab: tab đang chọn sáng, tab khác tối đi, rồi đổ lại thẻ.
+## Nút tab pixel có icon bên trái chữ (icon pixel phóng tới TAB_ICON_SIZE).
+func _make_tab_button(text: String, icon_path: String, font_size: int) -> PixelButton:
+	var button := PixelButton.new(text, font_size)
+	button.custom_minimum_size = Vector2(0, 56)
+	button.icon = load(icon_path)
+	button.expand_icon = true
+	button.add_theme_constant_override("icon_max_width", TAB_ICON_SIZE)
+	button.add_theme_constant_override("h_separation", 8)
+	return button
+
+
+## Tab con kiểu mép sổ: chữ đậm + icon, chia đều bề ngang khay, cao 56px cho ngón tay.
+func _make_sub_tab(text: String, icon_path: String) -> Button:
+	var tab := Button.new()
+	tab.text = text
+	tab.icon = load(icon_path)
+	tab.expand_icon = true
+	tab.focus_mode = Control.FOCUS_NONE
+	tab.custom_minimum_size = Vector2(0, 56)
+	tab.size_flags_horizontal = SIZE_EXPAND_FILL
+	tab.add_theme_constant_override("icon_max_width", TAB_ICON_SIZE)
+	tab.add_theme_constant_override("h_separation", 10)
+	tab.add_theme_font_override("font", BOLD_FONT)
+	tab.add_theme_font_size_override("font_size", 20)
+	return tab
+
+
+## Tô tab con: đang chọn = nền kem như thẻ, chữ nâu đậm, gạch chân cam; chưa chọn = nền nâu, chữ kem.
+func _style_sub_tab(tab: Button, active: bool) -> void:
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+		var style := StyleBoxFlat.new()
+		style.bg_color = CARD_COLOR if active else (SUB_TAB_IDLE_HOVER if state.begins_with("hover") else SUB_TAB_IDLE)
+		style.corner_radius_top_left = 8
+		style.corner_radius_top_right = 8
+		style.border_color = SUB_TAB_ACTIVE_LINE if active else Color(SUB_TAB_IDLE.darkened(0.3))
+		style.border_width_bottom = 5 if active else 2
+		style.set_content_margin_all(8)
+		tab.add_theme_stylebox_override(state, style)
+	var text_color := INK if active else TEXT_LIGHT
+	for key in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+		tab.add_theme_color_override(key, text_color)
+
+
+## Chọn nhóm (Quán lẩu / Đi săn): nút nhóm sáng, dựng lại hàng tab con rồi mở tab con đầu tiên.
+func _select_group(index: int, open_first := true) -> void:
+	_group = index
+	for i in _group_buttons.size():
+		_group_buttons[i].modulate = Color.WHITE if i == index else TAB_DIM
+	for child in _sub_tabs.get_children():
+		_sub_tabs.remove_child(child)
+		child.queue_free()
+	_tab_buttons.clear()
+	for key in GROUPS[index][2]:
+		var spec: Array = TABS.filter(func(t): return t[0] == key)[0]
+		var tab := _make_sub_tab(spec[1], spec[2])
+		tab.pressed.connect(_select_tab.bind(key))
+		_sub_tabs.add_child(tab)
+		_tab_buttons[key] = tab
+	if open_first:
+		_select_tab(GROUPS[index][2][0])
+
+
+## Chọn tab con: tự chuyển sang nhóm chứa tab đó nếu cần; tab đang chọn sáng, tab khác tối, rồi đổ lại thẻ.
 func _select_tab(category: int) -> void:
+	for i in GROUPS.size():
+		if category in GROUPS[i][2] and i != _group:
+			_select_group(i, false)
 	_tab = category
 	for key in _tab_buttons:
-		(_tab_buttons[key] as Control).modulate = Color.WHITE if key == category else TAB_DIM
+		_style_sub_tab(_tab_buttons[key], key == category)
 	_scroll.scroll_vertical = 0 # tab mới bắt đầu từ thẻ đầu tiên
 	_rebuild_cards()
 
@@ -171,6 +284,13 @@ func _rebuild_cards(pop_in := true) -> void:
 		_cards.remove_child(child) # gỡ ngay để lưới xếp lại chỉ với thẻ mới
 		child.queue_free()
 	var new_cards: Array[Control] = []
+	if _tab == TAB_DECOR:
+		for decor in Database.decors:
+			var decor_card := _make_decor_card(decor)
+			if pop_in:
+				decor_card.modulate.a = 0.0
+			_cards.add_child(decor_card)
+			new_cards.append(decor_card)
 	if _tab == TAB_WEAPONS:
 		for weapon in Database.weapons:
 			var weapon_card := _make_weapon_card(weapon)
@@ -179,12 +299,18 @@ func _rebuild_cards(pop_in := true) -> void:
 			_cards.add_child(weapon_card)
 			new_cards.append(weapon_card)
 	for upgrade in Database.upgrades:
-		if upgrade.category == _tab and not _is_locked(upgrade):
+		if _tab_of(upgrade) == _tab and not _is_locked(upgrade):
 			var card := _make_card(upgrade)
 			if pop_in:
 				card.modulate.a = 0.0
 			_cards.add_child(card)
 			new_cards.append(card)
+	if _tab == TAB_MOUNT:
+		var preview := _make_mount_preview()
+		if pop_in:
+			preview.modulate.a = 0.0
+		_cards.add_child(preview)
+		new_cards.append(preview)
 	if not pop_in:
 		return
 	await get_tree().process_frame # chờ lưới xếp chỗ để biết cỡ thẻ (tâm phóng to)
@@ -200,6 +326,67 @@ func _rebuild_cards(pop_in := true) -> void:
 		tween.tween_property(card, "modulate:a", 1.0, 0.2).set_delay(i * CARD_POP_STAGGER)
 
 
+## Tab chứa nâng cấp này: thú cưỡi tách sang tab riêng, còn lại theo category.
+func _tab_of(upgrade: UpgradeData) -> int:
+	return TAB_MOUNT if upgrade.id in MOUNT_UPGRADES else upgrade.category
+
+
+## Hình đầu thẻ của nâng cấp (ảnh dải nhiều khung thì cắt khung đầu); không có thì null.
+func _upgrade_icon(id: String) -> Texture2D:
+	var spec: Variant = UPGRADE_ICONS.get(id)
+	if spec == null:
+		return null
+	if spec is String:
+		return load(spec)
+	var atlas := AtlasTexture.new()
+	atlas.atlas = load(spec[0])
+	var frame := float(spec[1])
+	atlas.region = Rect2(0, 0, frame, frame)
+	return atlas
+
+
+## Ô hình vuông cỡ `side`, giữ tỉ lệ ảnh, điểm ảnh sắc (không làm mượt).
+func _make_icon(texture: Texture2D, side: float) -> Control:
+	var rect := TextureRect.new()
+	rect.texture = texture
+	rect.custom_minimum_size = Vector2(side, side)
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rect.size_flags_vertical = SIZE_SHRINK_CENTER
+	rect.mouse_filter = MOUSE_FILTER_PASS
+	return rect
+
+
+## Ô xem trước trâu ở tab Thú cưỡi: hình trâu to + chỉ số trâu ở cấp hiện tại (cấp 0 thì xem trước cấp 1).
+## Chỉ số = chỉ số gốc (data/combatants/mount_buffalo.tres) x (1 + bonus/cấp x (cấp - 1)), giống HuntSession.create_mount().
+func _make_mount_preview() -> Control:
+	var data: CombatantData = HUNT_CONFIG.mount
+	var level := GameState.get_upgrade_level("mount")
+	var shown_level := maxi(level, 1)
+	var mult := 1.0 + HUNT_CONFIG.mount_bonus_per_level * (shown_level - 1)
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = SIZE_EXPAND_FILL
+	card.mouse_filter = MOUSE_FILTER_PASS
+	card.add_theme_stylebox_override("panel", _box_style(CARD_COLOR, CARD_BORDER, 4, 16))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	card.add_child(box)
+	var title := _make_label(data.display_name + (" của bạn" if level > 0 else " (chưa có)"), 24, INK, true)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	var picture := _make_icon(load(UPGRADE_ICONS["mount"]), 128.0)
+	picture.size_flags_horizontal = SIZE_SHRINK_CENTER
+	if level == 0:
+		picture.modulate = Color(0.45, 0.45, 0.45) # chưa có: hình tối
+	box.add_child(picture)
+	var label := "[color=#%s]%s:[/color] " % [INK_SOFT.to_html(false), "Cấp %d" % level if level > 0 else "Mở ở cấp 1"]
+	label += "Máu [b]%d[/b]  ·  Dame [b]%d[/b]  ·  Tốc [b]%d[/b]" % [roundi(data.max_hp * mult), roundi(data.damage * mult), data.speed]
+	label += "\n[color=#%s]Đứng trước đầu bếp, quái đánh trâu trước.[/color]" % INK_SOFT.to_html(false)
+	box.add_child(_make_rich_box(label))
+	return card
+
+
 ## Thẻ một nâng cấp: tên + cấp, mô tả, nút mua (MAX hoặc thiếu tiền thì nút xám).
 func _make_card(upgrade: UpgradeData) -> Control:
 	var level := GameState.get_upgrade_level(upgrade.id)
@@ -213,7 +400,9 @@ func _make_card(upgrade: UpgradeData) -> Control:
 	card.add_child(box)
 
 	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
 	box.add_child(top)
+	top.add_child(_make_icon(_upgrade_icon(upgrade.id), CARD_ICON_SIZE))
 	var name_label := _make_label(upgrade.display_name, 24, INK, true)
 	name_label.size_flags_horizontal = SIZE_EXPAND_FILL
 	top.add_child(name_label)
@@ -275,6 +464,98 @@ func _make_rich_box(bbcode: String) -> Control:
 	return panel
 
 
+# --- Tab Trang trí -------------------------------------------------------------
+
+## Hình xem trước một món trang trí, vẽ bằng DecorArt (cùng hàm vẽ trong quán), phóng nguyên lần vừa ô.
+class DecorPreview extends Control:
+	var slot: String
+	var style: String
+
+	func _init(decor: DecorData, box_size: Vector2) -> void:
+		slot = decor.slot
+		style = decor.style
+		custom_minimum_size = box_size
+		mouse_filter = MOUSE_FILTER_PASS
+
+	func _draw() -> void:
+		var box := Vector2(DecorArt.BOX[slot])
+		var px := maxf(1.0, floorf(minf(size.x / box.x, size.y / box.y))) # nguyên lần cho điểm ảnh vuông
+		DecorArt.draw(self, slot, style, ((size - box * px) / 2.0).floor(), px)
+
+
+## Thẻ một món trang trí: hình xem trước + tên + trạng thái, chỗ đặt, mô tả, % tip, nút Mua / Đặt / Cất.
+func _make_decor_card(decor: DecorData) -> Control:
+	var owned := GameState.owns_decor(decor.id)
+	var placed: bool = GameState.decor_placed.get(decor.slot, "") == decor.id
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = SIZE_EXPAND_FILL
+	card.mouse_filter = MOUSE_FILTER_PASS
+	card.add_theme_stylebox_override("panel", _box_style(CARD_COLOR, MAXED_COLOR if placed else CARD_BORDER, 4, 16))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	card.add_child(box)
+
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 12)
+	box.add_child(top)
+	var preview_bg := PanelContainer.new()
+	preview_bg.add_theme_stylebox_override("panel", _box_style(Color("b0703a"), Color(CARD_BORDER, 0.5), 2, 4)) # nền như tường gạch
+	preview_bg.mouse_filter = MOUSE_FILTER_PASS
+	preview_bg.add_child(DecorPreview.new(decor, Vector2(104, 56)))
+	top.add_child(preview_bg)
+	var names := VBoxContainer.new()
+	names.size_flags_horizontal = SIZE_EXPAND_FILL
+	names.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.add_child(names)
+	names.add_child(_make_label(decor.display_name, 22, INK, true))
+	names.add_child(_make_label("Chỗ đặt: " + str(DecorArt.SLOT_NAMES.get(decor.slot, decor.slot)), 18, INK_SOFT))
+	if placed:
+		top.add_child(_make_label("Đang đặt", 20, MAXED_COLOR, true))
+	elif owned:
+		top.add_child(_make_label("Đã có", 20, GAIN_COLOR))
+
+	var description := _make_label(decor.description, 18, INK)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description.size_flags_vertical = SIZE_EXPAND_FILL
+	box.add_child(description)
+	var lines := "[color=#%s]Khi đặt trong quán:[/color] khách tip [color=#%s][b]+%d%%[/b][/color]" % [
+			INK_SOFT.to_html(false), GAIN_COLOR.to_html(false), roundi(decor.tip_bonus * 100.0)]
+	var current := Database.get_decor(str(GameState.decor_placed.get(decor.slot, "")))
+	if current != null and not placed:
+		lines += "\n[color=#%s]Chỗ này đang đặt:[/color] %s" % [INK_SOFT.to_html(false), current.display_name]
+	box.add_child(_make_rich_box(lines))
+
+	var affordable := GameState.can_afford(decor.cost)
+	var text := "CẤT ĐI" if placed else ("ĐẶT VÀO QUÁN" if owned else (
+			("MUA · %s" if affordable else "THIẾU TIỀN · %s") % GameState.format_money(decor.cost)))
+	var button := PixelButton.new(text, 22)
+	button.custom_minimum_size = Vector2(0, 56)
+	button.disabled = not owned and not affordable
+	button.mouse_filter = MOUSE_FILTER_PASS
+	button.button_down.connect(func(): _scroll_at_press = _scroll.scroll_vertical)
+	button.pressed.connect(_on_decor_pressed.bind(decor))
+	box.add_child(button)
+	return card
+
+
+## Bấm nút món trang trí: chưa có thì mua (mua xong đặt luôn), có rồi thì đặt vào quán, đang đặt thì cất đi.
+func _on_decor_pressed(decor: DecorData) -> void:
+	if _scroll.scroll_vertical != _scroll_at_press:
+		return # vừa vuốt cuộn rồi thả trên nút: không mua nhầm
+	var slot_name := str(DecorArt.SLOT_NAMES.get(decor.slot, decor.slot))
+	if GameState.decor_placed.get(decor.slot, "") == decor.id:
+		GameState.remove_decor(decor.slot)
+		_message.text = "Đã cất %s, chỗ %s để trống." % [decor.display_name, slot_name.to_lower()]
+	elif GameState.owns_decor(decor.id):
+		GameState.place_decor(decor.id, decor.slot)
+		_message.text = "Đã đặt %s vào quán." % decor.display_name
+	elif GameState.buy_decor(decor.id, decor.slot, decor.cost):
+		_message.text = "Đã mua và đặt %s! Khách tip thêm %d%%." % [decor.display_name, roundi(decor.tip_bonus * 100.0)]
+	else:
+		return
+	_rebuild_cards(false)
+
+
 # --- Tab Vũ khí ----------------------------------------------------------------
 
 ## Thẻ một vũ khí: tên + trạng thái, mô tả, chỉ số (cộng xanh, trừ đỏ), so với vũ khí đang cầm, nút Mua / Cầm.
@@ -290,7 +571,9 @@ func _make_weapon_card(weapon: WeaponData) -> Control:
 	card.add_child(box)
 
 	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
 	box.add_child(top)
+	top.add_child(_make_icon(load(SHOP_ICONS + weapon.id + ".png"), CARD_ICON_SIZE))
 	var name_label := _make_label(weapon.display_name, 24, INK, true)
 	name_label.size_flags_horizontal = SIZE_EXPAND_FILL
 	top.add_child(name_label)

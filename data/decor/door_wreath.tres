@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DecorData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/decor_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "door_wreath"
+slot = "door"
+style = "wreath"
+display_name = "Vòng hoa"
+description = "Vòng lá xanh thắt nơ đỏ treo cửa."
+cost = 150000
+tip_bonus = 0.01

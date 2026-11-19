@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DecorData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/decor_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "clock_gold"
+slot = "clock"
+style = "gold"
+display_name = "Đồng hồ mạ vàng"
+description = "Sáng choang, khách nhìn là muốn tip."
+cost = 400000
+tip_bonus = 0.02

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DecorData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/classes/decor_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "cat_gold"
+slot = "cat"
+style = "gold"
+display_name = "Mèo thần tài vàng"
+description = "Mèo vàng ròng, khách đông như kiến."
+cost = 600000
+tip_bonus = 0.02
