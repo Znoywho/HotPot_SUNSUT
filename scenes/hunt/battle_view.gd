@@ -32,7 +32,6 @@ var _order_box: Control ## Thanh lượt: các ô đặt tay để trượt mư�
 var _order_slots: Array[Dictionary] = [] ## {c: Combatant, node: PanelContainer}
 var _order_arrow: Label
 var _order_current: Combatant ## Người đang/vừa đánh, giữ ở ô đầu tới lượt sau.
-var _log: RichTextLabel
 var _turn_label: Label
 var _skill_buttons: Array[Button] = []
 var _flee_button: Button
@@ -478,29 +477,12 @@ func _build() -> void:
 	_turn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	order_row.add_child(_turn_label)
 
-	# Nhật ký + hành động.
-	var bottom := HBoxContainer.new()
-	bottom.add_theme_constant_override("separation", 12)
-	root.add_child(bottom)
-	var log_panel := PanelContainer.new()
-	log_panel.add_theme_stylebox_override("panel", HuntUI.paper_style("paper_panel", 8, Vector2(20, 14)))
-	log_panel.size_flags_horizontal = SIZE_EXPAND_FILL
-	log_panel.custom_minimum_size = Vector2(0, 150)
-	bottom.add_child(log_panel)
-	_log = RichTextLabel.new()
-	_log.bbcode_enabled = true
-	_log.add_theme_color_override("default_color", HuntUI.INK)
-	_log.scroll_following = true
-	_log.add_theme_font_size_override("normal_font_size", HuntUI.FONT_SMALL)
-	log_panel.add_child(_log)
-
-	var actions := GridContainer.new()
-	actions.columns = 2
-	actions.add_theme_constant_override("h_separation", 8)
-	actions.add_theme_constant_override("v_separation", 8)
-	bottom.add_child(actions)
-	HuntUI.pop_in(log_panel, 0.15)
-	HuntUI.pop_in(actions, 0.2)
+	# Hành động: 1 hàng nút căn giữa dưới đấu trường (bỏ bảng nhật ký trận, hiệu ứng số máu đã đủ thông tin).
+	var actions := HBoxContainer.new()
+	actions.alignment = BoxContainer.ALIGNMENT_CENTER
+	actions.add_theme_constant_override("separation", 12)
+	root.add_child(actions)
+	HuntUI.pop_in(actions, 0.15)
 	for i in controller.skills.size():
 		var b := HuntUI.button(controller.skills[i].display_name, 230)
 		b.custom_minimum_size.y = 70
@@ -665,13 +647,6 @@ func _style_order_slot(slot: Dictionary, is_current: bool) -> void:
 	node.add_theme_stylebox_override("panel", style)
 
 
+## Đánh dấu đã đọc nhật ký trận (dùng để chọn hiệu ứng theo dòng mới; không còn hiện bảng nhật ký).
 func _flush_log() -> void:
-	var lines := controller.battle.log_lines
-	for i in range(_log_index, lines.size()):
-		var line: String = lines[i]
-		if "CHÍ MẠNG" in line:
-			line = "[color=#a3461a]%s[/color]" % line
-		elif "bị hạ" in line:
-			line = "[color=#c62828]%s[/color]" % line
-		_log.append_text(line + "\n")
-	_log_index = lines.size()
+	_log_index = controller.battle.log_lines.size()

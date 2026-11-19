@@ -405,8 +405,7 @@ func _update_info() -> void:
 		if not slot.is_idle():
 			cooking += 1
 	var staff := _prep_staff.size() + (1 if _sous != null else 0)
-	_info.text = "Bếp đang nấu: %d/%d  ·  Nhân viên: %d  ·  Mỗi mẻ tối đa %d phần  ·  Kho lạnh giữ %d ngày" % [
-		cooking, _stoves.size(), staff, servings(), GameState.shelf_days()]
+	_info.text = "Bếp đang nấu: %d/%d  ·  Nhân viên: %d" % [cooking, _stoves.size(), staff]
 	var has_hud := get_tree().get_first_node_in_group("hud") != null
 	_timer_label.visible = DayManager.timer_running and not has_hud
 	_timer_label.text = "Còn lại " + DayManager.time_left_text()

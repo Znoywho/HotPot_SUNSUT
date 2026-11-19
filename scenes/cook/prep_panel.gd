@@ -113,7 +113,7 @@ func open(needs: Dictionary) -> void:
 	var list_margin := MarginContainer.new()
 	list_margin.size_flags_horizontal = SIZE_EXPAND_FILL
 	list_margin.mouse_filter = MOUSE_FILTER_PASS
-	list_margin.add_theme_constant_override("margin_right", 30)
+	list_margin.add_theme_constant_override("margin_right", 20)
 	scroll.add_child(list_margin)
 	list_margin.add_child(_list)
 
@@ -186,7 +186,7 @@ func select(id: String) -> void:
 
 ## Thanh cuộn to, dễ kéo bằng ngón tay (mặc định quá mảnh trên điện thoại).
 func _style_scrollbar(bar: VScrollBar) -> void:
-	bar.custom_minimum_size.x = 24
+	bar.custom_minimum_size.x = 14
 	var track := StyleBoxFlat.new()
 	track.bg_color = Color(0.23, 0.14, 0.09, 0.35)
 	track.set_corner_radius_all(6)
@@ -197,9 +197,9 @@ func _style_scrollbar(bar: VScrollBar) -> void:
 		g.bg_color = Color("8a5a3c") if state == "grabber" else Color("a6714c")
 		g.border_color = Color("5a3820")
 		g.set_border_width_all(2)
-		g.set_corner_radius_all(6)
-		g.content_margin_left = 10
-		g.content_margin_right = 10
+		g.set_corner_radius_all(4)
+		g.content_margin_left = 5
+		g.content_margin_right = 5
 		bar.add_theme_stylebox_override(state, g)
 
 

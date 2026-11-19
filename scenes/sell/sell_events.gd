@@ -3,7 +3,7 @@ extends Node
 ## Sự kiện ngẫu nhiên trong buổi bán: thanh tra vệ sinh, nhà phê bình ẩm thực, giám khảo Michelin ẩn danh.
 ## Mỗi sự kiện tự tung xúc xắc xem hôm nay có xảy ra không và xảy ra lúc nào (hoàn toàn ngẫu nhiên).
 
-const EVENT_CHANCE := 1.0 / 3.0 ## Mỗi loại sự kiện có 1/3 khả năng xảy ra trong 1 buổi bán.
+const EVENT_CHANCE := 0.2 ## Mỗi loại sự kiện (độc lập) có 20% khả năng xảy ra trong 1 buổi bán.
 const EARLIEST := 0.12 ## Sớm nhất sau 12% buổi bán.
 const LATEST := 0.7 ## Muộn nhất ở 70% buổi bán (để kịp phục vụ khách đặc biệt).
 
@@ -11,7 +11,13 @@ const INSPECT_FINE_BASE := 200_000 ## Thanh tra phát hiện đồ hết hạn: 
 const INSPECT_FINE_PER_ITEM := 20_000 ## ...cộng thêm theo từng món hết hạn.
 const INSPECT_STAR_LOSS := 1.0
 const INSPECT_CLEAN_STAR := 0.25
+## Quán bẩn (bàn chưa dọn, rác / vũng nước dưới sàn) lúc thanh tra hoặc nhà phê bình vào: trừ sao mỗi chỗ, có trần.
+## TODO(nhóm): cân bằng.
+const DIRTY_STAR_PER_SPOT := 0.2
+const INSPECT_DIRTY_STAR_MAX := 1.0
+const CRITIC_DIRTY_STAR_MAX := 0.6
 
+const CRITIC_WARN_LEAD := 20.0 ## Báo trước bao nhiêu giây trước khi nhà phê bình tới (để kịp dọn quán, chuẩn bị lẩu).
 const CRITIC_STAR_WIN := 0.5
 const CRITIC_STAR_LOSE := 1.0
 const CRITIC_TIP_BONUS := 0.5 ## Thêm 50% giá món vào tip khi nhà phê bình hài lòng.
@@ -32,7 +38,10 @@ func setup(sell: Node) -> void:
 	var total := DayManager.SELL_DURATION
 	for kind in ["inspector", "critic", "michelin"]:
 		if randf() < EVENT_CHANCE:
-			_schedule.append({"kind": kind, "at": total * (1.0 - randf_range(EARLIEST, LATEST))})
+			var at := total * (1.0 - randf_range(EARLIEST, LATEST))
+			_schedule.append({"kind": kind, "at": at})
+			if kind == "critic":
+				_schedule.append({"kind": "critic_warn", "at": minf(total - 2.0, at + CRITIC_WARN_LEAD)})
 
 
 func tick(delta: float, _tables: Array, _sell: Node) -> void:
@@ -53,9 +62,13 @@ func _trigger(kind: String) -> void:
 	match kind:
 		"inspector":
 			_inspect()
+		"critic_warn":
+			notice("Nhà phê bình sắp tới!", "Khoảng %d giây nữa nhà phê bình ẩm thực sẽ vào quán.
+Dọn bàn, quét sàn và nấu sẵn lẩu đi!
+Quán bẩn là bị chê ngay, phục vụ chậm cũng bị chê." % int(CRITIC_WARN_LEAD), Color("6a3d9a"))
 		"critic":
 			_queue_special("critic")
-			notice("Nhà phê bình ẩm thực tới!", "Một nhà phê bình nổi tiếng sắp vào quán.\nPhục vụ nhanh để được khen, chậm là bị chê lên báo!", Color("6a3d9a"))
+			_log("[color=#6a3d9a]Nhà phê bình ẩm thực đang tới cửa quán.[/color]")
 		"michelin":
 			_queue_special("michelin")
 			_log("[color=#8a6d3b]Có vị khách lạ mặt vừa vào, cứ lặng lẽ ghi chép gì đó...[/color]")
@@ -82,9 +95,16 @@ static func tag(kind: String) -> String:
 
 # --- Kết quả --------------------------------------------------------------
 
-## Thanh tra: kiểm kho, có đồ hết hạn là phạt + tịch thu.
+## Thanh tra: soi quán (bẩn là trừ sao) + kiểm kho (có đồ hết hạn là phạt + tịch thu).
 func _inspect() -> void:
 	var bad := GameState.expired_stock_count()
+	var mess: Dictionary = _sell.mess_count() if _sell != null and _sell.has_method("mess_count") else {"tables": 0, "floor": 0}
+	var spots := int(mess["tables"]) + int(mess["floor"])
+	if spots > 0:
+		var loss := minf(DIRTY_STAR_PER_SPOT * spots, INSPECT_DIRTY_STAR_MAX)
+		GameState.lose_star(loss)
+		notice("Thanh tra vệ sinh!", "Quán bẩn: %s.
+Trừ %s sao." % [_mess_text(mess), _num(loss)], Color("c62828"))
 	if bad > 0:
 		var fine := INSPECT_FINE_BASE + INSPECT_FINE_PER_ITEM * bad
 		GameState.add_money(-fine, false)
@@ -92,9 +112,29 @@ func _inspect() -> void:
 		GameState.lose_star(INSPECT_STAR_LOSS)
 		notice("Thanh tra vệ sinh!", "Phát hiện %d món hết hạn trong kho.\nPhạt %s, tịch thu toàn bộ, trừ %s sao." % [
 			bad, GameState.format_money(fine), _num(INSPECT_STAR_LOSS)], Color("c62828"))
-	else:
+	elif spots == 0:
 		GameState.add_star(INSPECT_CLEAN_STAR)
 		notice("Thanh tra vệ sinh!", "Kho sạch sẽ, không có đồ hết hạn.\nQuán được khen, +%s sao." % _num(INSPECT_CLEAN_STAR), Color("2e7d32"))
+
+
+## Nhà phê bình vừa bước vào: thấy quán bẩn là chê ngay (trừ sao), dù sau đó phục vụ tốt vẫn được khen.
+func critic_arrived(mess: Dictionary) -> void:
+	var spots := int(mess["tables"]) + int(mess["floor"])
+	if spots <= 0:
+		return
+	var loss := minf(DIRTY_STAR_PER_SPOT * spots, CRITIC_DIRTY_STAR_MAX)
+	GameState.lose_star(loss)
+	notice("Nhà phê bình chê quán bẩn!", "Vừa vào đã thấy %s.
+Trừ %s sao." % [_mess_text(mess), _num(loss)], Color("6a3d9a"))
+
+
+static func _mess_text(mess: Dictionary) -> String:
+	var parts: Array[String] = []
+	if int(mess["tables"]) > 0:
+		parts.append("%d bàn chưa dọn" % int(mess["tables"]))
+	if int(mess["floor"]) > 0:
+		parts.append("%d chỗ bẩn dưới sàn" % int(mess["floor"]))
+	return ", ".join(parts)
 
 
 ## Khách đặc biệt ăn xong (ok = phục vụ nhanh, món không hết hạn) hoặc bỏ về (ok = false).

@@ -364,7 +364,7 @@ func show_empty() -> void:
 	_shown_order = ""
 
 
-## Bàn bẩn chờ dọn: bong bóng nhấp nháy "Bàn bẩn, chạm để dọn" (đang mở bảng Dọn dẹp thì "Đang dọn...").
+## Bàn bẩn chờ dọn: bong bóng nhấp nháy "Bàn bẩn, chưa đón khách / Chạm để dọn" (đang mở bảng Dọn dẹp thì "Đang dọn...").
 ## `progress` (0..1) làm mess trên bàn mờ dần.
 func show_dirty(progress: float, cleaning: bool) -> void:
 	_eating = false
@@ -379,7 +379,8 @@ func show_dirty(progress: float, cleaning: bool) -> void:
 	_mess.modulate.a = 1.0 - clampf(progress, 0.0, 1.0)
 	bubble.visible = true
 	_row.visible = false
-	_set_note("Đang dọn..." if cleaning else "Bàn bẩn, chạm để dọn", HuntUI.INK if cleaning else HuntUI.RUST)
+	_set_note("Đang dọn..." if cleaning else "Bàn bẩn, chưa đón khách
+Chạm để dọn", HuntUI.INK if cleaning else HuntUI.RUST)
 	_bar_fill.get_parent().visible = false
 	var glow := 0.0 if cleaning else 0.5 + 0.5 * sin(_pulse * 6.0)
 	_bubble_style.border_color = Color("a67c52").lerp(Color("4fa3e0"), glow)

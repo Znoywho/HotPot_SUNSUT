@@ -17,6 +17,7 @@ var harvest := {} ## Nguyên liệu nhận được sáng nay.
 var rerolls_used := 0 ## Số lần đổi bụi cỏ hôm nay (phiên săn tạo mới mỗi sáng).
 var monster_pool: Array[CombatantData] = []
 var boss_pool: Array[CombatantData] = []
+var _today_boss: CombatantData = null ## Boss của hôm nay, chọn 1 lần để thẻ boss hiện đúng con sẽ đánh.
 var stat_multiplier := 1.0
 
 
@@ -142,12 +143,19 @@ func boss_unlocked() -> bool:
 	return not boss_defeated and wins >= config.boss_unlock_wins and not boss_pool.is_empty()
 
 
+## Boss sẽ đánh hôm nay (chọn ngẫu nhiên 1 lần trong pool, giữ nguyên cả buổi săn).
+func today_boss() -> CombatantData:
+	if _today_boss == null and not boss_pool.is_empty():
+		_today_boss = boss_pool.pick_random()
+	return _today_boss
+
+
 func boss_encounter() -> Encounter:
 	var e := Encounter.new()
 	e.is_boss = true
 	e.stat_multiplier = stat_multiplier
-	if not boss_pool.is_empty():
-		e.monsters.append(boss_pool.pick_random())
+	if today_boss() != null:
+		e.monsters.append(today_boss())
 	return e
 
 
