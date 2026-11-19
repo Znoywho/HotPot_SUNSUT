@@ -137,6 +137,9 @@ func go_to(phase: Phase) -> void:
 	await _uncover_screen()
 	_transitioning = false
 	timer_running = PHASE_DURATIONS.has(phase) and current_phase == phase
+	# Lần đầu vào buổi này: bảng "Cách chơi" tạm dừng game (đồng hồ đứng yên) tới khi bấm "Đã hiểu".
+	if current_phase == phase and HowToPlay.should_show(phase):
+		get_tree().root.add_child(HowToPlay.new(phase))
 
 
 func go_to_main_menu() -> void:
