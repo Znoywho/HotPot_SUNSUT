@@ -213,7 +213,7 @@ func _make_card_label(font_size: int, color: Color) -> Label:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 8)
+	label.add_theme_constant_override("outline_size", PixelButton.outline_for(font_size))
 	return label
 
 
