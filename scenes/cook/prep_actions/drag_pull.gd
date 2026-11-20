@@ -21,6 +21,12 @@ const MEAT_EDGE := Color("c27a52")
 const MEAT_SHINE := Color("ffe2c6")
 const KNOB_R := 30.0
 const METER := Rect2(600, 112, 160, 16)
+## Điện thoại: 1cm ngón tay ≈ 107 px game (PC 24" ≈ 24 px), nên giới hạn tốc độ tính theo px game
+## gắt gấp ~4 lần -> vuốt bình thường cũng đứt. Màn cảm ứng nới giới hạn và vùng cầm núm.
+const TOUCH_SPEED_MULT := 3.0
+const GRAB_PAD := 18.0 ## Vùng cầm núm rộng thêm ngoài bán kính núm (chuột).
+const TOUCH_GRAB_PAD := 40.0 ## Như trên, cho ngón tay (ngón che mất núm).
+const BREAK_HOLD := 0.1 ## Phải kéo quá nhanh liên tục bấy nhiêu giây mới đứt (bỏ qua 1 lần đo vọt lên).
 
 var _i := 0
 var _dir := Vector2.RIGHT
@@ -30,6 +36,8 @@ var _dragging := false
 var _speed := 0.0
 var _last_us := 0
 var _max_speed := 1000.0
+var _over_time := 0.0 ## Đã kéo quá nhanh liên tục bao lâu (giây).
+var _touch := DisplayServer.is_touchscreen_available()
 var _hand: TextureRect
 var _part: TextureRect ## Bộ phận đang bị kéo ra.
 var _part_base := Vector2.ZERO
@@ -38,7 +46,7 @@ var _hinge_side := 1.0 ## Mảnh vỏ nằm bên phải (+1) hay trái (-1) bả
 
 
 func _build() -> void:
-	_max_speed = cfg.pull_max_speed / difficulty
+	_max_speed = cfg.pull_max_speed / difficulty * (TOUCH_SPEED_MULT if _touch else 1.0)
 	caption("Lực kéo", METER.position + Vector2(0, -28), 18, Color.WHITE)
 	_start_pull()
 
@@ -183,9 +191,10 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if is_press(event):
 		var p := (event as InputEventMouseButton).position
-		if p.distance_to(_knob) <= KNOB_R + 18.0:
+		if p.distance_to(_knob) <= KNOB_R + (TOUCH_GRAB_PAD if _touch else GRAB_PAD):
 			_dragging = true
 			_speed = 0.0
+			_over_time = 0.0
 			_last_us = Time.get_ticks_usec()
 			if _hand != null:
 				_hand.queue_free()
@@ -199,7 +208,8 @@ func _gui_input(event: InputEvent) -> void:
 		_speed = lerpf(_speed, m.relative.length() / dt, 0.5)
 		var along := clampf((m.position - _home).dot(_dir), 0.0, _dist() + 10.0)
 		_knob = _home + _dir * along
-		if _speed > _max_speed:
+		_over_time = _over_time + dt if _speed > _max_speed else 0.0
+		if _over_time >= BREAK_HOLD:
 			_dragging = false
 			mistake(_knob + Vector2(-40, -60), "Đứt rồi!")
 			_snap_back()
@@ -208,8 +218,8 @@ func _gui_input(event: InputEvent) -> void:
 			_pulled()
 		accept_event()
 	elif is_release(event) and _dragging:
+		# Thả tay giữa chừng: núm đứng yên tại chỗ, chạm lại để kéo tiếp (chỉ kéo đứt mới về đầu).
 		_dragging = false
-		_snap_back()
 		accept_event()
 
 
