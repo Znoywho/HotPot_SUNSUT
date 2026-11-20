@@ -46,7 +46,7 @@ Chơi được bằng chuột trên máy tính và **cảm ứng trên điện t
 - **Vũ khí:** Muôi canh, Dao phay, Xiên nướng, Chảo gang, Dao bầu hoàng kim — mua một lần, chọn 1 cái để cầm, mỗi món một kiểu (mạnh, nhanh, chí mạng).
 - **Thú cưỡi:** Trâu nước đánh cùng đầu bếp và đứng trước chịu đòn, mạnh dần theo cấp.
 - **Trang trí quán:** 17 món cho 6 chỗ (đồng hồ, tranh, kệ, mèo thần tài, góc quán, trên cửa), đặt món nào thấy món đó trong quán, mỗi món cộng tip.
-- **Quán sống động:** nhóm khách 1–6 người, bàn tròn 6 ghế, sự kiện khách đặc biệt, dọn bàn / quét rác / lau sàn, mặc cả khi hết món.
+- **Quán sống động:** nhóm khách 1–6 người, bàn tròn 6 ghế, sự kiện khách đặc biệt, dọn bàn / quét rác / lau sàn, mặc cả khi hết món, **bảng Khách đang chờ** cạnh phải (từng nhóm, thanh kiên nhẫn, số bàn chờ món / đang ăn).
 - **Lưu tự động** sau mỗi ngày, bảng **Cách chơi** lần đầu vào mỗi buổi, **chuyển cảnh** có thẻ tên buổi, mốc ngày 5/10/15 quái mạnh hơn.
 
 ## Ảnh chụp
