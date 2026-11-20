@@ -40,6 +40,7 @@ Chơi được bằng chuột trên máy tính và **cảm ứng trên điện t
 ## Tính năng
 
 - **Đánh theo lượt (ATB theo tốc độ):** 20 loại quái rau củ có nội tại riêng (độc, nổ, hồi máu, cuộn tròn…), Boss rơi **nguyên liệu hoàng kim** giá gấp 3, chế độ Tự đánh và tua x2.
+- **Sơ chế bằng thao tác chạm / kéo** (rửa, thái, lột, lăn viên, xiên…): mỗi bước một ô màu, cuối lượt ra **Kém / Thường / Thượng hạng** với huy chương và chữ pixel riêng. Thượng hạng nấu nước cốt nhanh hơn 15%, đồ nhúng bán đắt hơn 20%; Kém chậm hơn 10%, rẻ hơn 15%.
 - **Cửa hàng 2 nhóm:**
   - **Quán lẩu:** Bếp (nồi, bếp, nhân viên, kho lạnh) · Quán (nội thất, thêm bàn, phí phục vụ) · **Trang trí**
   - **Đi săn:** Chiến đấu (dao, giáp, chí mạng, Long đao, Chiến bào) · **Vũ khí** · **Thú cưỡi**
