@@ -15,7 +15,11 @@ extends Control
 const TIP_MIN := 0.03
 const TIP_MAX := 0.07
 const BASE_EATING_TIME := 8.0
-const SPAWN_INTERVAL := 6.0 ## Giây giữa hai nhóm khách (chia cho customer_multiplier).
+## Giây giữa hai nhóm khách: ngày 1 thưa cho người mới làm quen, mỗi ngày dày thêm, tới ngày 5 thì đạt mức nhanh nhất.
+## Mô phỏng ngày 1 (người mới, 4 bàn): 6s -> ~6,5 nhóm bỏ về; 12s -> ~0,1 nhóm, doanh thu chỉ giảm ~11%.
+const SPAWN_INTERVAL_START := 12.0
+const SPAWN_INTERVAL_MIN := 6.0
+const SPAWN_INTERVAL_STEP := 1.5 ## Mỗi ngày nhanh thêm bao nhiêu giây.
 const CUSTOMER_WAIT := 20.0 ## Kiên nhẫn chờ món sau khi đã ngồi.
 const QUEUE_WAIT := 25.0 ## Kiên nhẫn chờ được xếp bàn ở quầy lễ tân.
 const MAX_QUEUE := 2 ## Số nhóm đứng chờ tối đa (chỗ trước quầy + cạnh cửa).
@@ -32,15 +36,16 @@ const DIPPING_POOL := ["beef", "mushroom", "greens", "shrimp", "enoki", "tomato"
 ## TODO(nhóm): cân bằng tỉ lệ số người mỗi nhóm (chỉ số = số người, giá trị = trọng số).
 const GROUP_SIZE_WEIGHTS := [0, 15, 30, 15, 25, 8, 7]
 const TABLE_SEATS := 6 ## Bàn tròn nào cũng 6 ghế (nhóm đông nhất 6 người).
-## TODO(nhóm): cân bằng dọn dẹp.
+## Cân bằng dọn dẹp (mô phỏng ngày 1, người mới): số cũ 22s / 0,2 / 0,5 / 15% làm dọn chiếm ~41% ca, sàn luôn đầy 6 chỗ
+## nên khách ở quầy hết kiên nhẫn nhanh gấp ~1,9 lần; số mới -> ~33% ca, bỏ về 1,5 -> 0,2 nhóm.
 const STAR_CLEAN_PERFECT := 0.03 ## Dọn Hoàn hảo: cộng sao.
-const MESS_INTERVAL := 22.0 ## Trung bình mấy giây sàn tự bẩn thêm 1 chỗ.
+const MESS_INTERVAL := 45.0 ## Trung bình mấy giây sàn tự bẩn thêm 1 chỗ.
 const PUDDLE_CHANCE := 0.15 ## Tỉ lệ chỗ bẩn tự có là vũng nước (còn lại là rác).
-const TRASH_LEAVE_CHANCE := 0.2 ## Tỉ lệ khách về làm rơi rác cạnh bàn.
+const TRASH_LEAVE_CHANCE := 0.1 ## Tỉ lệ khách về làm rơi rác cạnh bàn.
 const SPILL_LEAVE_CHANCE := 0.05 ## Tỉ lệ khách về làm đổ nước cạnh bàn.
-const TABLE_DIRTY_CHANCE := 0.5 ## Tỉ lệ khách ăn xong để lại bàn bẩn (còn lại bàn gọn, đón khách mới ngay).
+const TABLE_DIRTY_CHANCE := 0.35 ## Tỉ lệ khách ăn xong để lại bàn bẩn (còn lại bàn gọn, đón khách mới ngay).
 const MAX_MESS := 6
-const MESS_PATIENCE_DRAIN := 0.15 ## Mỗi chỗ bẩn dưới sàn làm khách chờ ở quầy mất kiên nhẫn nhanh thêm 15%.
+const MESS_PATIENCE_DRAIN := 0.08 ## Mỗi chỗ bẩn dưới sàn làm khách chờ ở quầy mất kiên nhẫn nhanh thêm 8%.
 const STAR_MESS_LEFT := 0.05 ## Đóng cửa còn chỗ bẩn dưới sàn: trừ sao mỗi chỗ.
 
 const ART := "res://assets/sprites/restaurant/"
@@ -65,6 +70,7 @@ const SPECIAL_LOOKS := {"critic": "customer_critic", "michelin": "customer_miche
 var tables: Array[TableNode] = []
 var cart := Cart.new()
 var _spawn_timer := 2.0
+var _sold_out_notified := false ## Đã báo "hết lẩu, ngừng đón khách" (báo 1 lần mỗi đợt hết).
 var _negotiating: TableNode = null
 var _stage: Control
 var _pass: KitchenPass
@@ -105,10 +111,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	var spawn_interval := SPAWN_INTERVAL / maxf(0.2, GameState.customer_multiplier)
 	_spawn_timer -= delta
 	if _spawn_timer <= 0.0:
-		_spawn_timer = spawn_interval
+		_spawn_timer = spawn_interval_for(GameState.day, GameState.customer_multiplier)
 		_try_spawn_group()
 	_tick_queue(delta)
 	_tick_mess(delta)
@@ -309,9 +314,22 @@ static func _row_counts(n: int, rows: int) -> Array[int]:
 
 # --- Nhóm khách tới, xếp hàng chờ ---------------------------------------------------
 
+## Giây giữa hai nhóm khách: interval(d) = max(MIN, START − STEP × (d − 1)) / customer_multiplier.
+static func spawn_interval_for(day: int, multiplier: float) -> float:
+	var base := maxf(SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_START - SPAWN_INTERVAL_STEP * (day - 1))
+	return base / maxf(0.2, multiplier)
+
+
 func _try_spawn_group() -> void:
 	if _queue.size() >= MAX_QUEUE or _seats.is_empty():
 		return
+	# Hết sạch lẩu thì không đón thêm khách (trước đây khách vẫn vào rồi bỏ về hàng loạt, trừ sao liên tục).
+	if _best_in_stock() == null and cart.carrying_broth_id == "":
+		if not _sold_out_notified:
+			_sold_out_notified = true
+			_notify("Hết sạch lẩu rồi, quán tạm ngừng đón khách mới.", Color("ffccbc"))
+		return
+	_sold_out_notified = false
 	var broth := _random_unlocked_broth()
 	if broth == null:
 		return
