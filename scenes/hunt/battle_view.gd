@@ -9,6 +9,8 @@ signal _action_chosen(choice: Dictionary)
 
 const ORDER_PREVIEW := 7
 const ORDER_SLOT := 56 ## Kích thước 1 ô trên thanh lượt.
+const BG_SIZE := Vector2(320, 180) ## Kích thước ảnh nền khu săn (px ảnh).
+const GROUND_FEET_Y := 110.0 ## Hàng px của ảnh nền nơi chân nhân vật đứng: giữa dải cỏ (cỏ nằm ở y 98-127).
 const ORDER_BIG := 68 ## Ô của người đang đánh (to hơn).
 const ORDER_GAP := 6
 const ORDER_ARROW := 28 ## Chỗ cho dấu » sau ô đang đánh.
@@ -39,6 +41,7 @@ var _auto_button: Button
 var _fast_button: Button
 var _float_layer: Control
 var _arena: Control
+var _arena_row: HBoxContainer ## Hàng phe ta - VS - quái, đặt sao cho chân đứng trên cỏ.
 var timer_label: Label
 
 
@@ -439,23 +442,27 @@ func _build() -> void:
 	_arena = Control.new()
 	_arena.size_flags_vertical = SIZE_EXPAND_FILL
 	root.add_child(_arena)
-	var arena_row := HBoxContainer.new()
-	arena_row.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
-	arena_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_arena.add_child(arena_row)
+	_arena_row = HBoxContainer.new()
+	_arena_row.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	_arena_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_arena.add_child(_arena_row)
+	resized.connect(_snap_arena_to_ground)
+	_arena.resized.connect(_snap_arena_to_ground)
 	_allies_box = HBoxContainer.new()
 	_allies_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_allies_box.size_flags_horizontal = SIZE_EXPAND_FILL
 	_allies_box.add_theme_constant_override("separation", 8)
-	arena_row.add_child(_allies_box)
+	_arena_row.add_child(_allies_box)
 	var vs := HuntUI.outlined_label("VS", 36, Color(1, 1, 1, 0.7))
 	vs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	arena_row.add_child(vs)
+	vs.size_flags_vertical = SIZE_SHRINK_END # nằm ngang tầm thân nhân vật, không trôi lên giữa đấu trường
+	vs.custom_minimum_size.y = 190
+	_arena_row.add_child(vs)
 	_enemies_box = HBoxContainer.new()
 	_enemies_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_enemies_box.size_flags_horizontal = SIZE_EXPAND_FILL
 	_enemies_box.add_theme_constant_override("separation", 8)
-	arena_row.add_child(_enemies_box)
+	_arena_row.add_child(_enemies_box)
 
 	# Thứ tự lượt.
 	var order_panel := PanelContainer.new()
@@ -503,9 +510,27 @@ func _build() -> void:
 	add_child(_float_layer)
 
 
+## Đặt hàng nhân vật sao cho chân đứng trên mặt cỏ của ảnh nền, ở mọi tỉ lệ màn hình.
+## Ảnh nền phủ kín màn kiểu "cover" (co theo cạnh dài hơn rồi cắt đều hai bên) nên:
+## scale = max(rộng / 320, cao / 180); y_màn = y_ảnh × scale − phần cắt phía trên.
+## Chân nằm ở đáy khung sprite; phần dưới đó (thanh máu...) đo trực tiếp. Không đủ chỗ thì chân dịch lên sát
+## thanh lượt (vẫn trên cỏ vì thanh lượt nằm ngay dưới đấu trường).
+func _snap_arena_to_ground() -> void:
+	if views.is_empty() or _arena == null or not is_inside_tree():
+		return
+	var scale := maxf(size.x / BG_SIZE.x, size.y / BG_SIZE.y)
+	var crop_top := (BG_SIZE.y * scale - size.y) / 2.0
+	var feet_y := GROUND_FEET_Y * scale - crop_top - (_arena.global_position.y - global_position.y) # toạ độ trong đấu trường
+	var view: CombatantView = views.values()[0]
+	var feet_box := view.sprite.get_parent() as Control # khung sprite, đáy khung là chỗ chân đứng
+	var below_feet := view.get_global_rect().end.y - feet_box.get_global_rect().end.y
+	var row_bottom := minf(feet_y + below_feet, _arena.size.y)
+	_arena_row.offset_bottom = row_bottom - _arena.size.y
+
+
 func _add_view(c: Combatant) -> void:
 	var view := CombatantView.new()
-	view.size_flags_vertical = SIZE_SHRINK_CENTER
+	view.size_flags_vertical = SIZE_SHRINK_END # căn đáy: tên 1 dòng hay 2 dòng thì chân vẫn thẳng hàng
 	if c.is_ally:
 		_allies_box.add_child(view)
 	else:
@@ -514,6 +539,7 @@ func _add_view(c: Combatant) -> void:
 	view.tapped.connect(_on_view_tapped)
 	views[c] = view
 	HuntUI.pop_in(view, 0.05 * views.size())
+	_snap_arena_to_ground.call_deferred()
 
 
 func _refresh_all() -> void:
