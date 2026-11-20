@@ -1,20 +1,23 @@
 class_name QualityTitle
 extends TextureRect
 ## Chữ tên chất lượng kiểu pixel, mỗi mức một phong cách:
-## - Thượng hạng (2): vàng viền nâu, từng chữ gợn sóng, tia lấp lánh quanh chữ.
-## - Thường (1): cam viền nâu, đứng yên.
-## - Kém (0): xám, bóng xanh rêu, chữ run run.
+## - Thượng hạng (2): vàng viền nâu đậm, từng chữ gợn sóng nhẹ, tia lấp lánh quanh chữ.
+## - Thường (1): cam viền nâu đậm, đứng yên.
+## - Kém (0): xám xanh rêu viền đen, cả chữ lắc lư chậm (lắc cả khối nên không bao giờ bị cắt mép).
 ## Cách làm: vẽ chữ Be Vietnam Pro cỡ nhỏ, tắt khử răng cưa, trong một SubViewport trong suốt, rồi phóng to ×PIXEL
 ## bằng lọc "nearest" -> nét răng cưa vuông như chữ pixel mà vẫn đủ dấu tiếng Việt (font pixel thường thiếu dấu).
 
-const PIXEL := 3.0 ## Mỗi điểm ảnh của chữ nhỏ = 3×3 điểm trên màn.
-const FONT_SIZE := 14
-const PAD := 4 ## Lề trong khung chữ nhỏ: chừa chỗ cho viền, bóng và biên độ sóng / rung.
+const PIXEL := 2.0 ## Mỗi điểm ảnh của chữ nhỏ = 2×2 điểm trên màn.
+const FONT_SIZE := 20 ## Đủ lớn để dấu tiếng Việt (ượ, ạ, é) không vỡ khi tắt khử răng cưa.
+const PAD := 7 ## Lề trong khung chữ nhỏ: viền (2) + bóng (2) + biên độ sóng (~2), dư 1 cho chắc.
+const SWAY_DEGREES := 4.0 ## Kém: góc lắc lư mỗi bên.
+const SWAY_SECONDS := 1.1 ## Kém: thời gian lắc từ bên này sang bên kia.
 const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
+## Viền và bóng đều tối để chữ nổi rõ trên nền giấy; màu chữ là thứ duy nhất khác nhau giữa các mức (kèm hiệu ứng).
 const STYLES := [
-	{"color": Color("a39d90"), "outline": Color("2e2a24"), "shadow": Color("55702c"), "bbcode": "[shake rate=7.0 level=12 connected=1]%s[/shake]"},
-	{"color": Color("f2a33a"), "outline": Color("5a2d0c"), "shadow": Color("b06f2e"), "bbcode": "%s"},
-	{"color": Color("ffd54f"), "outline": Color("5a3300"), "shadow": Color("c98a1b"), "bbcode": "[wave amp=26.0 freq=3.0 connected=1]%s[/wave]"},
+	{"color": Color("b7c29a"), "outline": Color("231f1a"), "shadow": Color(0.14, 0.12, 0.1, 0.55), "bbcode": "%s"},
+	{"color": Color("ffb64d"), "outline": Color("3d1d08"), "shadow": Color(0.24, 0.11, 0.03, 0.55), "bbcode": "%s"},
+	{"color": Color("ffe066"), "outline": Color("3d2300"), "shadow": Color(0.24, 0.14, 0.0, 0.55), "bbcode": "[wave amp=18.0 freq=2.5 connected=1]%s[/wave]"},
 ]
 const SPARKLE_COLOR := Color("fff6c0")
 
@@ -39,24 +42,25 @@ func _init(grade: int, text: String) -> void:
 	viewport.disable_3d = true
 	viewport.gui_disable_input = true
 	viewport.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
-	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _grade != 1 else SubViewport.UPDATE_ONCE
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _grade == 2 else SubViewport.UPDATE_ONCE
 	add_child(viewport)
 
 	var label := RichTextLabel.new()
 	label.bbcode_enabled = true
 	label.scroll_active = false
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	label.position = Vector2(PAD, PAD - 1)
-	label.size = Vector2(small) - Vector2(PAD, PAD)
+	label.clip_contents = false # để viền / bóng / sóng tràn ra lề PAD thay vì bị cắt
+	label.position = Vector2(PAD, PAD)
+	label.size = Vector2(small) - Vector2(PAD, PAD) * 2.0
 	label.add_theme_font_override("normal_font", font)
 	label.add_theme_font_size_override("normal_font_size", FONT_SIZE)
 	label.add_theme_color_override("default_color", style["color"])
 	label.add_theme_color_override("font_outline_color", style["outline"])
-	label.add_theme_constant_override("outline_size", 3)
+	label.add_theme_constant_override("outline_size", 4)
 	label.add_theme_color_override("font_shadow_color", style["shadow"])
-	label.add_theme_constant_override("shadow_offset_x", 1)
+	label.add_theme_constant_override("shadow_offset_x", 0)
 	label.add_theme_constant_override("shadow_offset_y", 2)
-	label.add_theme_constant_override("shadow_outline_size", 3)
+	label.add_theme_constant_override("shadow_outline_size", 4)
 	label.text = str(style["bbcode"]) % text
 	viewport.add_child(label)
 
@@ -88,6 +92,11 @@ static func _font() -> FontFile:
 ## Godot tự bật _process khi node vào cây nếu script có _process, nên phải tắt ở đây chứ không phải trong _init.
 func _ready() -> void:
 	set_process(_grade == 2)
+	if _grade == 0:
+		pivot_offset = custom_minimum_size / 2.0
+		var t := create_tween().set_loops()
+		t.tween_property(self, "rotation_degrees", SWAY_DEGREES, SWAY_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).from(-SWAY_DEGREES)
+		t.tween_property(self, "rotation_degrees", -SWAY_DEGREES, SWAY_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 func _process(delta: float) -> void:
