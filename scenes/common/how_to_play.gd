@@ -38,7 +38,7 @@ const PAGES := {
 	DayManager.Phase.COOK: {
 		"title": "Cách chơi: Buổi trưa nấu lẩu",
 		"lines": [
-			"Chạm bảng \"Sơ chế nguyên liệu\" để sơ chế. Sơ chế khéo thì nấu nhanh, dùng đồ thô thì nấu chậm.",
+			"Chạm bảng \"Sơ chế nguyên liệu\": mỗi bước là một ô, vàng Hoàn hảo / cam Ổn / đỏ Hỏng. Gần như toàn ô vàng mới được huy chương Thượng hạng: nấu nhanh hơn, đồ nhúng bán đắt hơn.",
 			"Chạm một bếp trống rồi chọn món để nấu. Nâng cấp Nồi để mỗi mẻ ra nhiều phần hơn.",
 			"Chạm tủ lạnh để xem kho. Nguyên liệu và nồi lẩu để lâu sẽ hết hạn.",
 			"Nấu đủ thì bấm \"Mở quán bán hàng\". Lẩu nấu xong được mang ra quầy bếp ở màn bán.",
@@ -47,9 +47,9 @@ const PAGES := {
 	DayManager.Phase.SELL: {
 		"title": "Cách chơi: Buổi chiều tối bán hàng",
 		"lines": [
-			"Khách xếp hàng ở quầy lễ tân: chạm một bàn trống đủ ghế để mời nhóm khách vào ngồi.",
+			"Khách xếp hàng ở quầy lễ tân (bảng Khách đang chờ bên phải cho biết số nhóm và độ kiên nhẫn): chạm một bàn trống đủ ghế để mời khách vào ngồi.",
 			"Bàn gọi món xong thì chạm bàn đó để bưng lẩu ra. Bưng nhanh được cộng sao.",
-			"Khách chờ lâu sẽ bỏ về và bị trừ sao. Ít sao thì ngày sau ít khách.",
+			"Khách chờ lâu sẽ bỏ về và bị trừ sao. Mấy ngày đầu khách tới thưa, càng về sau càng đông. Hết lẩu thì quán tạm ngừng đón khách.",
 			"Khách về để lại bàn bẩn, rác, vũng nước: chạm vào để dọn. Sàn bẩn làm khách mất kiên nhẫn nhanh hơn.",
 		],
 	},

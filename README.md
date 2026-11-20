@@ -40,14 +40,16 @@ Chơi được bằng chuột trên máy tính và **cảm ứng trên điện t
 ## Tính năng
 
 - **Đánh theo lượt (ATB theo tốc độ):** 20 loại quái rau củ có nội tại riêng (độc, nổ, hồi máu, cuộn tròn…), Boss rơi **nguyên liệu hoàng kim** giá gấp 3, chế độ Tự đánh và tua x2.
+- **Sơ chế bằng thao tác chạm / kéo** (rửa, thái, lột, lăn viên, xiên…): mỗi bước một ô màu, cuối lượt ra **Kém / Thường / Thượng hạng** với huy chương và chữ pixel riêng. Thượng hạng nấu nước cốt nhanh hơn 15%, đồ nhúng bán đắt hơn 20%; Kém chậm hơn 10%, rẻ hơn 15%.
 - **Cửa hàng 2 nhóm:**
   - **Quán lẩu:** Bếp (nồi, bếp, nhân viên, kho lạnh) · Quán (nội thất, thêm bàn, phí phục vụ) · **Trang trí**
   - **Đi săn:** Chiến đấu (dao, giáp, chí mạng, Long đao, Chiến bào) · **Vũ khí** · **Thú cưỡi**
 - **Vũ khí:** Muôi canh, Dao phay, Xiên nướng, Chảo gang, Dao bầu hoàng kim — mua một lần, chọn 1 cái để cầm, mỗi món một kiểu (mạnh, nhanh, chí mạng).
 - **Thú cưỡi:** Trâu nước đánh cùng đầu bếp và đứng trước chịu đòn, mạnh dần theo cấp.
 - **Trang trí quán:** 17 món cho 6 chỗ (đồng hồ, tranh, kệ, mèo thần tài, góc quán, trên cửa), đặt món nào thấy món đó trong quán, mỗi món cộng tip.
-- **Quán sống động:** nhóm khách 1–6 người, bàn tròn 6 ghế, sự kiện khách đặc biệt, dọn bàn / quét rác / lau sàn, mặc cả khi hết món.
+- **Quán sống động:** nhóm khách 1–6 người, bàn tròn 6 ghế, sự kiện khách đặc biệt, dọn bàn / quét rác / lau sàn, mặc cả khi hết món, **bảng Khách đang chờ** cạnh phải (từng nhóm, thanh kiên nhẫn, số bàn chờ món / đang ăn).
 - **Lưu tự động** sau mỗi ngày, bảng **Cách chơi** lần đầu vào mỗi buổi, **chuyển cảnh** có thẻ tên buổi, mốc ngày 5/10/15 quái mạnh hơn.
+- **Độ khó tăng dần cho người mới:** ngày 1 khách tới thưa (12 giây một nhóm), mỗi ngày dày thêm, từ ngày 5 là 6 giây một nhóm; hết sạch lẩu thì quán tạm ngừng đón khách thay vì để khách vào rồi bỏ về.
 
 ## Ảnh chụp
 
@@ -97,7 +99,7 @@ Asset bên ngoài phải ghi vào [`CREDITS.md`](CREDITS.md).
 ## Vòng lặp game
 
 ```
-Menu → [Sáng: Săn 2:30] → [Trưa: Nấu 2:30] → [Chiều tối: Bán 3:15] → Tổng kết KPI
+Menu → [Sáng: Săn 2:30] → [Trưa: Nấu 4:30] → [Chiều tối: Bán 3:15] → Tổng kết KPI
                 ↑                                                   │
                 └──────────────── Cửa hàng ←── đạt ─────────────────┤
                                                     không đạt → Game Over
