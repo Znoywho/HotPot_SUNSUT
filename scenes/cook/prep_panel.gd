@@ -23,6 +23,7 @@ const ACTIONS := {
 const PANEL_SIZE := Vector2(1210, 570) ## Vừa danh sách + vùng chơi 780x300 với lề >= viền khung (24 px).
 const QUALITY_COLORS := [HuntUI.BAD, HuntUI.INK, HuntUI.GOLDEN_INK] ## Màu chữ chất lượng Kém / Thường / Thượng hạng.
 const QUICK_PIPS := 10 ## Số ô sáng dần khi sơ chế nhanh.
+const INTRO_PIC := 88.0 ## Cỡ ảnh nguyên liệu thô / thành phẩm ở màn giới thiệu.
 const HUD_SHIFT := 46.0 ## Dời khung xuống dưới thanh HUD.
 const LIST_W := 300.0
 const GRADE_TEXT := ["HỎNG!", "ỔN", "HOÀN HẢO!"]
@@ -376,37 +377,41 @@ func _message(text: String) -> void:
 	v.add_child(l)
 
 
-## Giới thiệu quy trình: các bước, số phần làm lượt này, chất lượng đang có trong kho.
+## Giới thiệu quy trình: nguyên liệu thô » thành phẩm, 3 thẻ chất lượng (kho, giá, tốc độ nấu), các bước dạng chip.
+## Thẻ Thượng hạng phát sáng và nút Bắt đầu nhịp nhẹ để người chơi muốn làm khéo.
 func _show_intro(id: String) -> void:
 	var recipe := Database.prep_recipe_for(id)
 	var raw := GameState.get_item_count(id)
 	_title.text = "%s · %d BƯỚC" % [GameState.item_display_name(id).to_upper(), recipe.steps.size()]
-	_hint.text = "Làm khéo được Thượng hạng: nấu nhanh hơn, đồ nhúng bán giá cao hơn."
+	_hint.text = "Thô %d · Đã sơ chế %d. Làm khéo để lên Thượng hạng!" % [raw, GameState.get_prepped_count(id)]
 	var v := _new_view()
+	v.add_theme_constant_override("separation", 10)
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 16)
+	top.add_theme_constant_override("separation", 10)
 	v.add_child(top)
-	top.add_child(HuntUI.texture_rect(HuntUI.ingredient_texture(id), 112))
-	# Thành phẩm sau khi sơ chế (thô » đĩa đồ nhúng).
-	var arrow := HuntUI.label("»", 40, HuntUI.INK_SOFT)
+	top.add_child(_bobbing_picture(HuntUI.ingredient_texture(id), INTRO_PIC, 0.0))
+	var arrow := HuntUI.label("»", 40, HuntUI.RUST)
 	arrow.size_flags_vertical = SIZE_SHRINK_CENTER
 	top.add_child(arrow)
-	top.add_child(HuntUI.texture_rect(HuntUI.prepped_texture(id), 112))
-	var info := VBoxContainer.new()
-	info.size_flags_horizontal = SIZE_EXPAND_FILL
-	info.add_theme_constant_override("separation", 4)
-	top.add_child(info)
+	_loop_tween(arrow, "modulate:a", 0.35, 1.0, 0.6)
+	top.add_child(_bobbing_picture(HuntUI.prepped_texture(id), INTRO_PIC, 0.6))
+	var cards := HBoxContainer.new()
+	cards.add_theme_constant_override("separation", 8)
+	cards.size_flags_horizontal = SIZE_EXPAND_FILL
+	top.add_child(cards)
 	var q := GameState.prepped_quality_counts(id)
-	info.add_child(HuntUI.label("Thô %d · Đã sơ chế %d" % [raw, GameState.get_prepped_count(id)], 20, HuntUI.INK))
-	info.add_child(HuntUI.label("Thượng hạng %d · Thường %d · Kém %d" % [q[2], q[1], q[0]], 18, HuntUI.INK_SOFT))
-	var steps: Array[String] = []
-	for i in recipe.steps.size():
-		var s: PrepStepData = recipe.steps[i]
-		steps.append("%d. %s%s" % [i + 1, s.title, " (tùy chọn)" if s.optional else ""])
-	var flow := HuntUI.label("  ›  ".join(steps), 18, HuntUI.INK)
-	flow.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	flow.custom_minimum_size = Vector2(PrepAction.AREA.x - 40, 0)
+	for grade in [0, 1, 2]:
+		cards.add_child(_quality_card(grade, int(q[grade])))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("v_separation", 6)
 	v.add_child(flow)
+	for i in recipe.steps.size():
+		if i > 0:
+			var sep := HuntUI.label("›", 22, HuntUI.INK_SOFT)
+			sep.size_flags_vertical = SIZE_SHRINK_CENTER
+			flow.add_child(sep)
+		flow.add_child(_step_chip(i + 1, recipe.steps[i]))
 	var spacer := Control.new()
 	spacer.size_flags_vertical = SIZE_EXPAND_FILL
 	v.add_child(spacer)
@@ -420,6 +425,122 @@ func _show_intro(id: String) -> void:
 	go.size_flags_horizontal = SIZE_SHRINK_END
 	go.pressed.connect(_start_session.bind(id))
 	v.add_child(go)
+	go.resized.connect(func() -> void: go.pivot_offset = go.size / 2.0)
+	_loop_tween(go, "scale", Vector2.ONE, Vector2(1.04, 1.04), 0.7)
+
+
+## Ảnh nhấp nhô lên xuống (ảnh nằm tự do trong một khung cố định để container không giữ chặt vị trí).
+func _bobbing_picture(tex: Texture2D, px: float, delay: float) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(px, px + 8.0)
+	holder.size_flags_vertical = SIZE_SHRINK_CENTER
+	var pic := HuntUI.texture_rect(tex, px)
+	pic.position = Vector2(0, 6)
+	holder.add_child(pic)
+	var t := pic.create_tween().set_loops()
+	t.tween_interval(delay)
+	t.tween_property(pic, "position:y", 0.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(pic, "position:y", 6.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	return holder
+
+
+## Lặp mãi: `property` của `node` đi từ `from` tới `to` rồi quay lại, mỗi chiều `half` giây.
+func _loop_tween(node: CanvasItem, property: String, from: Variant, to: Variant, half: float) -> void:
+	var t := node.create_tween().set_loops()
+	t.tween_property(node, property, to, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).from(from)
+	t.tween_property(node, property, from, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## Thẻ một mức chất lượng (cùng màu ô ở đồng hồ chất lượng): tên, số đang có, giá đồ nhúng, tốc độ nấu nước cốt.
+## Thẻ Thượng hạng sáng lên tắt xuống để gợi người chơi làm khéo.
+func _quality_card(grade: int, count: int) -> Control:
+	var colors: Dictionary = QualityMeter.GRADE_STYLE[grade]
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = SIZE_EXPAND_FILL
+	var style := StyleBoxFlat.new()
+	style.bg_color = (colors["fill"] as Color).lerp(Color("fbf3e2"), 0.55)
+	style.border_color = colors["border"]
+	style.set_border_width_all(3)
+	style.border_width_bottom = 5
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(8)
+	card.add_theme_stylebox_override("panel", style)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	card.add_child(box)
+	var badge := QualityBadge.new(grade, 2.0)
+	badge.size_flags_horizontal = SIZE_SHRINK_CENTER
+	box.add_child(badge)
+	var name_label := HuntUI.label(str(GameState.QUALITY_NAMES[grade]), 18, colors["border"])
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(name_label)
+	var count_label := HuntUI.label("x%d" % count, 26, HuntUI.INK if count > 0 else HuntUI.INK_SOFT)
+	count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(count_label)
+	var price := roundi((cfg.dipping_price_mult(grade) - 1.0) * 100.0)
+	var cook := roundi((1.0 - cfg.cook_time_mult(grade)) * 100.0)
+	for line in ["Giá %s" % _signed_percent(price), "Nấu %s" % _signed_percent(cook)]:
+		var l := HuntUI.label(line, 18, HuntUI.INK)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(l)
+	if grade == 2:
+		_loop_tween(card, "modulate", Color.WHITE, Color(1.12, 1.08, 0.9), 0.8)
+	return card
+
+
+## Đĩa thành phẩm và huy hiệu chất lượng cạnh nhau; huy hiệu nảy ra, đĩa Kém ngả xám như để lâu.
+func _result_row(plate: Texture2D, quality: int) -> Control:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	var pic := HuntUI.texture_rect(plate, 96)
+	pic.size_flags_vertical = SIZE_SHRINK_CENTER
+	if quality == 0:
+		pic.modulate = Color(0.78, 0.76, 0.72)
+	row.add_child(pic)
+	var badge := QualityBadge.new(quality, 5.0)
+	row.add_child(badge)
+	badge.pivot_offset = badge.custom_minimum_size / 2.0
+	badge.scale = Vector2(0.2, 0.2)
+	var t := badge.create_tween()
+	t.tween_property(badge, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return row
+
+
+## "+20%", "-15%" hoặc "chuẩn" khi bằng 0.
+static func _signed_percent(p: int) -> String:
+	return "chuẩn" if p == 0 else ("%+d%%" % p)
+
+
+## Chip một bước: số thứ tự trong ô tròn màu gỉ + tên bước; bước tuỳ chọn ghi mờ "(tùy chọn)".
+func _step_chip(number: int, step: PrepStepData) -> Control:
+	var chip := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("f3e2c0")
+	style.border_color = HuntUI.INK_SOFT
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(18)
+	style.content_margin_left = 4
+	style.content_margin_right = 12
+	style.content_margin_top = 3
+	style.content_margin_bottom = 3
+	chip.add_theme_stylebox_override("panel", style)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	chip.add_child(row)
+	var badge := PanelContainer.new()
+	var badge_style := StyleBoxFlat.new()
+	badge_style.bg_color = HuntUI.RUST
+	badge_style.set_corner_radius_all(15)
+	badge_style.content_margin_left = 9
+	badge_style.content_margin_right = 9
+	badge.add_theme_stylebox_override("panel", badge_style)
+	var num := HuntUI.label(str(number), 18, Color("fbecd2"))
+	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge.add_child(num)
+	row.add_child(badge)
+	row.add_child(HuntUI.label(step.title + (" (tùy chọn)" if step.optional else ""), 18, HuntUI.INK if not step.optional else HuntUI.INK_SOFT))
+	return chip
 
 
 # --- Lượt sơ chế ----------------------------------------------------------------
@@ -534,9 +655,7 @@ func _finish_session() -> void:
 		_title.text = "SƠ CHẾ XONG: %s" % str(GameState.QUALITY_NAMES[q]).to_upper()
 		_meter.set_verdict("Kết quả: %s" % str(GameState.QUALITY_NAMES[q]), QUALITY_COLORS[q])
 		_hint.text = _effect_text(q) # Các ô màu ở đồng hồ chất lượng cho thấy từng bước làm tốt hay hỏng.
-		var pic := HuntUI.texture_rect(HuntUI.prepped_texture(id), 96)
-		pic.size_flags_horizontal = SIZE_SHRINK_CENTER
-		v.add_child(pic) # Icon đồ đã sơ chế (bày trên đĩa).
+		v.add_child(_result_row(HuntUI.prepped_texture(id), q)) # Đĩa đồ đã sơ chế + huy hiệu chất lượng.
 		v.add_child(_center_label("+%d %s" % [n, GameState.item_display_name(id).to_lower()], 26, HuntUI.INK))
 		v.add_child(_center_label(str(GameState.QUALITY_NAMES[q]), 40, QUALITY_COLORS[q]))
 		prepped.emit(id)
@@ -624,6 +743,9 @@ func _quick_done(quality_name: String) -> void:
 	_hint.text = _effect_text(cfg.quick_quality)
 	var v := _new_view()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	var badge := QualityBadge.new(cfg.quick_quality, 3.0)
+	badge.size_flags_horizontal = SIZE_SHRINK_CENTER
+	v.add_child(badge)
 	v.add_child(_center_label("Đã sơ chế nhanh %d phần" % done, 28, HuntUI.INK))
 	v.add_child(_center_label("Chất lượng: %s" % quality_name, 24, HuntUI.INK_SOFT))
 	v.add_child(_center_label("Muốn Thượng hạng thì chọn từng nguyên liệu và tự làm.", 18, HuntUI.INK_SOFT))
