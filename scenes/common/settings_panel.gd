@@ -11,14 +11,17 @@ const MAX_STEP := 10 ## Âm lượng chia 10 nấc, mỗi nấc 10%.
 const DEFAULT_STEP := 8
 const LAYER := 120 ## Trên menu tạm dừng (PauseMenu.LAYER = 110).
 const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
-const BOARD_COLOR := Color("2b1a14", 0.96)
-const BOARD_BORDER := Color("6b2a22")
+const BOARD_COLOR := Color("4a2e20") ## Trùng PauseMenu.PANEL_BG.
+const BOARD_BORDER := Color("a8764a") ## Trùng PauseMenu.PANEL_BORDER.
+const BOARD_WIDTH := 760
+const LABEL_WIDTH := 190
 const TEXT_LIGHT := Color("fbecd2")
 const ACCENT := Color("f2a33a")
 
 var _step := DEFAULT_STEP
 var _bar: PixelBar
 var _value_label: Label
+var _fullscreen_button: PixelButton
 
 
 ## Âm lượng đã lưu (0..MAX_STEP); chưa có file thì dùng mặc định.
@@ -65,21 +68,25 @@ func _ready() -> void:
 	dim.add_child(center)
 
 	var board := PanelContainer.new()
-	board.custom_minimum_size = Vector2(640, 0)
+	board.custom_minimum_size = Vector2(BOARD_WIDTH, 0)
 	var style := StyleBoxFlat.new()
-	style.bg_color = BOARD_COLOR
+	style.bg_color = BOARD_COLOR # cùng màu khung với menu tạm dừng để hai bảng nhìn như một bộ
 	style.border_color = BOARD_BORDER
-	style.set_border_width_all(6)
-	style.set_corner_radius_all(2)
-	style.set_content_margin_all(32)
+	style.set_border_width_all(4)
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(28)
 	board.add_theme_stylebox_override("panel", style)
 	center.add_child(board)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 20)
+	column.add_theme_constant_override("separation", 18)
 	board.add_child(column)
 
 	column.add_child(_make_label("CÀI ĐẶT", 40, ACCENT))
-	column.add_child(_volume_row())
+	column.add_child(_divider())
+	column.add_child(_setting_row("Âm lượng", _volume_control()))
+	if not (OS.has_feature("android") or OS.has_feature("ios")):
+		column.add_child(_setting_row("Toàn màn hình", _fullscreen_control())) # điện thoại luôn tràn màn hình rồi
+	column.add_child(_divider())
 	var done := PixelButton.new("XONG", 26)
 	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	done.pressed.connect(queue_free)
@@ -102,16 +109,55 @@ func _on_dim_input(event: InputEvent) -> void:
 		queue_free()
 
 
-## Dòng "Âm lượng": [–] thanh PixelBar + số % [+].
-func _volume_row() -> Control:
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 8)
-	var title := _make_label("Âm lượng", 24, TEXT_LIGHT)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	box.add_child(title)
+## Một dòng cài đặt: tên ở cột trái (rộng cố định để các dòng thẳng hàng), điều khiển chiếm phần còn lại bên phải.
+func _setting_row(title: String, control: Control) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	var name_label := _make_label(title, 24, TEXT_LIGHT)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	name_label.custom_minimum_size = Vector2(LABEL_WIDTH, 0)
+	row.add_child(name_label)
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(control)
+	return row
+
+
+## Đường kẻ mảnh ngăn các vùng trong bảng.
+func _divider() -> Control:
+	var line := ColorRect.new()
+	line.color = BOARD_BORDER
+	line.custom_minimum_size = Vector2(0, 3)
+	return line
+
+
+## Nút bật / tắt toàn màn hình; chữ trên nút cho biết trạng thái hiện tại.
+func _fullscreen_control() -> Control:
+	_fullscreen_button = PixelButton.new("", 24)
+	_fullscreen_button.custom_minimum_size = Vector2(180, 64)
+	_fullscreen_button.pressed.connect(_toggle_fullscreen)
+	_show_fullscreen()
+	var holder := HBoxContainer.new() # _setting_row kéo dãn điều khiển; bọc lại để nút giữ cỡ cũ, nằm sát phải
+	holder.alignment = BoxContainer.ALIGNMENT_END
+	holder.add_child(_fullscreen_button)
+	return holder
+
+
+## Đảo chế độ toàn màn hình (không lưu: mỗi lần mở game là cửa sổ thường).
+func _toggle_fullscreen() -> void:
+	var is_full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if is_full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+	_show_fullscreen()
+
+
+## Chữ trên nút: BẬT khi đang toàn màn hình, TẮT khi không.
+func _show_fullscreen() -> void:
+	_fullscreen_button.text = "BẬT" if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN else "TẮT"
+
+
+## Điều khiển âm lượng: [–] thanh PixelBar + số % [+].
+func _volume_control() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
-	box.add_child(row)
 	row.add_child(_step_button("–", -1))
 	_bar = PixelBar.new(PixelBar.GOLD)
 	_bar.custom_minimum_size = Vector2(0, 32)
@@ -123,7 +169,7 @@ func _volume_row() -> Control:
 	_value_label.custom_minimum_size.x = 76
 	row.add_child(_value_label)
 	row.add_child(_step_button("+", 1))
-	return box
+	return row
 
 
 ## Nút vuông – / + đổi âm lượng một nấc.
