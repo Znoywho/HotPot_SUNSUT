@@ -21,7 +21,8 @@ const ACTIONS := {
 	"skewer": preload("res://scenes/cook/prep_actions/skewer.gd"),
 }
 const PANEL_SIZE := Vector2(1210, 570) ## Vừa danh sách + vùng chơi 780x300 với lề >= viền khung (24 px).
-const BAR_HEIGHT := 28.0 ## Đủ cao để chữ 18px nằm trong thanh tiến độ.
+const QUALITY_COLORS := [HuntUI.BAD, HuntUI.INK, HuntUI.GOLDEN_INK] ## Màu chữ chất lượng Kém / Thường / Thượng hạng.
+const QUICK_PIPS := 10 ## Số ô sáng dần khi sơ chế nhanh.
 const HUD_SHIFT := 46.0 ## Dời khung xuống dưới thanh HUD.
 const LIST_W := 300.0
 const GRADE_TEXT := ["HỎNG!", "ỔN", "HOÀN HẢO!"]
@@ -40,8 +41,7 @@ var _action: PrepAction = null
 var _selected := ""
 var _title: Label
 var _hint: Label
-var _status: Label
-var _bar: ProgressBar
+var _meter: QualityMeter ## Đồng hồ chất lượng dưới vùng chơi (thay thanh tiến độ).
 var _quick: Button
 var _busy := false ## Đang sơ chế nhanh.
 # Lượt sơ chế đang chơi.
@@ -148,30 +148,8 @@ func open(needs: Dictionary) -> void:
 	_host = Control.new()
 	_host.custom_minimum_size = PrepAction.AREA
 	gbox.add_child(_host)
-	_bar = ProgressBar.new()
-	_bar.show_percentage = false
-	var bar_bg := StyleBoxFlat.new()
-	bar_bg.bg_color = Color("1e2a33")
-	bar_bg.border_color = Color("2b1a14")
-	bar_bg.set_border_width_all(3)
-	bar_bg.set_corner_radius_all(4)
-	var bar_fill := StyleBoxFlat.new()
-	bar_fill.bg_color = Color("3d9be9")
-	bar_fill.border_color = Color("a6d8ff")
-	bar_fill.border_width_top = 3
-	bar_fill.set_corner_radius_all(3)
-	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
-		bar_fill.set_expand_margin(side, -3)
-	_bar.add_theme_stylebox_override("background", bar_bg)
-	_bar.add_theme_stylebox_override("fill", bar_fill)
-	_bar.max_value = 1.0
-	_bar.custom_minimum_size = Vector2(0, BAR_HEIGHT)
-	gbox.add_child(_bar) # Thanh rộng bằng vùng chơi, số Hoàn hảo/Ổn/Hỏng nằm gọn trong thanh.
-	_status = HuntUI.outlined_label("", 18, Color("fbe9d0"))
-	_status.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
-	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_bar.add_child(_status)
+	_meter = QualityMeter.new()
+	gbox.add_child(_meter) # Rộng bằng vùng chơi; mỗi bước một ô đổi màu theo điểm, chất lượng đang đạt ở bên phải.
 
 	_collect_ids()
 	_rebuild_list()
@@ -382,8 +360,7 @@ func _select(id: String) -> void:
 	_abort_session()
 	_selected = id
 	_refresh_buttons()
-	_bar.value = 0.0
-	_status.text = ""
+	_meter.setup(0)
 	if id == "":
 		_title.text = "SƠ CHẾ NGUYÊN LIỆU"
 		_hint.text = ""
@@ -455,6 +432,7 @@ func _start_session(id: String) -> void:
 	_selected = id
 	_refresh_buttons()
 	_grades.clear()
+	_meter.setup(_recipe.steps.size())
 	_step_i = 0
 	_carry = null
 	_clear_view()
@@ -487,11 +465,25 @@ func _difficulty(s: PrepStepData) -> float:
 	return d
 
 
+## Sau mỗi bước: ô của bước đó đổi màu theo điểm, chữ bên phải cho biết chất lượng đang đạt.
 func _update_progress() -> void:
 	if _recipe == null:
 		return
-	_bar.value = float(_grades.size()) / float(_recipe.steps.size())
-	_status.text = "Hoàn hảo %d · Ổn %d · Hỏng %d" % [_grades.count(2), _grades.count(1), _grades.count(0)]
+	if not _grades.is_empty():
+		_meter.set_grade(_grades.size() - 1, _grades[_grades.size() - 1])
+	_show_running_quality()
+
+
+## Chất lượng nếu dừng ngay bây giờ: trung bình điểm các bước đã làm; đủ bước Hỏng thì báo hỏng nặng.
+func _show_running_quality() -> void:
+	if _grades.count(0) >= cfg.ruin_fails:
+		_meter.set_verdict("Hỏng nặng!", HuntUI.BAD)
+		return
+	var total := 0
+	for g in _grades:
+		total += g
+	var q := cfg.quality_of(float(total) / maxf(1.0, _grades.size()))
+	_meter.set_verdict("Đang đạt: %s" % str(GameState.QUALITY_NAMES[q]), QUALITY_COLORS[q])
 
 
 func _on_step_finished(score: int) -> void:
@@ -533,22 +525,22 @@ func _finish_session() -> void:
 	if fails >= cfg.ruin_fails:
 		var lost := GameState.ruin_items(id, units)
 		_title.text = "HỎNG NẶNG!"
+		_meter.set_verdict("Hỏng nặng!", HuntUI.BAD)
 		_hint.text = "Hỏng %d bước: mất %d phần %s." % [fails, lost, GameState.item_display_name(id).to_lower()]
 		v.add_child(_center_label("Hỏng nặng, mất %d phần" % lost, 34, HuntUI.BAD))
 	else:
 		var q := cfg.quality_of(avg)
 		var n := GameState.prep_items(id, units, q)
 		_title.text = "SƠ CHẾ XONG: %s" % str(GameState.QUALITY_NAMES[q]).to_upper()
-		_hint.text = _effect_text(q) # Số Hoàn hảo/Ổn/Hỏng đã hiện trong thanh tiến độ.
+		_meter.set_verdict("Kết quả: %s" % str(GameState.QUALITY_NAMES[q]), QUALITY_COLORS[q])
+		_hint.text = _effect_text(q) # Các ô màu ở đồng hồ chất lượng cho thấy từng bước làm tốt hay hỏng.
 		var pic := HuntUI.texture_rect(HuntUI.prepped_texture(id), 96)
 		pic.size_flags_horizontal = SIZE_SHRINK_CENTER
 		v.add_child(pic) # Icon đồ đã sơ chế (bày trên đĩa).
 		v.add_child(_center_label("+%d %s" % [n, GameState.item_display_name(id).to_lower()], 26, HuntUI.INK))
-		v.add_child(_center_label(str(GameState.QUALITY_NAMES[q]), 40, [HuntUI.BAD, HuntUI.INK, HuntUI.GOLDEN_INK][q]))
+		v.add_child(_center_label(str(GameState.QUALITY_NAMES[q]), 40, QUALITY_COLORS[q]))
 		prepped.emit(id)
 	_recipe = null
-	_bar.value = 1.0
-	_status.text = "Hoàn hảo %d · Ổn %d · Hỏng %d" % [_grades.count(2), _grades.count(1), fails]
 	_refresh_buttons()
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -613,13 +605,12 @@ func _quick_all() -> void:
 	var quality_name := str(GameState.QUALITY_NAMES[cfg.quick_quality])
 	_title.text = "SƠ CHẾ NHANH TẤT CẢ"
 	_hint.text = "Làm vội cả kho %d phần, chất lượng %s." % [total, quality_name.to_lower()]
-	_status.text = ""
 	var v := _new_view()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_child(_center_label("Đang sơ chế nhanh %d phần..." % total, 26, HuntUI.INK))
-	_bar.value = 0.0
+	_meter.setup(QUICK_PIPS)
 	var t := create_tween()
-	t.tween_property(_bar, "value", 1.0, secs)
+	t.tween_method(func(ratio: float) -> void: _meter.light_up(ratio, cfg.quick_quality), 0.0, 1.0, secs)
 	t.tween_callback(_quick_done.bind(quality_name))
 
 
@@ -628,6 +619,7 @@ func _quick_done(quality_name: String) -> void:
 	for id in _ids:
 		done += GameState.prep_items(id, GameState.get_item_count(id), cfg.quick_quality)
 	_busy = false
+	_meter.set_verdict(quality_name, QUALITY_COLORS[cfg.quick_quality])
 	_title.text = "SƠ CHẾ NHANH XONG"
 	_hint.text = _effect_text(cfg.quick_quality)
 	var v := _new_view()
