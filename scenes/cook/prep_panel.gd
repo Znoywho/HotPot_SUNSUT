@@ -489,7 +489,7 @@ func _quality_card(grade: int, count: int) -> Control:
 
 
 ## Đĩa thành phẩm và huy hiệu chất lượng cạnh nhau; huy hiệu nảy ra, đĩa Kém ngả xám như để lâu.
-func _result_row(plate: Texture2D, quality: int) -> Control:
+func _result_row(plate: Texture2D, quality: int, caption: String) -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 12)
@@ -504,7 +504,21 @@ func _result_row(plate: Texture2D, quality: int) -> Control:
 	badge.scale = Vector2(0.2, 0.2)
 	var t := badge.create_tween()
 	t.tween_property(badge, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var amount := HuntUI.label(caption, 26, HuntUI.INK)
+	amount.size_flags_vertical = SIZE_SHRINK_CENTER
+	row.add_child(amount)
 	return row
+
+
+## Tên chất lượng chữ pixel ở giữa, nảy nhẹ khi hiện ra.
+func _quality_title(quality: int) -> Control:
+	var title := QualityTitle.new(quality, str(GameState.QUALITY_NAMES[quality]))
+	title.size_flags_horizontal = SIZE_SHRINK_CENTER
+	title.pivot_offset = title.custom_minimum_size / 2.0
+	title.scale = Vector2(0.6, 0.6)
+	var t := title.create_tween()
+	t.tween_property(title, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.15)
+	return title
 
 
 ## "+20%", "-15%" hoặc "chuẩn" khi bằng 0.
@@ -655,9 +669,9 @@ func _finish_session() -> void:
 		_title.text = "SƠ CHẾ XONG: %s" % str(GameState.QUALITY_NAMES[q]).to_upper()
 		_meter.set_verdict("Kết quả: %s" % str(GameState.QUALITY_NAMES[q]), QUALITY_COLORS[q])
 		_hint.text = _effect_text(q) # Các ô màu ở đồng hồ chất lượng cho thấy từng bước làm tốt hay hỏng.
-		v.add_child(_result_row(HuntUI.prepped_texture(id), q)) # Đĩa đồ đã sơ chế + huy hiệu chất lượng.
-		v.add_child(_center_label("+%d %s" % [n, GameState.item_display_name(id).to_lower()], 26, HuntUI.INK))
-		v.add_child(_center_label(str(GameState.QUALITY_NAMES[q]), 40, QUALITY_COLORS[q]))
+		# Đĩa + huy hiệu + số phần trên một hàng, bên dưới là tên chất lượng chữ pixel (mỗi mức một kiểu).
+		v.add_child(_result_row(HuntUI.prepped_texture(id), q, "+%d %s" % [n, GameState.item_display_name(id).to_lower()]))
+		v.add_child(_quality_title(q))
 		prepped.emit(id)
 	_recipe = null
 	_refresh_buttons()
@@ -747,7 +761,7 @@ func _quick_done(quality_name: String) -> void:
 	badge.size_flags_horizontal = SIZE_SHRINK_CENTER
 	v.add_child(badge)
 	v.add_child(_center_label("Đã sơ chế nhanh %d phần" % done, 28, HuntUI.INK))
-	v.add_child(_center_label("Chất lượng: %s" % quality_name, 24, HuntUI.INK_SOFT))
+	v.add_child(_quality_title(cfg.quick_quality))
 	v.add_child(_center_label("Muốn Thượng hạng thì chọn từng nguyên liệu và tự làm.", 18, HuntUI.INK_SOFT))
 	prepped.emit("")
 	_refresh_buttons()

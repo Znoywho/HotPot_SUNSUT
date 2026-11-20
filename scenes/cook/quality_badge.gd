@@ -32,7 +32,11 @@ func _init(quality_grade: int, pixel := 4.0) -> void:
 	px = pixel
 	custom_minimum_size = Vector2(GRID) * px
 	mouse_filter = MOUSE_FILTER_IGNORE
-	set_process(grade != 1) # Chỉ Thượng hạng (lấp lánh) và Kém (vệt mùi) có chuyển động.
+
+
+## Godot tự bật _process khi node vào cây nếu script có _process, nên phải tắt ở đây chứ không phải trong _init.
+func _ready() -> void:
+	set_process(grade != 1)
 
 
 func _process(delta: float) -> void:
