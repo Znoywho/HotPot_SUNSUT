@@ -49,7 +49,7 @@ const PAGES := {
 		"lines": [
 			"Khách xếp hàng ở quầy lễ tân: chạm một bàn trống đủ ghế để mời nhóm khách vào ngồi.",
 			"Bàn gọi món xong thì chạm bàn đó để bưng lẩu ra. Bưng nhanh được cộng sao.",
-			"Khách chờ lâu sẽ bỏ về và bị trừ sao. Ít sao thì ngày sau ít khách.",
+			"Khách chờ lâu sẽ bỏ về và bị trừ sao. Mấy ngày đầu khách tới thưa, càng về sau càng đông. Hết lẩu thì quán tạm ngừng đón khách.",
 			"Khách về để lại bàn bẩn, rác, vũng nước: chạm vào để dọn. Sàn bẩn làm khách mất kiên nhẫn nhanh hơn.",
 		],
 	},

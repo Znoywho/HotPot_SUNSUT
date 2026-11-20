@@ -48,6 +48,7 @@ Chơi được bằng chuột trên máy tính và **cảm ứng trên điện t
 - **Trang trí quán:** 17 món cho 6 chỗ (đồng hồ, tranh, kệ, mèo thần tài, góc quán, trên cửa), đặt món nào thấy món đó trong quán, mỗi món cộng tip.
 - **Quán sống động:** nhóm khách 1–6 người, bàn tròn 6 ghế, sự kiện khách đặc biệt, dọn bàn / quét rác / lau sàn, mặc cả khi hết món.
 - **Lưu tự động** sau mỗi ngày, bảng **Cách chơi** lần đầu vào mỗi buổi, **chuyển cảnh** có thẻ tên buổi, mốc ngày 5/10/15 quái mạnh hơn.
+- **Độ khó tăng dần cho người mới:** ngày 1 khách tới thưa (12 giây một nhóm), mỗi ngày dày thêm, từ ngày 5 là 6 giây một nhóm; hết sạch lẩu thì quán tạm ngừng đón khách thay vì để khách vào rồi bỏ về.
 
 ## Ảnh chụp
 
@@ -97,7 +98,7 @@ Asset bên ngoài phải ghi vào [`CREDITS.md`](CREDITS.md).
 ## Vòng lặp game
 
 ```
-Menu → [Sáng: Săn 2:30] → [Trưa: Nấu 2:30] → [Chiều tối: Bán 3:15] → Tổng kết KPI
+Menu → [Sáng: Săn 2:30] → [Trưa: Nấu 4:30] → [Chiều tối: Bán 3:15] → Tổng kết KPI
                 ↑                                                   │
                 └──────────────── Cửa hàng ←── đạt ─────────────────┤
                                                     không đạt → Game Over
