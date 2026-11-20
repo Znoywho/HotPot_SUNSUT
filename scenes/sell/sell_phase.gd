@@ -47,7 +47,8 @@ const ART := "res://assets/sprites/restaurant/"
 const STAGE := Vector2(1280, 720)
 const PX := 4.0
 const SIDE_WALL_PX := 160.0
-const FLOOR_RECT := Rect2(16, 352, 1248, 290) ## Vùng xếp bàn trên sàn.
+## Vùng xếp bàn trên sàn; chừa dải bên phải cho bảng "Khách đang chờ" (WaitingBoard), bàn tự co lại cho vừa.
+const FLOOR_RECT := Rect2(16, 352, 1248 - WaitingBoard.WIDTH - 12.0, 290)
 const BAR_Y := 650.0
 const MAX_TABLE_SCALE := 1.25 ## Quán ít bàn (1 hàng) thì phóng bàn to cho cân với đầu bếp, lễ tân.
 const ONE_ROW_BOTTOM := 0.86
@@ -65,6 +66,7 @@ const SPECIAL_LOOKS := {"critic": "customer_critic", "michelin": "customer_miche
 var tables: Array[TableNode] = []
 var cart := Cart.new()
 var _spawn_timer := 2.0
+var _board: WaitingBoard ## Bảng "Khách đang chờ" cạnh phải sàn.
 var _negotiating: TableNode = null
 var _stage: Control
 var _pass: KitchenPass
@@ -99,6 +101,7 @@ func _ready() -> void:
 	_events.setup(self)
 	_build_stage()
 	_build_bar()
+	_build_waiting_board()
 	_setup_tables()
 	resized.connect(_center_stage)
 	_center_stage()
@@ -210,6 +213,13 @@ func _build_bar() -> void:
 	close.pressed.connect(_close_shop)
 	close.position = Vector2(STAGE.x - 16 - close.custom_minimum_size.x, BAR_Y + 4)
 	_stage.add_child(close)
+
+
+## Dựng bảng "Khách đang chờ" ở cạnh phải sàn (ngang hàng với vùng bàn, trên lớp sàn).
+func _build_waiting_board() -> void:
+	_board = WaitingBoard.new(MAX_QUEUE)
+	_board.position = Vector2(STAGE.x - 16.0 - WaitingBoard.WIDTH, FLOOR_RECT.position.y + 6.0)
+	_stage.add_child(_board)
 
 
 func _style_button(b: Button, bg: Color, border: Color, font: Color) -> void:
@@ -896,6 +906,13 @@ func _update_ui() -> void:
 		var fill: ColorRect = group["bar"]
 		fill.size.x = (TableVisual.BAR_SIZE.x - 4.0) * clampf(r, 0.0, 1.0)
 		fill.color = TableVisual._patience_color(r)
+
+	var waiting_food := 0
+	var eating := 0
+	for table in tables:
+		waiting_food += 1 if table.state == TableNode.State.WAITING_ORDER else 0
+		eating += 1 if table.state == TableNode.State.EATING else 0
+	_board.refresh(_queue, QUEUE_WAIT, waiting_food, eating)
 
 	for i in tables.size():
 		var table := tables[i]
