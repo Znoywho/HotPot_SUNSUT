@@ -43,6 +43,7 @@ var _part: TextureRect ## Bộ phận đang bị kéo ra.
 var _part_base := Vector2.ZERO
 var _peel := false
 var _hinge_side := 1.0 ## Mảnh vỏ nằm bên phải (+1) hay trái (-1) bản lề.
+var _spring: Tween ## Tween núm đàn hồi về chỗ cũ (huỷ khi cầm lại).
 
 
 func _build() -> void:
@@ -193,6 +194,8 @@ func _gui_input(event: InputEvent) -> void:
 		var p := (event as InputEventMouseButton).position
 		if p.distance_to(_knob) <= KNOB_R + (TOUCH_GRAB_PAD if _touch else GRAB_PAD):
 			_dragging = true
+			if _spring != null:
+				_spring.kill()
 			_speed = 0.0
 			_over_time = 0.0
 			_last_us = Time.get_ticks_usec()
@@ -218,14 +221,16 @@ func _gui_input(event: InputEvent) -> void:
 			_pulled()
 		accept_event()
 	elif is_release(event) and _dragging:
-		# Thả tay giữa chừng: núm đứng yên tại chỗ, chạm lại để kéo tiếp (chỉ kéo đứt mới về đầu).
+		# Thả tay giữa chừng: núm đàn hồi về chỗ cũ, phải kéo lại một mạch.
 		_dragging = false
+		_snap_back()
 		accept_event()
 
 
+## Núm bật về vị trí ban đầu kiểu lò xo (vọt qua rồi rung nhẹ).
 func _snap_back() -> void:
-	var t := create_tween()
-	t.tween_method(func(v: Vector2): _knob = v, _knob, _home, 0.18)
+	_spring = create_tween().set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	_spring.tween_method(func(v: Vector2): _knob = v, _knob, _home, 0.5)
 
 
 func _pulled() -> void:
