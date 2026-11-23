@@ -56,6 +56,8 @@ func start(p_session: HuntSession, p_encounter: Encounter) -> void:
 		_add_view(c)
 	selected_target = controller.default_target()
 	controller.battle.add_log("Trận bắt đầu! Thanh \"Lượt tiếp\" cho biết ai sẽ hành động trước.")
+	GameMusic.set_battle(true)
+	_sfx("boss" if encounter.is_boss else "battle_start")
 	_refresh_all()
 	_flush_log()
 	_run()
@@ -107,6 +109,10 @@ func _run() -> void:
 				break
 			before = controller.snapshot()
 			_bump(actor, _skill_animation(controller.auto_skill()) if controller.is_player(actor) else "attack")
+			if controller.is_player(actor):
+				_play_skill_sfx(controller.auto_skill())
+			else:
+				_sfx("swing", -6.0)
 			controller.ai_action(actor)
 		await _show_changes(before)
 		await _wait(session.config.action_delay * 0.5)
@@ -147,6 +153,7 @@ func _show_changes(before: Dictionary) -> void:
 	for c in controller.battle.all_combatants():
 		if not views.has(c):
 			_add_view(c) # Đơn vị mới sinh (nấm con).
+			_sfx("spawn")
 			_float_text(c, "Xuất hiện!", Color("ffe0b2"))
 			_fx(c, "smoke", 1.2)
 			continue
@@ -168,9 +175,11 @@ func _show_changes(before: Dictionary) -> void:
 		elif dhp > 0:
 			_float_text(c, "+%d" % dhp, Color("8cff8c"))
 			_fx(c, "heal")
+			_sfx("heal", -4.0)
 		if darmor > 0:
 			_float_text(c, "+%d giáp" % darmor, Color("81d4fa"), 22, 30)
 			_fx(c, "shield")
+			_sfx("shield", -4.0)
 		if prev.alive and not c.is_alive():
 			died = true
 			if c.data != null and c.data.id == "mad_bull":
@@ -185,6 +194,12 @@ func _show_changes(before: Dictionary) -> void:
 			for c in controller.battle.all_combatants():
 				if line.begins_with(c.display_name + " nhảy né"):
 					_float_text(c, "Né!", Color("e1f5fe"))
+					_sfx("dodge")
+	# Độc / đốt đầu lượt có tiếng riêng.
+	if " bị đốt:" in all_text:
+		_sfx("burn", -4.0)
+	if " trúng độc:" in all_text:
+		_sfx("poison", -4.0)
 	if shake:
 		_shake()
 		_sfx("explosion")
@@ -254,12 +269,13 @@ func _shake() -> void:
 	tween.tween_property(_arena, "position:x", 0.0, 0.04)
 
 
-func _sfx(sound: String) -> void:
+func _sfx(sound: String, db := 0.0) -> void:
 	var path := SFX_DIR + sound + ".ogg"
 	if not ResourceLoader.exists(path):
 		return
 	var player := AudioStreamPlayer.new()
 	player.stream = load(path)
+	player.volume_db = db
 	player.pitch_scale = randf_range(0.92, 1.08)
 	add_child(player)
 	player.finished.connect(player.queue_free)
@@ -271,6 +287,8 @@ func _play_skill_sfx(skill: ChefSkill) -> void:
 		_sfx("splash")
 	elif skill is SliceSkill:
 		_sfx("slice")
+	else:
+		_sfx("swing") # Đánh thường: tiếng vung muôi.
 
 
 func _bump(actor: Combatant, animation_name := "attack") -> void:
@@ -378,8 +396,19 @@ func _finish() -> void:
 	var t := HuntUI.label(title, 40, color)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(t)
+	match result:
+		BattleController.Result.WIN:
+			_sfx("victory", -2.0)
+		BattleController.Result.LOSE:
+			_sfx("lose")
+		BattleController.Result.FLED:
+			_sfx("flee")
+		BattleController.Result.TIMEOUT:
+			_sfx("wrong")
 	if result == BattleController.Result.WIN:
-		_sfx("loot")
+		get_tree().create_timer(0.9).timeout.connect(func() -> void:
+			if is_inside_tree():
+				_sfx("loot"))
 		box.add_child(HuntUI.label("Nhận được:", HuntUI.FONT))
 		var row := HuntUI.items_row(drops, 48)
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -676,3 +705,7 @@ func _style_order_slot(slot: Dictionary, is_current: bool) -> void:
 ## Đánh dấu đã đọc nhật ký trận (dùng để chọn hiệu ứng theo dòng mới; không còn hiện bảng nhật ký).
 func _flush_log() -> void:
 	_log_index = controller.battle.log_lines.size()
+
+
+func _exit_tree() -> void:
+	GameMusic.set_battle(false) # Về bản đồ săn: trở lại nhạc buổi săn.

@@ -60,6 +60,7 @@ func _ready() -> void:
 	add_child(_hud)
 	_build_transition()
 	get_tree().scene_changed.connect(_fit_current_scene_below_hud)
+	GameMusic.ensure(get_tree()) # Nhạc nền theo buổi (assets/audio/game_music.gd).
 
 
 func _process(delta: float) -> void:
@@ -125,6 +126,9 @@ func go_to(phase: Phase) -> void:
 	var from_menu := current_phase == Phase.NONE
 	current_phase = phase
 	timer_running = false
+	# Đặt giờ buổi mới ngay khi đổi buổi: HUD / ánh sáng tính giờ theo current_phase + time_left, nếu để
+	# time_left của buổi cũ trong lúc tối màn thì đồng hồ vọt quá giờ rồi tụt lại (vd săn 11h -> 11h30 -> 11h).
+	time_left = PHASE_DURATIONS.get(phase, 0.0)
 	if phase == Phase.DAY_END:
 		get_tree().paused = false
 		_update_hud_visibility()
@@ -134,7 +138,6 @@ func go_to(phase: Phase) -> void:
 	_transitioning = true
 	await _cover_screen(from_menu)
 	get_tree().paused = false # bỏ tạm dừng (sổ tổng kết, menu tạm dừng) ngay lúc đổi màn, sau khi đã che kín
-	time_left = PHASE_DURATIONS.get(phase, 0.0)
 	_update_hud_visibility()
 	get_tree().change_scene_to_file(SCENES[phase])
 	phase_changed.emit(phase)

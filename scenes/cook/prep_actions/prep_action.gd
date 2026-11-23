@@ -140,7 +140,7 @@ func complete_soon(delay := 0.35) -> void:
 func mistake(at: Vector2, text := "Trượt!") -> void:
 	mistakes += 1
 	pop_text(text, at, Color("ff8a80"), 24)
-	sfx("hit", -12.0)
+	sfx("wrong", -12.0)
 	if item != null:
 		var home := item.position
 		var t := item.create_tween()

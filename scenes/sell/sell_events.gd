@@ -63,6 +63,7 @@ func _trigger(kind: String) -> void:
 		"inspector":
 			_inspect()
 		"critic_warn":
+			_sfx("critic", -4.0)
 			notice("Nhà phê bình sắp tới!", "Khoảng %d giây nữa nhà phê bình ẩm thực sẽ vào quán.
 Dọn bàn, quét sàn và nấu sẵn lẩu đi!
 Quán bẩn là bị chê ngay, phục vụ chậm cũng bị chê." % int(CRITIC_WARN_LEAD), Color("6a3d9a"))
@@ -97,6 +98,7 @@ static func tag(kind: String) -> String:
 
 ## Thanh tra: soi quán (bẩn là trừ sao) + kiểm kho (có đồ hết hạn là phạt + tịch thu).
 func _inspect() -> void:
+	_sfx("whistle", -6.0)
 	var bad := GameState.expired_stock_count()
 	var mess: Dictionary = _sell.mess_count() if _sell != null and _sell.has_method("mess_count") else {"tables": 0, "floor": 0}
 	var spots := int(mess["tables"]) + int(mess["floor"])
@@ -124,6 +126,7 @@ func critic_arrived(mess: Dictionary) -> void:
 		return
 	var loss := minf(DIRTY_STAR_PER_SPOT * spots, CRITIC_DIRTY_STAR_MAX)
 	GameState.lose_star(loss)
+	_sfx("star_down")
 	notice("Nhà phê bình chê quán bẩn!", "Vừa vào đã thấy %s.
 Trừ %s sao." % [_mess_text(mess), _num(loss)], Color("6a3d9a"))
 
@@ -146,17 +149,21 @@ func special_result(table: TableNode, ok: bool, price: int) -> void:
 				var bonus := roundi(price * CRITIC_TIP_BONUS / 1000.0) * 1000
 				GameState.add_money(bonus)
 				GameState.add_star(CRITIC_STAR_WIN)
+				_sfx("star_up")
 				notice("Nhà phê bình hài lòng!", "Bài báo khen quán hết lời.\n+%s sao, tip thêm %s." % [_num(CRITIC_STAR_WIN), GameState.format_money(bonus)], Color("2e7d32"))
 			else:
 				GameState.lose_star(CRITIC_STAR_LOSE)
+				_sfx("star_down")
 				notice("Nhà phê bình chê!", "Bài báo chê quán phục vụ kém.\nTrừ %s sao." % _num(CRITIC_STAR_LOSE), Color("c62828"))
 		"michelin":
 			if ok:
 				GameState.add_money(MICHELIN_REWARD, false)
 				GameState.add_star(MICHELIN_STAR_WIN)
+				_sfx("star_up")
 				notice("Giám khảo Michelin!", "Vị khách lạ mặt là giám khảo Michelin.\nQuán được khen: +%s sao, thưởng %s." % [_num(MICHELIN_STAR_WIN), GameState.format_money(MICHELIN_REWARD)], Color("b8860b"))
 			else:
 				GameState.lose_star(MICHELIN_STAR_LOSE)
+				_sfx("star_down")
 				notice("Giám khảo Michelin...", "Vị khách lạ mặt hóa ra là giám khảo Michelin.\nÔng không hài lòng: trừ %s sao." % _num(MICHELIN_STAR_LOSE), Color("c62828"))
 
 
@@ -211,6 +218,11 @@ func notice(title: String, text: String, color: Color) -> void:
 	layer.modulate.a = 0.0
 	_sell.add_child(layer)
 	layer.create_tween().tween_property(layer, "modulate:a", 1.0, 0.2)
+
+
+func _sfx(name: String, db := -6.0) -> void:
+	if _sell != null and _sell.has_method("_sfx"):
+		_sell._sfx(name, db)
 
 
 func _log(text: String) -> void:

@@ -453,7 +453,7 @@ func _cook(broth: BrothData, actor: KitchenActor, on_slot: StoveSlot = null) -> 
 			GameState.lose_star(pc.raw_star_loss)
 			_float_text("Nấu đồ thô, khách chê! -%s sao" % str(pc.raw_star_loss), slot.position + Vector2(STOVE_W / 2.0, 30), Color("ff8a80"))
 	_send_to_stove(actor, slot)
-	_sfx("splash", -10.0)
+	_sfx("stove", -8.0)
 	_refresh_cards()
 	return true
 
@@ -465,7 +465,7 @@ func _send_to_stove(actor: KitchenActor, slot: StoveSlot) -> void:
 	t.tween_callback(func():
 		actor.face(true)
 		actor.ninja_slash(0.8, slot.global_position + Vector2(STOVE_W * 0.5, 40.0))
-		_sfx("slice", -10.0))
+		_sfx("chop", -8.0))
 	t.tween_interval(0.9)
 	t.tween_callback(func():
 		if _prep_panel != null and actor == _chef:
@@ -482,7 +482,7 @@ func _finish_stove(slot: StoveSlot) -> void:
 	_float_text("+%d phần %s" % [slot.servings, b.display_name], slot.position + Vector2(STOVE_W / 2.0, -20), HuntUI.GOLD)
 	slot.flash()
 	slot.clear()
-	_sfx("loot", -10.0)
+	_sfx("ding", -8.0)
 	_refresh_cards()
 
 
@@ -510,7 +510,7 @@ func _open_menu(slot: StoveSlot) -> void:
 		for id in _cards:
 			HuntUI.pop_in((_cards[id] as Dictionary)["card"], 0.04 * i)
 			i += 1
-	_sfx("splash", -20.0)
+	_sfx("pop", -14.0)
 
 
 func _close_menu() -> void:
@@ -535,7 +535,7 @@ func _staff_tick(delta: float) -> void:
 		if GameState.prep_items(id, 1, Database.prep_config.quick_quality) > 0:
 			var a := _prep_staff[i]
 			a.ninja_slash(0.6)
-			_sfx("slice", -14.0)
+			_sfx("chop", -12.0)
 			a.say("+1 " + GameState.item_display_name(id), Color("c8e6c9"))
 
 
@@ -605,7 +605,7 @@ func _on_fridge_input(event: InputEvent) -> void:
 		return
 	_storage_open = true
 	_fridge.texture = load(KIT + "fridge_open.png")
-	_sfx("splash", -18.0)
+	_sfx("fridge", -10.0)
 	var popup := StoragePopup.new()
 	add_child(popup)
 	popup.tree_exited.connect(func():

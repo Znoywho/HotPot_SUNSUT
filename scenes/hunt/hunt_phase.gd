@@ -45,6 +45,7 @@ func _start_fight(index: int) -> void:
 	if enc.monsters.is_empty() or not session.can_fight():
 		return
 	_map.visible = false
+	_sfx("bush")
 	_battle = BATTLE_SCENE.instantiate()
 	add_child(_battle)
 	move_child(_rotate_hint, -1)
@@ -69,6 +70,7 @@ func _on_reroll() -> void:
 	if _rerolling or not session.reroll_encounters():
 		return
 	_rerolling = true
+	_sfx("bush")
 	_reroll_button.disabled = true
 	# Lật úp các thẻ cũ, đổi nội dung, rồi lật ngửa thẻ mới.
 	var last: Tween
@@ -326,3 +328,15 @@ func _build_rotate_hint() -> void:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	_rotate_hint.add_child(label)
+
+
+func _sfx(sound: String, db := -4.0) -> void:
+	var path := "res://assets/audio/sfx/%s.ogg" % sound
+	if not ResourceLoader.exists(path):
+		return
+	var p := AudioStreamPlayer.new()
+	p.stream = load(path)
+	p.volume_db = db
+	add_child(p)
+	p.finished.connect(p.queue_free)
+	p.play()
