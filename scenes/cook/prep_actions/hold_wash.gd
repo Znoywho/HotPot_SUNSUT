@@ -60,7 +60,7 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if is_press(event):
 		_set_holding(true)
-		sfx("splash", -14.0)
+		sfx("water", -12.0)
 		accept_event()
 	elif is_release(event) and _holding:
 		_set_holding(false)

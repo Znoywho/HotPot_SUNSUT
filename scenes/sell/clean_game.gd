@@ -32,6 +32,7 @@ var _spots: Array = [] ## [{pos, dirt 1..0, seed}]
 var _rubbing := false
 var _last := Vector2.ZERO
 var _finger := Vector2(-999, -999)
+var _rub_sound := 0.0 ## Quãng đã chà kể từ tiếng lau trước.
 # sweep
 var _trash: Array = [] ## [{pos, look, gone}]
 var _held := -1
@@ -139,6 +140,7 @@ func _press(p: Vector2) -> void:
 			for i in _trash.size():
 				if not _trash[i].gone and p.distance_to(_trash[i].pos) <= GRAB_R:
 					_held = i
+					_sfx("sweep")
 					return
 		_:
 			_rubbing = true
@@ -153,7 +155,7 @@ func _release(p: Vector2) -> void:
 		if PAN.grow(10).has_point(p):
 			t.gone = true
 			_pop(p + Vector2(-30, -50), "Vào rồi!", Color("c8e6c9"))
-			_sfx("slice")
+			_sfx("trash_in")
 			if _trash.all(func(x): return x.gone):
 				_finish("Sàn sạch bong!")
 		else:
@@ -164,13 +166,18 @@ func _take_bowl(b: Dictionary) -> void:
 	b.gone = true
 	_stacked += 1
 	_pop(b.pos + Vector2(-30, -50), "Chuẩn!", Color("c8e6c9"))
-	_sfx("slice")
+	_sfx("bowl")
 	if _stacked >= _total:
 		_finish("Dọn xong bát đũa!")
 
 
 func _rub(p: Vector2) -> void:
 	var moved := p.distance_to(_last)
+	# Tiếng lau / chà theo quãng tay di chuyển (không phát dồn dập).
+	_rub_sound += moved
+	if _rub_sound > 260.0:
+		_rub_sound = 0.0
+		_sfx("wipe" if game == "wipe" else "mop")
 	for s in _spots:
 		if s.dirt <= 0.0:
 			continue
@@ -188,7 +195,7 @@ func _rub(p: Vector2) -> void:
 func _mistake(p: Vector2, text: String) -> void:
 	mistakes += 1
 	_pop(p + Vector2(-40, -50), text, Color("ff8a80"))
-	_sfx("hit")
+	_sfx("wrong")
 
 
 func _finish(text: String) -> void:
@@ -196,7 +203,7 @@ func _finish(text: String) -> void:
 		return
 	_done = true
 	_pop(AREA / 2.0 + Vector2(-80, -90), text, HuntUI.GOLD)
-	_sfx("splash")
+	_sfx("good")
 	get_tree().create_timer(0.5).timeout.connect(func() -> void:
 		step_finished.emit(clampi(100 - CleanPanel.PENALTY * mistakes, 0, 100)))
 

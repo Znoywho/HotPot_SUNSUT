@@ -360,6 +360,7 @@ func _try_spawn_group() -> void:
 	var slot := _queue.size()
 	_queue.append(group)
 	group["walkers"] = _reception.enter_group(looks, slot, _overlay)
+	_sfx("door_bell", -10.0)
 	_make_queue_bubble(group)
 	get_tree().create_timer(1.2).timeout.connect(func() -> void:
 		if is_inside_tree() and not _queue.is_empty() and _queue[0] == group:
@@ -428,6 +429,7 @@ func _tick_queue(delta: float) -> void:
 		if float(group["wait"]) <= 0.0:
 			_remove_from_queue(group)
 			_reception.leave_queue(group["walkers"])
+			_sfx("angry", -8.0)
 			GameState.lose_star(STAR_CUSTOMER_LEFT)
 			if group["special"] != "":
 				# Khách đặc biệt bỏ về ngay ở cửa vẫn tính là phục vụ kém.
@@ -494,6 +496,7 @@ func _seat_at(table: TableNode) -> void:
 	if not is_inside_tree() or table.state != TableNode.State.EMPTY:
 		return
 	visual.seat_group(group["looks"])
+	_sfx("seat", -8.0)
 	var customer := Customer.new()
 	customer.group_size = count
 	add_child(customer)
@@ -562,6 +565,7 @@ func _pick_to_cart(broth_id: String) -> void:
 		_pass.bounce(broth_id)
 		return
 	_pass.bounce(broth_id)
+	_sfx("pop", -10.0)
 	_pass.chef.work(0.3, "stir")
 	_notify("Đã lấy %s lên khay. Chạm bàn gọi món này để bưng ra." % _broth_name(broth_id))
 
@@ -677,7 +681,7 @@ func _fly_pot(broth_id: String, visual: TableVisual) -> void:
 	t.tween_method(func(k: float) -> void:
 		r.position = from.lerp(to, k) + Vector2(0, -120.0 * sin(k * PI)), 0.0, 1.0, 0.4).set_trans(Tween.TRANS_SINE)
 	t.tween_callback(r.queue_free)
-	_sfx("splash", -14.0)
+	_sfx("serve", -8.0)
 
 
 ## Hết món đã gọi: đề nghị đổi sang món khác còn trong kho.
@@ -764,7 +768,7 @@ func _finish_eating(table: TableNode) -> void:
 		_notify("Bàn %d thanh toán lẩu + %d đĩa: %s%s, tip %s." % [tables.find(table) + 1, dishes, GameState.format_money(bill), service_text, GameState.format_money(tip)], Color("fff59d"))
 		_float_text("+%s" % GameState.format_money(bill + service + tip), visual, HuntUI.GOLD)
 		_reception.cash_in(bill + service + tip)
-		_sfx("loot", -12.0)
+		_sfx("cash", -8.0)
 		if table.special != "":
 			_events.special_result(table, table.served_fast and not table.served_expired, bill)
 	_guests_leave(visual, true)
@@ -781,6 +785,7 @@ func _customer_timeout(table: TableNode) -> void:
 	if table.special != "":
 		_events.special_result(table, false, 0)
 	_guests_leave(_visuals[tables.find(table)], false)
+	_sfx("angry", -8.0)
 	table.clear()
 
 

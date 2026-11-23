@@ -37,6 +37,8 @@ Giấy phép thường gặp: CC0 (tự do), CC-BY (ghi tác giả), OFL (font).
 |---|---|---|---|---|
 | RPG Audio: `knifeSlice.ogg` -> `sfx/slice.ogg`, `metalPot1.ogg` -> `sfx/splash.ogg`, `handleCoins.ogg` -> `sfx/loot.ogg` | Âm thanh chiến đấu | Kenney (kenney.nl) | CC0 | https://kenney.nl/assets/rpg-audio |
 | Impact Sounds: `impactPunch_medium_000` -> `hit`, `impactPunch_heavy_000` -> `crit`, `impactSoft_heavy_000` -> `defeat`, `impactMining_000` -> `explosion` | Âm thanh chiến đấu | Kenney (kenney.nl) | CC0 | https://kenney.nl/assets/impact-sounds |
+| Các SFX còn lại trong `assets/audio/sfx/` (38 file: click, good, wrong, bush, battle_start, swing, dodge, heal, shield, poison, burn, spawn, boss, victory, lose, flee, coin, water, chop, stove, bubble, ding, fridge, door_bell, seat, serve, cash, angry, sweep, mop, wipe, bowl, trash_in, critic, whistle, star_up, star_down, pop) | Thao tác săn, đánh, bếp, quán, dọn dẹp, sự kiện | Nhóm tự làm (tổng hợp 8-bit bằng `assets/audio/make_audio.py`, không dùng mẫu âm của ai) | Của nhóm | — |
+| Nhạc nền `assets/audio/music/` (menu, hunt, battle, cook, sell) | Nhạc lặp theo buổi + lúc đánh nhau | Nhóm tự làm (chiptune tổng hợp bằng `assets/audio/make_audio.py`) | Của nhóm | — |
 
 ## Công cụ
 
