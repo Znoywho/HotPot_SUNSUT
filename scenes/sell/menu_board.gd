@@ -27,6 +27,7 @@ func _ready() -> void:
 	_pot = load(POT_ICON) if ResourceLoader.exists(POT_ICON) else null
 	_lines = mini(Database.broths_for_day(GameState.day).size(), MAX_LINES)
 	var title := HuntUI.label("THỰC ĐƠN", 18, CHALK)
+	PixelTitle.style(title, 18, false) # font pixel chung, bản trơn: như viết phấn
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.position = Vector2(6, 8)
 	title.size = Vector2(BOARD.x, 24)

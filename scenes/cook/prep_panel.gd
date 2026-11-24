@@ -87,6 +87,7 @@ func open(needs: Dictionary) -> void:
 	head.add_theme_constant_override("separation", 12)
 	root.add_child(head)
 	var title := HuntUI.label("SƠ CHẾ NGUYÊN LIỆU", 26, HuntUI.RUST)
+	PixelTitle.style(title, 26, false) # font pixel chung, bản trơn (trên nền giấy), giữ màu nâu
 	title.size_flags_vertical = SIZE_SHRINK_CENTER
 	title.size_flags_horizontal = SIZE_EXPAND_FILL
 	head.add_child(title)
@@ -140,6 +141,7 @@ func open(needs: Dictionary) -> void:
 	banner.add_theme_stylebox_override("panel", bs)
 	gbox.add_child(banner)
 	_title = HuntUI.outlined_label("", 24, Color("ffd36b"))
+	PixelTitle.style(_title, 24) # BƯỚC 3/6 · CHẦN NƯỚC SÔI...: luôn in hoa, font pixel chung
 	_title.clip_text = true
 	banner.add_child(_title)
 	_hint = HuntUI.label("", 18, HuntUI.INK)
@@ -627,6 +629,7 @@ func _on_step_finished(score: int) -> void:
 	_update_progress()
 	step_done.emit()
 	var flash := HuntUI.outlined_label("BỎ QUA" if score < 0 else str(GRADE_TEXT[grade]), 44, GRADE_COLOR[grade])
+	PixelTitle.style_if_supported(flash, flash.text, 44) # HOÀN HẢO! / ỔN / HỎNG!: font pixel chung
 	flash.position = Vector2(PrepAction.AREA.x / 2.0 - 110, 90)
 	flash.z_index = 5
 	_host.add_child(flash)

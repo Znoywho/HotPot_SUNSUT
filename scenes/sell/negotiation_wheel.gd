@@ -140,8 +140,16 @@ class _Wheel extends Control:
 		draw_line(c, c + Vector2(cos(a0), sin(a0)) * r, RIM, 3.0)
 
 	func _text_at(c: Vector2, dist: float, a: float, text: String) -> void:
-		var font := get_theme_default_font()
 		var fs := 22
+		if PixelTitle.supports(text):
+			# CÓ / KHÔNG bằng font pixel chung (bộ nhỏ x2, viền tối vẽ sẵn): chân chữ hoa ở giữa ô = tâm + nửa chiều cao chữ.
+			var px_font := PixelTitle.font("small_white")
+			var px_size := PixelTitle.SMALL_NATIVE_SIZE * 2
+			var pw := px_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px_size).x
+			var pp := (c + Vector2(cos(a), sin(a)) * dist + Vector2(-pw / 2.0, 8.0)).round()
+			draw_string(px_font, pp, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px_size, Color.WHITE)
+			return
+		var font := get_theme_default_font()
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var p := c + Vector2(cos(a), sin(a)) * dist + Vector2(-w / 2.0, fs * 0.35)
 		draw_string_outline(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 5, RIM)
