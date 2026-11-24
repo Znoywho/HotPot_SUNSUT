@@ -59,6 +59,7 @@ const CARD_COLOR := Color("f1e3c4")
 const CARD_BORDER := Color("461619")
 const INK := Color("3a2418") ## Chữ tối trên thẻ màu kem.
 const TEXT_LIGHT := Color("fbecd2")
+const DEBT_COLOR := Color("ff5a4a") ## Tiền âm (đang nợ vì bị phạt): chữ đỏ, cùng màu với HUD.
 const ACCENT := Color("f2a33a")
 const TAB_DIM := Color(0.55, 0.55, 0.55) ## Tab chưa chọn tối đi.
 const INK_SOFT := Color("7a5a44") ## Chữ phụ ("Hiện tại", "Cấp sau") nhạt hơn chữ chính.
@@ -767,6 +768,7 @@ func _is_locked(upgrade: UpgradeData) -> bool:
 ## Cập nhật số tiền góc phải bảng.
 func _on_money_changed(value: int) -> void:
 	_money_label.text = "Tiền: %s" % GameState.format_money(value)
+	_money_label.add_theme_color_override("font_color", DEBT_COLOR if value < 0 else TEXT_LIGHT) # nợ (tiền âm) thì đỏ
 
 
 ## Khung nền phẳng có viền (bảng tối / thẻ kem), góc vuông nhẹ cho hợp pixel.

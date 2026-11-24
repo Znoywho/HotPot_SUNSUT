@@ -384,20 +384,25 @@ func refund_cook(taken: Dictionary) -> void:
 ## Lấy 1 phần đồ nhúng để bán (dành cho màn bán): ưu tiên đồ đã sơ chế, không có thì bán đồ thô.
 ## Trả về {ok, quality (-1 = thô), price_mult (nhân với giá gốc; bản hoàng kim nhân thêm GOLDEN_PRICE_MULTIPLIER), expired}.
 func take_dipping(id: String) -> Dictionary:
-	var cfg: PrepConfig = Database.prep_config
 	if get_prepped_count(id) > 0:
 		var r := _batch_take(prepped_batches, id, 1)
 		var piece: Dictionary = r["pieces"][0]
 		var q := int(piece.get("q", 1))
 		_sync_totals()
 		inventory_changed.emit()
-		return {"ok": true, "quality": q, "price_mult": cfg.dipping_price_mult(q), "expired": bool(r["expired"])}
+		return {"ok": true, "quality": q, "price_mult": dipping_price_mult(id, q), "expired": bool(r["expired"])}
 	if get_item_count(id) > 0:
 		var r2 := _batch_take(item_batches, id, 1)
 		_sync_totals()
 		inventory_changed.emit()
-		return {"ok": true, "quality": -1, "price_mult": cfg.dipping_price_mult(-1), "expired": bool(r2["expired"])}
+		return {"ok": true, "quality": -1, "price_mult": dipping_price_mult(id, -1), "expired": bool(r2["expired"])}
 	return {"ok": false, "quality": -1, "price_mult": 0.0, "expired": false}
+
+
+## Hệ số giá 1 đĩa đồ nhúng: m = hệ số chất lượng (PrepConfig; -1 = thô) × (GOLDEN_PRICE_MULTIPLIER nếu là bản hoàng kim, không thì 1).
+func dipping_price_mult(id: String, quality: int) -> float:
+	var golden := GOLDEN_PRICE_MULTIPLIER if id.begins_with(GOLDEN_PREFIX) else 1.0
+	return Database.prep_config.dipping_price_mult(quality) * golden
 
 
 # --- Nước cốt ---------------------------------------------------------------

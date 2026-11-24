@@ -27,6 +27,7 @@ const MONEY_COLOR := Color("ffd34e")
 const TEXT_COLOR := Color("f5f1e6")
 const GAIN_COLOR := Color("8fe388") ## Tiền cộng: chữ xanh bay vào ô Tiền.
 const LOSS_COLOR := Color("ff7a66") ## Tiền trừ: chữ đỏ rơi ra khỏi ô Tiền.
+const DEBT_COLOR := Color("ff5a4a") ## Tiền âm (bị phạt / bồi thường quá số đang có): số tiền đỏ.
 const DELTA_SECONDS := 0.9
 const KPI_BANNER_HOLD := 1.6 ## Dòng "ĐẠT KPI!" đứng yên chừng này giây rồi mờ đi.
 
@@ -97,6 +98,7 @@ func _refresh(force: bool) -> void:
 		var delta := GameState.money - _shown_money
 		_shown_money = GameState.money
 		_money_label.text = _money_text(GameState.money)
+		_money_label.add_theme_color_override("font_color", DEBT_COLOR if GameState.money < 0 else MONEY_COLOR)
 		if not force:
 			_play_icon(0)
 			_show_money_delta(delta)
