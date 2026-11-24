@@ -19,7 +19,7 @@ const TEXTURES := {
 }
 const TEXTURE_MARGIN := 20.0 ## Phần góc vát của ảnh (px) giữ nguyên khi kéo dãn nút.
 const PRESS_DEPTH := 6.0 ## Chữ lún xuống chừng này px khi bấm.
-const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
+const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf") ## Nút dùng font mặc định (Ark Pixel); hằng này chỉ còn cho chữ bay của HUD.
 const TEXT_COLOR := Color("fbecd2")
 const TEXT_OUTLINE_COLOR := Color("461619")
 ## Chữ nút bị khoá: màu ĐẶC (không trong suốt), nếu trong suốt thì viền tối lộ qua ruột chữ, nét mảnh như mất.
@@ -31,7 +31,6 @@ const DEFAULT_SIZE := Vector2(340, 68) ## Quy tắc cảm ứng: nút cao >= 56p
 func _init(label := "", font_size := 30, color := "red") -> void:
 	text = label
 	custom_minimum_size = DEFAULT_SIZE
-	add_theme_font_override("font", BOLD_FONT)
 	add_theme_font_size_override("font_size", font_size)
 	add_theme_constant_override("outline_size", outline_for(font_size))
 	for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:

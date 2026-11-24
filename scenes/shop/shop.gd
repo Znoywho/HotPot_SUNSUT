@@ -9,7 +9,6 @@ extends Control
 
 const SKY := preload("res://assets/sprites/scenery/sky.png")
 const LANDSCAPE := preload("res://assets/sprites/scenery/landscape.png")
-const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
 const TAB_WEAPONS := 3 ## Không phải UpgradeData.Category: vũ khí mua một lần, chọn 1 cái để cầm.
 const TAB_MOUNT := 4 ## Không phải UpgradeData.Category: nâng cấp thú cưỡi tách khỏi tab Chiến đấu cho dễ thấy.
 const TAB_DECOR := 5 ## Không phải UpgradeData.Category: đồ trang trí mua lẻ, mỗi chỗ trong quán đặt 1 món.
@@ -232,7 +231,6 @@ func _make_sub_tab(text: String, icon_path: String) -> Button:
 	tab.size_flags_horizontal = SIZE_EXPAND_FILL
 	tab.add_theme_constant_override("icon_max_width", TAB_ICON_SIZE)
 	tab.add_theme_constant_override("h_separation", 10)
-	tab.add_theme_font_override("font", BOLD_FONT)
 	tab.add_theme_font_size_override("font_size", 20)
 	PixelTitle.style_if_supported(tab, text, 20) # CHIẾN ĐẤU / VŨ KHÍ...: font pixel chung, màu vẫn do _style_sub_tab
 	return tab
@@ -491,7 +489,6 @@ func _make_rich_box(bbcode: String) -> Control:
 	text.mouse_filter = MOUSE_FILTER_PASS
 	text.add_theme_font_size_override("normal_font_size", 18)
 	text.add_theme_font_size_override("bold_font_size", 18)
-	text.add_theme_font_override("bold_font", BOLD_FONT)
 	text.add_theme_color_override("default_color", INK)
 	text.text = bbcode
 	panel.add_child(text)
@@ -789,7 +786,6 @@ func _make_label(text: String, font_size: int, color: Color, bold := false) -> L
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	if bold:
-		label.add_theme_font_override("font", BOLD_FONT)
 		if color != INK:
 			label.add_theme_color_override("font_outline_color", Color("2b1a14"))
 			label.add_theme_constant_override("outline_size", PixelButton.outline_for(font_size))

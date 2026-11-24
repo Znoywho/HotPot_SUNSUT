@@ -846,9 +846,8 @@ def board_inside(x: int, y: int, inset: int) -> bool:
     return min(x - inset, last - x) + min(y - inset, last - y) >= BOARD_CHAMFER - inset // 2
 
 
-def make_board(scale: int = BUTTON_SCALE) -> Image.Image:
-    """Bảng gỗ: viền ngoài tối, viền kem (như nút), vành gỗ đậm, thân ván ngang có khe, 4 đinh vàng ở góc.
-    scale = độ phóng khi lưu: 4 cho hộp thoại (cùng nút), 2 cho ô HUD (cùng icon HUD)."""
+def make_board() -> Image.Image:
+    """Bảng gỗ: viền ngoài tối, viền kem (như nút), vành gỗ đậm, thân ván ngang có khe, 4 đinh vàng ở góc."""
     img = Image.new("RGBA", (BOARD_SIZE, BOARD_SIZE), (0, 0, 0, 0))
     for y in range(BOARD_SIZE):
         for x in range(BOARD_SIZE):
@@ -872,7 +871,7 @@ def make_board(scale: int = BUTTON_SCALE) -> Image.Image:
         img.putpixel((nx + 1, ny), NAIL + (255,))
         img.putpixel((nx, ny + 1), NAIL + (255,))
         img.putpixel((nx + 1, ny + 1), NAIL_SHADE + (255,))
-    return img.resize((BOARD_SIZE * scale, BOARD_SIZE * scale), Image.NEAREST)
+    return img.resize((BOARD_SIZE * BUTTON_SCALE, BOARD_SIZE * BUTTON_SCALE), Image.NEAREST)
 
 
 if __name__ == "__main__":
@@ -907,5 +906,4 @@ if __name__ == "__main__":
     assert board.getpixel((0, 0))[3] == 0, "góc bảng phải trong suốt (vát góc)"
     assert BOARD_SIZE - 2 * BOARD_MARGIN == BOARD_PLANK, "ô giữa phải cao đúng 1 tấm ván để lặp liền mạch"
     board.save(UI_DIR + "board_wood.png")
-    make_board(2).save(UI_DIR + "board_wood_small.png")
     print("Đã ghi ảnh vào", SCENERY_DIR, "và", UI_DIR)

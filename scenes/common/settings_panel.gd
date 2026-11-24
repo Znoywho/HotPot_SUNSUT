@@ -10,7 +10,6 @@ const SETTINGS_PATH := "user://settings.cfg"
 const MAX_STEP := 10 ## Âm lượng chia 10 nấc, mỗi nấc 10%.
 const DEFAULT_STEP := 8
 const LAYER := 120 ## Trên menu tạm dừng (PauseMenu.LAYER = 110).
-const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
 const BOARD_COLOR := Color("4a2e20") ## Trùng PauseMenu.PANEL_BG.
 const BOARD_BORDER := Color("a8764a") ## Trùng PauseMenu.PANEL_BORDER.
 const BOARD_WIDTH := 760
@@ -201,7 +200,6 @@ func _make_label(text: String, font_size: int, color: Color) -> Label:
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_override("font", BOLD_FONT)
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color("1a0f0b"))

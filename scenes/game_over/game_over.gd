@@ -7,7 +7,6 @@ extends Control
 
 const SKY := preload("res://assets/sprites/scenery/sky.png")
 const LANDSCAPE := preload("res://assets/sprites/scenery/landscape.png")
-const BOLD_FONT := preload("res://assets/fonts/BeVietnamPro-Bold.ttf")
 const DUSK_TINT := Color(0.55, 0.38, 0.42) ## Nhuộm phong cảnh sang chiều tối, buồn hơn menu chính.
 const BOARD_TEXTURE := preload("res://assets/sprites/ui/result/board_wood.png")
 const BOARD_TEXTURE_MARGIN := 21.0 ## Khung gỗ + ke sắt của ảnh (7 điểm ảnh × 3 px), giữ nguyên khi kéo dãn.
@@ -302,7 +301,6 @@ func _make_label(text: String, font_size: int, color: Color, bold := false) -> L
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	if bold:
-		label.add_theme_font_override("font", BOLD_FONT)
 		label.add_theme_color_override("font_outline_color", Color("1a0f0b"))
 		label.add_theme_constant_override("outline_size", PixelButton.outline_for(font_size))
 		PixelTitle.style_if_supported(label, text, font_size) # chữ in hoa (KỶ LỤC MỚI!): font pixel chung

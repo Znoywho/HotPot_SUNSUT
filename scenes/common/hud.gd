@@ -17,9 +17,8 @@ const PART_OF_DAY_TEXTS: Array[String] = ["Sáng", "Trưa", "Chiều", "Tối", 
 
 const BAR_BG := Color("2b1a14")
 const BAR_EDGE := Color("1a0f0a")
-## Bảng gỗ pixel ×2 (tools/make_menu_art.py, cùng hình với bảng hộp thoại ×4): ảnh 48 px, lề góc 16 px.
-const BOARD_SMALL := preload("res://assets/sprites/ui/board_wood_small.png")
-const BOARD_SMALL_MARGIN := 16.0
+const PANEL_BG := Color("4a2e20")
+const PANEL_BORDER := Color("a8764a")
 const VALUE_BG := Color("1f120c")
 const VALUE_BORDER := Color("1a0f0a")
 const TITLE_COLOR := Color("f3e2c0")
@@ -423,7 +422,11 @@ func _storage_section() -> Control:
 	var button := Button.new()
 	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(72, 0)
-	_apply_button_styles(button)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var st := _panel_style()
+		if state == "pressed":
+			st.bg_color = PANEL_BG.lightened(0.15)
+		button.add_theme_stylebox_override(state, st)
 	button.pressed.connect(func(): add_child(StoragePopup.new()))
 	var box := VBoxContainer.new()
 	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 4)
@@ -469,19 +472,13 @@ func _pause_button() -> Control:
 	button.add_theme_color_override("font_outline_color", OUTLINE)
 	button.add_theme_constant_override("outline_size", 5)
 	PixelTitle.style(button, 28) # "II" bằng font pixel: thành hình nút tạm dừng
-	_apply_button_styles(button)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var st := _panel_style()
+		if state == "pressed":
+			st.bg_color = PANEL_BG.lightened(0.15)
+		button.add_theme_stylebox_override(state, st)
 	button.pressed.connect(_pause_menu.open)
 	return button
-
-
-## Nút trên HUD (Kho, II) dùng khung gỗ của ô HUD: rê chuột sáng lên, bấm thì tối đi.
-func _apply_button_styles(button: Button) -> void:
-	button.add_theme_stylebox_override("normal", _panel_style())
-	button.add_theme_stylebox_override("hover", _panel_style(Color(1.15, 1.15, 1.15)))
-	button.add_theme_stylebox_override("pressed", _panel_style(Color(0.8, 0.8, 0.8)))
-	button.add_theme_stylebox_override("hover_pressed", _panel_style(Color(0.8, 0.8, 0.8)))
-	button.add_theme_stylebox_override("disabled", _panel_style())
-	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 
 ## Đóng bảng Kho đang mở khi đổi giai đoạn (HUD sống qua các màn nên bảng không tự mất).
@@ -504,27 +501,22 @@ func _update_storage_alert() -> void:
 		_storage_alert.modulate.a = 0.55 + 0.45 * sin(Time.get_ticks_msec() / 180.0)
 
 
-## Ô HUD: bảng gỗ pixel giống hộp thoại (PauseMenu) nhưng phóng ×2 cho khớp icon HUD; tint để làm sáng / tối khi rê / bấm.
-func _panel_style(tint := Color.WHITE) -> StyleBoxTexture:
-	var s := StyleBoxTexture.new()
-	s.texture = BOARD_SMALL
-	s.set_texture_margin_all(BOARD_SMALL_MARGIN)
-	s.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE # ván lặp, không kéo dãn méo
-	s.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
-	s.modulate_color = tint
-	s.set_content_margin_all(8) # Viền khung dày 6 px (3 điểm ảnh ×2) + 2 px hở.
-	s.content_margin_left = 10
-	s.content_margin_right = 10
+func _panel_style() -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = PANEL_BG
+	s.border_color = PANEL_BORDER
+	s.set_border_width_all(3)
+	s.set_corner_radius_all(4)
+	s.set_content_margin_all(7) # Viền 3px + 4px hở để nội dung không đè lên viền.
 	return s
 
 
-## Khe hiện số (tiền, ngày): ô vuông lõm kiểu pixel, mép trên dày hơn như bóng đổ vào trong.
 func _value_style() -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = VALUE_BG
 	s.border_color = VALUE_BORDER
 	s.set_border_width_all(2)
-	s.border_width_top = 4
+	s.set_corner_radius_all(3)
 	s.content_margin_left = 8
 	s.content_margin_right = 8
 	return s
