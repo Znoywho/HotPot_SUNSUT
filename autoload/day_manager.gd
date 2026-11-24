@@ -30,25 +30,13 @@ const PHASES_WITH_HUD: Array[Phase] = [Phase.HUNT, Phase.COOK, Phase.SELL, Phase
 const PHASES_RESERVING_HUD_SPACE: Array[Phase] = [Phase.COOK, Phase.SELL]
 const PHASE_DURATIONS := {Phase.HUNT: HUNT_DURATION, Phase.COOK: COOK_DURATION, Phase.SELL: SELL_DURATION}
 
-# --- Chuyển cảnh giữa các buổi (S16) ---
-const TRANSITION_LAYER := 50 ## Trên màn chơi, dưới HUD để vẫn thấy đồng hồ mặt trời trượt sang buổi mới.
-const HUD_LAYER := 60 ## Dưới sổ tổng kết (DAY_END_LAYER) và menu tạm dừng.
-const FADE_OUT_SECONDS := 0.3
-const CARD_SECONDS := 0.8 ## Thẻ tên buổi hiện giữa màn tối.
-const FADE_IN_SECONDS := 0.35
-const COVER_COLOR := Color("1a0f0b")
-const MENU_FLASH_COLOR := Color("fff4d6") ## Khớp FLASH_COLOR của menu chính: menu kết thúc bằng màn sáng phủ kín.
-const CARD_TITLE_COLOR := Color("ffd36b")
-const CARD_SUBTITLE_COLOR := Color("fbe9d0")
+const HUD_LAYER := 60 ## Dưới sổ tổng kết (DAY_END_LAYER) và menu tạm dừng, trên chuyển cảnh (PhaseTransition, lớp 50).
 
 var current_phase: Phase = Phase.NONE
 var time_left := 0.0
 var timer_running := false
 var _hud: CanvasLayer ## Một HUD duy nhất sống qua các màn để đồng hồ mặt trời trượt mượt khi đổi giai đoạn.
-var _cover: ColorRect ## Màn che khi chuyển buổi (chặn bấm trong lúc chuyển).
-var _card: VBoxContainer ## Thẻ tên buổi giữa màn che.
-var _card_title: Label
-var _card_subtitle: Label
+var _transition: PhaseTransition ## Chuyển cảnh giữa các buổi: bọt sôi + bầu trời theo giờ (chặn bấm trong lúc chuyển).
 var _transitioning := false
 
 
@@ -58,7 +46,8 @@ func _ready() -> void:
 	_hud.visible = false
 	_hud.layer = HUD_LAYER
 	add_child(_hud)
-	_build_transition()
+	_transition = PhaseTransition.new()
+	add_child(_transition)
 	get_tree().scene_changed.connect(_fit_current_scene_below_hud)
 	GameMusic.ensure(get_tree()) # Nhạc nền theo buổi (assets/audio/game_music.gd).
 
@@ -118,8 +107,8 @@ func next_phase() -> void:
 			push_warning("next_phase() được gọi ở phase %s" % Phase.keys()[current_phase])
 
 
-## Sang giai đoạn mới. Sổ tổng kết hiện đè ngay lên màn đang chơi; các giai đoạn khác có chuyển cảnh:
-## màn tối dần -> đổi màn + thẻ tên buổi -> sáng dần, rồi đồng hồ buổi mới bắt đầu chạy (không mất giây nào).
+## Sang giai đoạn mới. Sổ tổng kết hiện đè ngay lên màn đang chơi; các giai đoạn khác có chuyển cảnh (PhaseTransition):
+## bọt sôi phủ kín -> đổi màn + thẻ tên buổi -> bọt vỡ lộ màn mới, rồi đồng hồ buổi mới bắt đầu chạy (không mất giây nào).
 func go_to(phase: Phase) -> void:
 	if _transitioning:
 		return
@@ -136,14 +125,13 @@ func go_to(phase: Phase) -> void:
 		phase_changed.emit(phase)
 		return
 	_transitioning = true
-	await _cover_screen(from_menu)
+	await _transition.cover(phase, from_menu)
 	get_tree().paused = false # bỏ tạm dừng (sổ tổng kết, menu tạm dừng) ngay lúc đổi màn, sau khi đã che kín
 	_update_hud_visibility()
 	get_tree().change_scene_to_file(SCENES[phase])
 	phase_changed.emit(phase)
-	if not from_menu:
-		await _show_card(phase)
-	await _uncover_screen()
+	await _transition.hold() # Từ menu chính / sang Game Over không có thẻ: đi tiếp ngay.
+	await _transition.uncover()
 	_transitioning = false
 	timer_running = PHASE_DURATIONS.has(phase) and current_phase == phase
 	# Lần đầu vào buổi này: bảng "Cách chơi" tạm dừng game (đồng hồ đứng yên) tới khi bấm "Đã hiểu".
@@ -188,90 +176,3 @@ func _fit_current_scene_below_hud() -> void:
 	var scene := get_tree().current_scene as Control
 	if scene != null and _hud.visible and current_phase not in PHASES_RESERVING_HUD_SPACE:
 		scene.offset_top = HUD_SCRIPT.HEIGHT
-
-
-# --- Chuyển cảnh ---------------------------------------------------------------
-
-## Dựng sẵn màn che + thẻ tên buổi (ẩn), chạy cả khi game đang tạm dừng.
-func _build_transition() -> void:
-	var layer := CanvasLayer.new()
-	layer.layer = TRANSITION_LAYER
-	layer.process_mode = Node.PROCESS_MODE_ALWAYS
-	add_child(layer)
-	_cover = ColorRect.new()
-	_cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_cover.color = COVER_COLOR
-	_cover.visible = false
-	layer.add_child(_cover)
-	_card = VBoxContainer.new()
-	_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_card.alignment = BoxContainer.ALIGNMENT_CENTER
-	_card.add_theme_constant_override("separation", 8)
-	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_cover.add_child(_card)
-	_card_title = _make_card_label(56, CARD_TITLE_COLOR)
-	_card_subtitle = _make_card_label(28, CARD_SUBTITLE_COLOR)
-	_card.add_child(_card_title)
-	_card.add_child(_card_subtitle)
-
-
-## Một dòng chữ căn giữa có viền tối cho thẻ tên buổi.
-func _make_card_label(font_size: int, color: Color) -> Label:
-	var label := Label.new()
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", PixelButton.outline_for(font_size))
-	return label
-
-
-## Che màn: tối dần. Từ menu chính thì menu đã tự phủ sáng kín màn, nên che ngay bằng đúng màu đó.
-func _cover_screen(from_menu: bool) -> void:
-	_card.modulate.a = 0.0
-	_cover.visible = true
-	_cover.mouse_filter = Control.MOUSE_FILTER_STOP
-	if from_menu:
-		_cover.color = MENU_FLASH_COLOR
-		return
-	_cover.color = Color(COVER_COLOR, 0.0)
-	var tween := _cover.create_tween()
-	tween.tween_property(_cover, "color:a", 1.0, FADE_OUT_SECONDS).set_trans(Tween.TRANS_SINE)
-	await tween.finished
-
-
-## Thẻ tên buổi (vd "NGÀY 8 · SÁNG / Đi săn nguyên liệu") hiện dần rồi mờ đi trên màn tối.
-func _show_card(phase: Phase) -> void:
-	var text := _card_text(phase)
-	if text[0] == "":
-		return
-	_card_title.text = text[0]
-	_card_subtitle.text = text[1]
-	var tween := _card.create_tween()
-	tween.tween_property(_card, "modulate:a", 1.0, CARD_SECONDS * 0.25)
-	tween.tween_interval(CARD_SECONDS * 0.5)
-	tween.tween_property(_card, "modulate:a", 0.0, CARD_SECONDS * 0.25)
-	await tween.finished
-
-
-## [dòng lớn, dòng nhỏ] của thẻ tên buổi; dòng rỗng = không hiện thẻ.
-func _card_text(phase: Phase) -> Array[String]:
-	match phase:
-		Phase.HUNT:
-			return ["NGÀY %d · SÁNG" % GameState.day, "Đi săn nguyên liệu"]
-		Phase.COOK:
-			return ["TRƯA", "Sơ chế và nấu lẩu"]
-		Phase.SELL:
-			return ["CHIỀU TỐI", "Mở quán bán hàng"]
-		Phase.SHOP:
-			return ["CỬA HÀNG NÂNG CẤP", "Chuẩn bị ngày %d" % GameState.day]
-	return ["", ""] # Game Over đã có tiêu đề "Quán đóng cửa" riêng: chỉ mờ, không thẻ
-
-
-## Mở màn: màn mới sáng dần rồi ẩn màn che, trả lại thao tác.
-func _uncover_screen() -> void:
-	var tween := _cover.create_tween()
-	tween.tween_property(_cover, "color:a", 0.0, FADE_IN_SECONDS).set_trans(Tween.TRANS_SINE)
-	await tween.finished
-	_cover.visible = false
-	_cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
