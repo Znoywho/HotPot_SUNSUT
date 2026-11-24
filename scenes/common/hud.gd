@@ -87,7 +87,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_animate_icons(delta)
-	_refresh(false)
+	_refresh(not visible) # HUD đang ẩn (menu chính) thì chỉ cập nhật số, không bay chữ +/- tiền.
 
 
 # --- Cập nhật số liệu ------------------------------------------------------
@@ -100,16 +100,18 @@ func _refresh(force: bool) -> void:
 		if not force:
 			_play_icon(0)
 			_show_money_delta(delta)
-	if force or GameState.day != _shown_day:
-		_shown_day = GameState.day
-		_day_label.text = "Ngày %02d" % GameState.day
+	if force or GameState.shown_day() != _shown_day:
+		_shown_day = GameState.shown_day()
+		_day_label.text = "Ngày %02d" % _shown_day
 		_play_icon(1)
 	var target := maxi(GameState.kpi_target, 1)
 	_kpi_bar.max_value = target
 	_kpi_bar.value = mini(GameState.today_revenue, target)
 	_kpi_label.text = "%s / %s" % [_short_money(GameState.today_revenue), _short_money(GameState.kpi_target)]
+	if GameState.in_tutorial:
+		_kpi_label.text = _short_money(GameState.today_revenue) # Ngày 0 không có KPI, chỉ hiện doanh thu.
 	_kpi_bar.fill_color = PixelBar.GOLD if GameState.is_kpi_reached() else PixelBar.GREEN
-	var reached := GameState.is_kpi_reached() and GameState.today_revenue > 0
+	var reached := GameState.is_kpi_reached() and GameState.today_revenue > 0 and not GameState.in_tutorial
 	if reached and not _kpi_celebrated and DayManager.current_phase == DayManager.Phase.SELL:
 		_celebrate_kpi()
 	_kpi_celebrated = reached # ngày mới doanh thu về 0 -> lại chúc được

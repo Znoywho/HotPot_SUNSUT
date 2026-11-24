@@ -86,6 +86,22 @@ static func mark_seen(phase: int) -> void:
 	config.save(SettingsPanel.SETTINGS_PATH)
 
 
+
+## Đã chơi xong Ngày 0 hướng dẫn trên máy này chưa.
+static func tutorial_done() -> bool:
+	var config := ConfigFile.new()
+	config.load(SettingsPanel.SETTINGS_PATH)
+	return bool(config.get_value(SECTION, "tutorial_done", false))
+
+
+## Ghi nhớ đã xong Ngày 0 (giữ nguyên các mục khác trong file).
+static func mark_tutorial_done() -> void:
+	var config := ConfigFile.new()
+	config.load(SettingsPanel.SETTINGS_PATH)
+	config.set_value(SECTION, "tutorial_done", true)
+	config.save(SettingsPanel.SETTINGS_PATH)
+
+
 ## Dựng bảng: nền tối chặn chạm, khung giữa màn có tiêu đề, các dòng hướng dẫn và nút "Đã hiểu".
 func _ready() -> void:
 	layer = LAYER

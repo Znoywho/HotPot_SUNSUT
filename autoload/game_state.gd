@@ -69,6 +69,8 @@ var decor_owned: Array[String] = [] ## id đồ trang trí đã mua
 var decor_placed: Dictionary = {} ## chỗ đặt (DecorData.slot) -> id đồ đang đặt trong quán
 var tables_floor1: int
 var tables_floor2: int
+## Đang chơi Ngày 0 hướng dẫn: KPI = 0 (luôn đạt), không lưu save; xong thì nhận START_MONEY (xem advance_to_next_day).
+var in_tutorial := false
 
 
 func _ready() -> void:
@@ -76,6 +78,7 @@ func _ready() -> void:
 
 
 func reset_new_game() -> void:
+	in_tutorial = false
 	money = START_MONEY
 	day = 1
 	kpi_target = FIRST_DAY_KPI
@@ -99,6 +102,21 @@ func reset_new_game() -> void:
 	money_changed.emit(money)
 	inventory_changed.emit()
 	stars_changed.emit(stars)
+
+
+
+## Chơi mới lần đầu trên máy: Ngày 0 hướng dẫn, nội dung như ngày 1 nhưng bắt đầu với 0đ và không có KPI.
+func start_tutorial() -> void:
+	reset_new_game()
+	in_tutorial = true
+	money = 0
+	kpi_target = 0
+	money_changed.emit(money)
+
+
+## Số ngày hiện cho người chơi: Ngày 0 khi đang hướng dẫn, còn lại là `day`.
+func shown_day() -> int:
+	return 0 if in_tutorial else day
 
 
 # --- Tiền -------------------------------------------------------------------
@@ -658,6 +676,8 @@ func is_kpi_reached() -> bool:
 
 ## KPI cho ngày mai: next = ceil(revenue × kpi_growth_percent(day) / 100), làm tròn lên.
 func next_kpi() -> int:
+	if in_tutorial:
+		return FIRST_DAY_KPI
 	return ceili(today_revenue * kpi_growth_percent(day) / 100.0 - 0.000001)
 
 
@@ -669,6 +689,9 @@ static func kpi_growth_percent(for_day: int) -> float:
 
 ## Gọi khi đạt KPI: tính KPI mới, áp phạt sao, sang ngày mới.
 func advance_to_next_day() -> void:
+	if in_tutorial:
+		_finish_tutorial()
+		return
 	kpi_target = next_kpi()
 	if stars_lost_today > 0:
 		customer_multiplier = maxf(MIN_CUSTOMER_MULTIPLIER, customer_multiplier - CUSTOMER_PENALTY)
@@ -677,6 +700,20 @@ func advance_to_next_day() -> void:
 	day += 1
 	# Nước cốt, nguyên liệu thô và đồ đã sơ chế thừa được giữ sang ngày sau, tối đa shelf_days() ngày
 	# tính từ ngày nhập lô thô (sơ chế không làm mới hạn; xem newly_expired()).
+
+
+
+## Xong Ngày 0: nhận vốn khởi nghiệp START_MONEY, sao / khách / KPI về mức đầu game, vẫn là ngày 1. Kho giữ lại.
+func _finish_tutorial() -> void:
+	in_tutorial = false
+	money = START_MONEY
+	today_revenue = 0
+	stars = START_STARS
+	stars_lost_today = 0
+	customer_multiplier = 1.0
+	kpi_target = FIRST_DAY_KPI
+	money_changed.emit(money)
+	stars_changed.emit(stars)
 
 
 func milestones_reached() -> int:

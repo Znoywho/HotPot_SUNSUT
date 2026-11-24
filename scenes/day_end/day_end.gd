@@ -6,6 +6,7 @@ const NEXT_SHOP_TEXT := "Đến cửa hàng »"
 const NEXT_RESULT_TEXT := "Xem kết quả »"
 const STAMP_PASS_TEXT := "ĐẠT KPI"
 const STAMP_FAIL_TEXT := "TRƯỢT KPI"
+const STAMP_TUTORIAL_TEXT := "XONG" ## Ngày 0 hướng dẫn không có KPI.
 const MESSAGE_PASS := "Quán vẫn sôi sùng sục, tiếp tục nào!"
 const MESSAGE_FAIL := "Thiếu %s nữa là đạt KPI, quán đành đóng cửa."
 const STAR_NOTE_PASS := "Bị trừ sao %d lần, ngày mai khách sẽ giảm."
@@ -15,6 +16,7 @@ const FILL_FAIL := preload("res://assets/sprites/ui/book/bar_fill_fail.png") ## 
 const MAX_BAR_PERCENT := 200.0 ## Vượt nhiều hơn mức này thì thanh không vẽ thêm, số % vẫn hiện đúng.
 const STAMP_PASS_COLOR := Color("2e7d32")
 const STAMP_FAIL_COLOR := Color("c62828")
+const MESSAGE_TUTORIAL := "Xong ngày hướng dẫn! Nhận vốn khởi nghiệp %s."
 const MESSAGE_RECORD := "Phá kỷ lục cũ %d ngày, quá đỉnh!"
 # Nhịp mở sổ: đếm doanh thu -> đập dấu -> hiện lời nhắn, nút.
 const COUNT_SECONDS := 0.9
@@ -169,7 +171,7 @@ func _show_day_summary() -> void:
 	var revenue := GameState.today_revenue
 	var target := GameState.kpi_target
 	var percent := kpi_progress_percent(revenue, target)
-	title_label.text = "Tổng kết ngày %d" % GameState.day
+	title_label.text = "Tổng kết ngày %d" % GameState.shown_day()
 	revenue_value.text = GameState.format_money(revenue)
 	kpi_value.text = GameState.format_money(target)
 	_show_kpi_percent(percent)
@@ -188,7 +190,8 @@ func _show_star_note() -> void:
 
 ## Điền trang phải: con dấu, lời nhắn, KPI ngày mai, tiền hiện có, chữ trên nút.
 func _show_result() -> void:
-	money_value.text = GameState.format_money(GameState.money)
+	# Ngày 0: tiền bán thử được thay bằng vốn khởi nghiệp khi sang cửa hàng (GameState._finish_tutorial).
+	money_value.text = GameState.format_money(GameState.START_MONEY if GameState.in_tutorial else GameState.money)
 	if GameState.is_kpi_reached():
 		_show_passed_result()
 	else:
@@ -204,6 +207,9 @@ func _show_passed_result() -> void:
 	var best := BestRecord.best_days()
 	if best > 0 and GameState.day == best + 1:
 		result_message.text = MESSAGE_RECORD % best
+	if GameState.in_tutorial:
+		stamp_label.text = STAMP_TUTORIAL_TEXT
+		result_message.text = MESSAGE_TUTORIAL % GameState.format_money(GameState.START_MONEY)
 	next_kpi_value.text = GameState.format_money(GameState.next_kpi())
 	next_kpi_row.visible = true
 	continue_button.text = NEXT_SHOP_TEXT
