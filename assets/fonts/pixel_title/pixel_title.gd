@@ -11,7 +11,10 @@ const FONTS := {
 	"noon": preload("res://assets/fonts/pixel_title/noon.fnt"), ## Trưa: trắng vàng -> vàng -> hổ phách.
 	"evening": preload("res://assets/fonts/pixel_title/evening.fnt"), ## Chiều tối: hồng cam -> san hô -> mận (hoàng hôn).
 	"shop": preload("res://assets/fonts/pixel_title/shop.fnt"), ## Cửa hàng: bạc hà -> ngọc -> lam (rạng đông).
-	"game_over": preload("res://assets/fonts/pixel_title/game_over.fnt"), ## Game Over: đỏ cam -> đỏ -> đỏ rượu (biển tắt đèn).
+	"game_over": preload("res://assets/fonts/pixel_title/game_over.fnt"), ## Game Over: đỏ cam -> đỏ -> đỏ rượu (biển tắt đèn). Cũng là số sát thương.
+	"heal": preload("res://assets/fonts/pixel_title/heal.fnt"), ## Số hồi máu trong trận: xanh lá.
+	"armor": preload("res://assets/fonts/pixel_title/armor.fnt"), ## Số giáp trong trận: xanh dương.
+	"white": preload("res://assets/fonts/pixel_title/white.fnt"), ## Chữ báo trong trận (NÉ!, XUẤT HIỆN!...): trắng bạc.
 }
 
 

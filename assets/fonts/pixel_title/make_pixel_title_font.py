@@ -119,7 +119,10 @@ VARIANTS = {
     "noon": (["#fffbe8", "#fff1a0", "#ffd36b", "#f6b443", "#e07a2a"], "#3a1810", "#8c2a1a"),  # nắng trưa: trắng vàng -> vàng -> hổ phách
     "evening": (["#ffe6c8", "#ffbf8a", "#ff8f6a", "#e8627a", "#b8457e"], "#2a1030", "#5c1a46"),  # hoàng hôn: hồng cam -> san hô -> mận
     "shop": (["#eafff4", "#b8f2d6", "#7ed9c0", "#4fb8ac", "#3a8896"], "#10282a", "#1c4a4c"),  # rạng đông: bạc hà -> ngọc -> lam
-    "game_over": (["#ffc4a8", "#ff9270", "#e8583f", "#c03a30", "#8a2430"], "#1a0a08", "#3a1210"),  # biển hiệu tắt: đỏ cam -> đỏ -> đỏ rượu
+    "game_over": (["#ffc4a8", "#ff9270", "#e8583f", "#c03a30", "#8a2430"], "#1a0a08", "#3a1210"),  # biển hiệu tắt: đỏ cam -> đỏ -> đỏ rượu (cũng là số sát thương)
+    "heal": (["#eaffd8", "#c6f59a", "#8fe06a", "#52c25a", "#2e9a5a"], "#0e2a14", "#1e4a24"),  # số hồi máu: xanh nõn -> xanh lá
+    "armor": (["#e8f6ff", "#b6e2ff", "#7cc4f6", "#4c96e6", "#4a52c8"], "#0c1838", "#1c2e5c"),  # số giáp: xanh trời -> chàm
+    "white": (["#ffffff", "#f4f6fa", "#dfe6f0", "#c4cee0", "#a6b0cc"], "#1a1420", "#3a3048"),  # chữ báo trong trận (NÉ!, XUẤT HIỆN!): trắng bạc
 }
 
 
