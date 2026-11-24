@@ -795,9 +795,9 @@ def octagon_inside(x: int, y: int, inset: int) -> bool:
     return dx + dy >= CHAMFER - inset // 2
 
 
-def make_button(style: str) -> Image.Image:
-    """Nút bát giác: viền ngoài tối, viền trong kem, thân đỏ với 2 hàng sáng trên / tối dưới."""
-    outline, border, body, light, dark = BUTTON_STYLES[style]
+def make_button(colors: tuple) -> Image.Image:
+    """Nút bát giác: viền ngoài tối, viền trong kem, thân (đỏ / gỗ) với 2 hàng sáng trên / tối dưới."""
+    outline, border, body, light, dark = colors
     img = Image.new("RGBA", (BUTTON_W, BUTTON_H), (0, 0, 0, 0))
     for y in range(BUTTON_H):
         for x in range(BUTTON_W):
@@ -815,6 +815,64 @@ def make_button(style: str) -> Image.Image:
                 color = body
             img.putpixel((x, y), color + (255,))
     return img.resize((BUTTON_W * BUTTON_SCALE, BUTTON_H * BUTTON_SCALE), Image.NEAREST)
+
+
+# Nút gỗ (hành động an toàn: Quay lại, Chơi tiếp...) cùng hình bát giác, thân nâu trầm hơn nút đỏ.
+WOOD_BUTTON_STYLES = {
+    "normal": ((46, 24, 16), (226, 196, 150), (122, 79, 40), (150, 102, 56), (92, 58, 30)),
+    "pressed": ((46, 24, 16), (200, 168, 124), (98, 62, 32), (112, 72, 38), (76, 46, 24)),
+}
+
+
+# --- Bảng gỗ (khung hộp thoại, StyleBoxTexture 9 ô) ----------------------------------------------
+BOARD_SIZE = 24  # cỡ gốc, phóng BUTTON_SCALE lần khi lưu; lề 9 ô = BOARD_MARGIN * BUTTON_SCALE px
+BOARD_MARGIN = 8
+BOARD_CHAMFER = 3
+BOARD_PLANK = 8  # mỗi tấm ván cao 8 điểm ảnh = đúng ô giữa, nên ô giữa lặp (tile) liền mạch
+BOARD_OUTLINE = (40, 22, 16)
+BOARD_RIM = (96, 58, 36)
+BOARD_BODY = (74, 46, 32)
+BOARD_SEAM = (58, 35, 24)
+BOARD_BEVEL = (104, 66, 42)
+NAIL = (240, 190, 70)
+NAIL_SHADE = (150, 100, 40)
+
+
+def board_inside(x: int, y: int, inset: int) -> bool:
+    """Điểm (x, y) nằm trong bảng vát góc BOARD_CHAMFER, thụt vào inset điểm ảnh không."""
+    last = BOARD_SIZE - 1 - inset
+    if x < inset or y < inset or x > last or y > last:
+        return False
+    return min(x - inset, last - x) + min(y - inset, last - y) >= BOARD_CHAMFER - inset // 2
+
+
+def make_board(scale: int = BUTTON_SCALE) -> Image.Image:
+    """Bảng gỗ: viền ngoài tối, viền kem (như nút), vành gỗ đậm, thân ván ngang có khe, 4 đinh vàng ở góc.
+    scale = độ phóng khi lưu: 4 cho hộp thoại (cùng nút), 2 cho ô HUD (cùng icon HUD)."""
+    img = Image.new("RGBA", (BOARD_SIZE, BOARD_SIZE), (0, 0, 0, 0))
+    for y in range(BOARD_SIZE):
+        for x in range(BOARD_SIZE):
+            if not board_inside(x, y, 0):
+                continue
+            if not board_inside(x, y, 1):
+                color = BOARD_OUTLINE
+            elif not board_inside(x, y, 2):
+                color = CREAM
+            elif not board_inside(x, y, 3):
+                color = BOARD_RIM
+            elif y % BOARD_PLANK == BOARD_PLANK - 1:
+                color = BOARD_SEAM
+            elif y % BOARD_PLANK == 0:
+                color = BOARD_BEVEL  # mép trên mỗi tấm ván bắt sáng
+            else:
+                color = BOARD_BODY
+            img.putpixel((x, y), color + (255,))
+    for nx, ny in [(4, 4), (BOARD_SIZE - 6, 4), (4, BOARD_SIZE - 6), (BOARD_SIZE - 6, BOARD_SIZE - 6)]:
+        img.putpixel((nx, ny), NAIL + (255,))
+        img.putpixel((nx + 1, ny), NAIL + (255,))
+        img.putpixel((nx, ny + 1), NAIL + (255,))
+        img.putpixel((nx + 1, ny + 1), NAIL_SHADE + (255,))
+    return img.resize((BOARD_SIZE * scale, BOARD_SIZE * scale), Image.NEAREST)
 
 
 if __name__ == "__main__":
@@ -839,8 +897,15 @@ if __name__ == "__main__":
     make_sun_glow().save(SCENERY_DIR + "sun_glow.png")
     make_cloud(44, 1).save(SCENERY_DIR + "cloud_big.png")
     make_cloud(28, 2).save(SCENERY_DIR + "cloud_small.png")
-    for name in BUTTON_STYLES:
-        button = make_button(name)
+    for name, colors in BUTTON_STYLES.items():
+        button = make_button(colors)
         assert button.getpixel((0, 0))[3] == 0, "góc nút phải trong suốt (vát góc)"
         button.save(UI_DIR + "button_red_%s.png" % name)
+    for name, colors in WOOD_BUTTON_STYLES.items():
+        make_button(colors).save(UI_DIR + "button_wood_%s.png" % name)
+    board = make_board()
+    assert board.getpixel((0, 0))[3] == 0, "góc bảng phải trong suốt (vát góc)"
+    assert BOARD_SIZE - 2 * BOARD_MARGIN == BOARD_PLANK, "ô giữa phải cao đúng 1 tấm ván để lặp liền mạch"
+    board.save(UI_DIR + "board_wood.png")
+    make_board(2).save(UI_DIR + "board_wood_small.png")
     print("Đã ghi ảnh vào", SCENERY_DIR, "và", UI_DIR)
