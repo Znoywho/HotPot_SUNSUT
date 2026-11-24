@@ -27,6 +27,7 @@ const MONEY_COLOR := Color("ffd34e")
 const TEXT_COLOR := Color("f5f1e6")
 const GAIN_COLOR := Color("8fe388") ## Tiền cộng: chữ xanh bay vào ô Tiền.
 const LOSS_COLOR := Color("ff7a66") ## Tiền trừ: chữ đỏ rơi ra khỏi ô Tiền.
+const DEBT_COLOR := Color("ff5a4a") ## Tiền âm (bị phạt / bồi thường quá số đang có): số tiền đỏ.
 const DELTA_SECONDS := 0.9
 const KPI_BANNER_HOLD := 1.6 ## Dòng "ĐẠT KPI!" đứng yên chừng này giây rồi mờ đi.
 
@@ -87,7 +88,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_animate_icons(delta)
-	_refresh(false)
+	_refresh(not visible) # HUD đang ẩn (menu chính) thì chỉ cập nhật số, không bay chữ +/- tiền.
 
 
 # --- Cập nhật số liệu ------------------------------------------------------
@@ -97,19 +98,22 @@ func _refresh(force: bool) -> void:
 		var delta := GameState.money - _shown_money
 		_shown_money = GameState.money
 		_money_label.text = _money_text(GameState.money)
+		_money_label.add_theme_color_override("font_color", DEBT_COLOR if GameState.money < 0 else MONEY_COLOR)
 		if not force:
 			_play_icon(0)
 			_show_money_delta(delta)
-	if force or GameState.day != _shown_day:
-		_shown_day = GameState.day
-		_day_label.text = "Ngày %02d" % GameState.day
+	if force or GameState.shown_day() != _shown_day:
+		_shown_day = GameState.shown_day()
+		_day_label.text = "Ngày %02d" % _shown_day
 		_play_icon(1)
 	var target := maxi(GameState.kpi_target, 1)
 	_kpi_bar.max_value = target
 	_kpi_bar.value = mini(GameState.today_revenue, target)
 	_kpi_label.text = "%s / %s" % [_short_money(GameState.today_revenue), _short_money(GameState.kpi_target)]
+	if GameState.in_tutorial:
+		_kpi_label.text = _short_money(GameState.today_revenue) # Ngày 0 không có KPI, chỉ hiện doanh thu.
 	_kpi_bar.fill_color = PixelBar.GOLD if GameState.is_kpi_reached() else PixelBar.GREEN
-	var reached := GameState.is_kpi_reached() and GameState.today_revenue > 0
+	var reached := GameState.is_kpi_reached() and GameState.today_revenue > 0 and not GameState.in_tutorial
 	if reached and not _kpi_celebrated and DayManager.current_phase == DayManager.Phase.SELL:
 		_celebrate_kpi()
 	_kpi_celebrated = reached # ngày mới doanh thu về 0 -> lại chúc được

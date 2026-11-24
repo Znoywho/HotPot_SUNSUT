@@ -177,7 +177,7 @@ func uncover() -> void:
 static func card_text(phase: int) -> Array[String]:
 	match phase:
 		DayManager.Phase.HUNT:
-			return ["NGÀY %d · SÁNG" % GameState.day, "Đi săn nguyên liệu"]
+			return ["NGÀY %d · SÁNG" % GameState.shown_day(), "Đi săn nguyên liệu"]
 		DayManager.Phase.COOK:
 			return ["TRƯA", "Sơ chế và nấu lẩu"]
 		DayManager.Phase.SELL:

@@ -51,6 +51,7 @@ var _timer_label: Label
 var _prep_panel: PrepPanel = null
 var _storage_open := false
 var _leaving := false
+var _leave_button: Button ## "Mở quán bán hàng" (mũi tên Ngày 0 trỏ vào khi nồi đầu tiên chín).
 
 
 func _ready() -> void:
@@ -237,6 +238,7 @@ func _build_ui() -> void:
 	prep.custom_minimum_size = Vector2(0, 56)
 	prep.pressed.connect(_open_prep.bind(""))
 	_stage.add_child(prep)
+	TutorialPointer.hint("cook_prep", prep, "Sơ chế nguyên liệu trước")
 	# Nút vừa khít chữ, đặt giữa bàn sơ chế.
 	prep.size = prep.get_combined_minimum_size()
 	prep.position = Vector2(280.0 - prep.size.x / 2.0, 180)
@@ -307,6 +309,7 @@ func _build_ui() -> void:
 	_style_button(leave, Color("f2a33a"), Color("8a5a3c"), HuntUI.INK)
 	leave.pressed.connect(_on_leave_pressed)
 	_stage.add_child(leave)
+	_leave_button = leave
 
 
 func _style_button(b: Button, bg: Color, border: Color, font: Color, pad := 0) -> void:
@@ -484,6 +487,7 @@ func _finish_stove(slot: StoveSlot) -> void:
 	slot.clear()
 	_sfx("ding", -8.0)
 	_refresh_cards()
+	TutorialPointer.hint("cook_open", _leave_button, "Có lẩu rồi! Nấu thêm hoặc mở quán bán")
 
 
 func _on_stove_tapped(slot: StoveSlot) -> void:
@@ -595,7 +599,10 @@ func _open_prep(focus: String) -> void:
 	_prep_panel.step_done.connect(func(): _chef.work(0.3, "chop"))
 	_prep_panel.closed.connect(func():
 		_prep_panel = null
-		_refresh_cards())
+		_refresh_cards()
+		var stove := _free_stove()
+		if stove != null and not GameState.prepped.is_empty():
+			TutorialPointer.hint("cook_stove", stove, "Chạm bếp trống để nấu lẩu"))
 
 
 func _on_fridge_input(event: InputEvent) -> void:

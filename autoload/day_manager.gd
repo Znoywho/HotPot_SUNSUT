@@ -64,7 +64,14 @@ func _process(delta: float) -> void:
 
 ## Chơi mới: mở cửa hàng trước để tiêu tiền khởi nghiệp chuẩn bị ngày 1, rồi mới đi săn.
 ## Lưu ngay để lần chơi mới thay hẳn save cũ: "Tiếp tục" không mở lại lần chơi đã bỏ.
+## Lần đầu trên máy thì chơi Ngày 0 hướng dẫn trước (không lưu: thoát giữa chừng thì lần sau chơi lại Ngày 0).
 func start_new_game() -> void:
+	if not HowToPlay.tutorial_done():
+		GameState.start_tutorial()
+		TutorialPointer.reset_hints()
+		SaveManager.delete_save()
+		go_to(Phase.HUNT)
+		return
 	GameState.reset_new_game()
 	SaveManager.save_game()
 	go_to(Phase.SHOP)
@@ -95,6 +102,8 @@ func next_phase() -> void:
 			go_to(Phase.DAY_END)
 		Phase.DAY_END:
 			if GameState.is_kpi_reached():
+				if GameState.in_tutorial:
+					HowToPlay.mark_tutorial_done()
 				GameState.advance_to_next_day()
 				SaveManager.save_game()
 				go_to(Phase.SHOP)
@@ -135,7 +144,7 @@ func go_to(phase: Phase) -> void:
 	_transitioning = false
 	timer_running = PHASE_DURATIONS.has(phase) and current_phase == phase
 	# Lần đầu vào buổi này: bảng "Cách chơi" tạm dừng game (đồng hồ đứng yên) tới khi bấm "Đã hiểu".
-	if current_phase == phase and HowToPlay.should_show(phase):
+	if current_phase == phase and (HowToPlay.should_show(phase) or GameState.in_tutorial):
 		get_tree().root.add_child(HowToPlay.new(phase))
 
 
