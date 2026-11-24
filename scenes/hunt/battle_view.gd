@@ -157,6 +157,9 @@ func _wait_player() -> Dictionary:
 	_turn_label.text = "Lượt của bạn: chạm vào quái để chọn mục tiêu, rồi chọn chiêu"
 	_ensure_target()
 	_set_actions_enabled(true)
+	# Ngày 0: lượt đầu trỏ vào chiêu, lượt sau trỏ vào quái (mỗi gợi ý một lần).
+	if TutorialPointer.hint("hunt_skill", _skill_buttons[0], "Chọn chiêu để đánh") == null and _enemies_box.get_child_count() > 0:
+		TutorialPointer.hint("hunt_target", _enemies_box.get_child(0), "Chạm quái để đổi mục tiêu")
 	_waiting_input = true
 	var choice: Dictionary = await _action_chosen
 	_waiting_input = false

@@ -363,6 +363,7 @@ func _try_spawn_group() -> void:
 	group["walkers"] = _reception.enter_group(looks, slot, _overlay)
 	_sfx("door_bell", -10.0)
 	_make_queue_bubble(group)
+	_hint_free_table(count)
 	get_tree().create_timer(1.2).timeout.connect(func() -> void:
 		if is_inside_tree() and not _queue.is_empty() and _queue[0] == group:
 			_reception.greet("Xin chào quý khách!"))
@@ -373,6 +374,14 @@ func _try_spawn_group() -> void:
 		_notify("Có khách lạ vào quán, cứ lặng lẽ ghi chép...", HuntUI.GOLD)
 	else:
 		_notify("Nhóm %d khách vừa tới. Chạm bàn trống đủ %d ghế để xếp chỗ." % [count, count])
+
+
+## Ngày 0: trỏ vào bàn trống đầu tiên đủ `people` ghế để người chơi biết chạm bàn mời khách.
+func _hint_free_table(people: int) -> void:
+	for i in tables.size():
+		if tables[i].state == TableNode.State.EMPTY and not _reserved.has(tables[i]) and _seats[i] >= people:
+			TutorialPointer.hint("sell_seat", _visuals[i], "Chạm bàn trống mời khách vào", true)
+			return
 
 
 ## Số người theo trọng số GROUP_SIZE_WEIGHTS, không quá số ghế của bàn lớn nhất.
@@ -505,6 +514,7 @@ func _seat_at(table: TableNode) -> void:
 	table.occupy(customer)
 	table.place_order(group["broth_id"], group["sides"])
 	table.special = group["special"]
+	TutorialPointer.hint("sell_serve", visual, "Khách gọi món rồi: chạm bàn để bưng lẩu", true)
 	_notify("Bàn %d (%d người) gọi %s + %d đĩa đồ nhúng." % [index + 1, count, _broth_name(group["broth_id"]), (group["sides"] as Array).size()])
 
 
@@ -809,6 +819,7 @@ func mess_count() -> Dictionary:
 func _leave_mess(table: TableNode, visual: TableVisual) -> void:
 	if randf() < TABLE_DIRTY_CHANCE:
 		table.make_dirty()
+		TutorialPointer.hint("sell_dirty", visual, "Bàn bẩn: chạm để dọn", true)
 	for kind in ["trash", "puddle"]:
 		if randf() < (TRASH_LEAVE_CHANCE if kind == "trash" else SPILL_LEAVE_CHANCE):
 			var near := visual.get_global_transform() * Vector2(visual.size.x * randf_range(0.1, 0.9), TableVisual.HEIGHT * 0.9)
@@ -894,6 +905,7 @@ func _spawn_mess(kind: String, center: Vector2) -> void:
 	m.position = (center - m.size / 2.0).clamp(area.position, area.end).round()
 	_mess_layer.add_child(m)
 	_mess.append(m)
+	TutorialPointer.hint("sell_mess", m, "Chạm để dọn")
 	m.tapped.connect(_clean_floor)
 	if _mess.size() >= 3:
 		_notify("Sàn bẩn quá, khách chờ bắt đầu sốt ruột! Chạm chỗ bẩn để dọn.", Color("ffccbc"))

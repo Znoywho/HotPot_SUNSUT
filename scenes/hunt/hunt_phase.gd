@@ -13,6 +13,7 @@ var _boss_holder: Control
 var _status_box: VBoxContainer
 var _timer_label: Label
 var _reroll_button: Button
+var _back_button: Button ## "Về bếp nấu lẩu »" (mũi tên Ngày 0 trỏ vào sau trận thắng đầu tiên).
 var _rerolling := false
 var _rotate_hint: Control
 
@@ -63,6 +64,8 @@ func _on_battle_closed(result: BattleController.Result, index: int) -> void:
 		session.replace_encounter(index)
 	_map.visible = true
 	_refresh()
+	if result == BattleController.Result.WIN:
+		TutorialPointer.hint("hunt_back", _back_button, "Đủ nguyên liệu thì về bếp nấu")
 
 
 ## Đổi bụi cỏ: miễn phí vài lần mỗi ngày, sau đó tốn tiền.
@@ -114,7 +117,7 @@ func _build_map() -> void:
 
 	var top := HBoxContainer.new()
 	root.add_child(top)
-	var title := HuntUI.outlined_label("Ngày %d · Sáng: Đi săn nguyên liệu" % GameState.day, 30, HuntUI.GOLD)
+	var title := HuntUI.outlined_label("Ngày %d · Sáng: Đi săn nguyên liệu" % GameState.shown_day(), 30, HuntUI.GOLD)
 	title.size_flags_horizontal = SIZE_EXPAND_FILL
 	top.add_child(title)
 	_timer_label = HuntUI.outlined_label("", 28, HuntUI.GOLD)
@@ -163,16 +166,17 @@ func _build_map() -> void:
 	right.add_child(_cards_box)
 	_boss_holder = VBoxContainer.new()
 	right.add_child(_boss_holder)
-	var back := HuntUI.button("Về bếp nấu lẩu »", 320)
-	back.size_flags_horizontal = SIZE_SHRINK_END
-	back.pressed.connect(DayManager.next_phase)
-	right.add_child(back)
+	_back_button = HuntUI.button("Về bếp nấu lẩu »", 320)
+	_back_button.size_flags_horizontal = SIZE_SHRINK_END
+	_back_button.pressed.connect(DayManager.next_phase)
+	right.add_child(_back_button)
 
 
 func _refresh() -> void:
 	_refresh_status()
 	_refresh_cards()
 	_refresh_reroll_button()
+	TutorialPointer.hint("hunt_bush", _cards_box.get_child(0), "Chạm bụi cỏ để săn quái")
 
 
 func _refresh_status() -> void:

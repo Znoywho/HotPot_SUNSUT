@@ -68,6 +68,7 @@ func _process(delta: float) -> void:
 func start_new_game() -> void:
 	if not HowToPlay.tutorial_done():
 		GameState.start_tutorial()
+		TutorialPointer.reset_hints()
 		SaveManager.delete_save()
 		go_to(Phase.HUNT)
 		return
