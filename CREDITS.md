@@ -10,6 +10,7 @@ Giấy phép thường gặp: CC0 (tự do), CC-BY (ghi tác giả), OFL (font).
 | Asset | Tác giả | Giấy phép | Link |
 |---|---|---|---|
 | Be Vietnam Pro | The Be Vietnam Pro Project Authors | SIL OFL 1.1 (`assets/fonts/OFL.txt`) | https://fonts.google.com/specimen/Be+Vietnam+Pro |
+| `assets/fonts/pixel_title/*` (font tiêu đề pixel mập: chữ in hoa tiếng Việt đủ dấu + số, 5 bảng màu theo buổi / Game Over) | Nhóm tự làm (vẽ bằng code `make_pixel_title_font.py`, nét theo logo menu chính, không dùng font của ai) | Của nhóm | — |
 
 ## Hình ảnh
 
@@ -28,6 +29,7 @@ Giấy phép thường gặp: CC0 (tự do), CC-BY (ghi tác giả), OFL (font).
 | `assets/sprites/Eris Esra's Character Template 4.1/` | Mẫu nhân vật pixel (template) | Eris Esra | Miễn phí dùng trong game; game miễn phí **bắt buộc** ghi tác giả + link | https://erisesra.itch.io/character-templates-pack |
 | `assets/sprites/backgrounds/hunt_background.png` (pixel 320×180) | Nền khu săn | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/fx/burst.png`, `explosion_fire.png`, `explosion_big.png`, `smoke.png`, `splash_broth.png` (đổi màu từ "water blob") | Hiệu ứng nổ, chí mạng, khói, nước lẩu trong trận | Ansimuz (Luis Zuno) | CC0 | https://ansimuz.itch.io/explosion-animations-pack |
+| `assets/sprites/fx/impact_star.png`, `slash_arc.png`, `bonk_star.png`, `shockwave.png`, `dust.png`, `broth_blob.png` | Hiệu ứng chiến đấu: tia chạm, vệt chém smear, sao bị muôi gõ, vòng xung kích, bụi chân, giọt nước lẩu (vẽ bằng code `make_combat_fx.py`, học kỹ thuật "game feel" / smear frame, không dùng file của ai) | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/fx/slash.png`, `flame.png`, `poison.png`, `heal.png`, `shield.png` (16×16) | Hiệu ứng chém, đốt, độc, hồi máu, giáp (tự vẽ, lấy cảm hứng phong cách từ "Free Effect and Bullet 16x16" của BDragon1727, không dùng file gốc) | Nhóm tự làm | Của nhóm | — |
 | `assets/sprites/ui/paper_*.png` (khung, thẻ, nút kiểu sổ giấy da) | Giao diện màn săn (tự vẽ, lấy cảm hứng phong cách từ Pocket Inventory Series của Humble Pixel, không dùng file gốc) | Nhóm tự làm | Của nhóm | — |
 

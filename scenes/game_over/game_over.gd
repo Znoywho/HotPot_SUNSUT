@@ -28,6 +28,10 @@ const ACCENT := Color("f2a33a")
 const FAIL_RED := Color("e0533d")
 const FADE_IN_SECONDS := 0.8
 const BOARD_DROP_SECONDS := 0.7
+const BOARD_DROP_DELAY := 0.3 ## Biển gỗ đợi chừng này giây rồi mới rơi.
+const TITLE_TEXT := "QUÁN ĐÓNG CỬA"
+const TITLE_PIXEL_SCALE := 3 ## Tiêu đề dùng font pixel PixelTitle phóng 3 lần (cao ~ chữ 56 cũ, vừa giữa nồi và đèn lồng).
+const TITLE_BROKEN_LETTER := "Ó" ## Chữ "hỏng" của biển hiệu: sáng yếu, thỉnh thoảng nháy.
 
 
 ## Dựng nền, bảng kết quả, lớp nhắc xoay ngang, rồi cho màn sáng dần lên từ đen.
@@ -97,7 +101,7 @@ func _build_board() -> void:
 	add_child(center)
 	center.position.y = -get_viewport_rect().size.y # rơi từ trên xuống như bảng cửa hàng
 	center.create_tween().tween_property(center, "position:y", 0.0, BOARD_DROP_SECONDS) \
-			.set_delay(0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			.set_delay(BOARD_DROP_DELAY).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	var board := PanelContainer.new()
 	board.custom_minimum_size = Vector2(760, 0)
@@ -115,7 +119,7 @@ func _build_board() -> void:
 	title_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	title_row.add_theme_constant_override("separation", 18)
 	title_row.add_child(_pixel_icon(COLD_POT))
-	title_row.add_child(_make_label("QUÁN ĐÓNG CỬA", 56, FAIL_RED, true))
+	title_row.add_child(_make_pixel_title())
 	var lantern := _pixel_icon(LANTERN_OFF)
 	title_row.add_child(lantern)
 	column.add_child(title_row)
@@ -268,6 +272,27 @@ func _pixel_icon(texture: Texture2D) -> TextureRect:
 	return rect
 
 
+## Tiêu đề "QUÁN ĐÓNG CỬA" bằng chữ pixel mập (PixelTitle, bảng màu game_over), kiểu biển hiệu đèn:
+## biển rơi xuống thì chữ chập chờn bật sáng, rồi sáng hẳn trừ một chữ hỏng sáng yếu, thỉnh thoảng nháy.
+func _make_pixel_title() -> RichTextLabel:
+	var title := RichTextLabel.new()
+	title.bbcode_enabled = true
+	title.fit_content = true
+	title.scroll_active = false
+	title.clip_contents = false
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.mouse_filter = MOUSE_FILTER_IGNORE
+	title.size_flags_vertical = SIZE_SHRINK_CENTER
+	title.custom_minimum_size.x = PixelTitle.text_width(TITLE_TEXT, "game_over", TITLE_PIXEL_SCALE)
+	PixelTitle.apply_rich(title, "game_over", TITLE_PIXEL_SCALE)
+	var flicker := PixelTitle.FlickerEffect.new()
+	flicker.delay = BOARD_DROP_DELAY + BOARD_DROP_SECONDS # bật đèn lúc biển vừa rơi tới chỗ
+	flicker.broken_index = TITLE_TEXT.find(TITLE_BROKEN_LETTER)
+	title.install_effect(flicker)
+	title.text = "[flicker]%s[/flicker]" % TITLE_TEXT
+	return title
+
+
 ## Label căn giữa với cỡ chữ, màu; bold = chữ đậm có viền tối.
 func _make_label(text: String, font_size: int, color: Color, bold := false) -> Label:
 	var label := Label.new()
@@ -280,4 +305,5 @@ func _make_label(text: String, font_size: int, color: Color, bold := false) -> L
 		label.add_theme_font_override("font", BOLD_FONT)
 		label.add_theme_color_override("font_outline_color", Color("1a0f0b"))
 		label.add_theme_constant_override("outline_size", PixelButton.outline_for(font_size))
+		PixelTitle.style_if_supported(label, text, font_size) # chữ in hoa (KỶ LỤC MỚI!): font pixel chung
 	return label

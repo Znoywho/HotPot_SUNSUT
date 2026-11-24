@@ -210,6 +210,7 @@ func _floating_label(text: String, font_size: int, color: Color) -> Label:
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", OUTLINE)
 	label.add_theme_constant_override("outline_size", PixelButton.outline_for(font_size))
+	PixelTitle.style_if_supported(label, text, font_size) # "ĐẠT KPI!": font pixel chung
 	add_child(label)
 	return label
 
@@ -291,6 +292,7 @@ func _title_label(title: String) -> Label:
 	t.add_theme_color_override("font_color", TITLE_COLOR)
 	t.add_theme_color_override("font_outline_color", OUTLINE)
 	t.add_theme_constant_override("outline_size", 4)
+	PixelTitle.style_if_supported(t, title, 18) # TIỀN / NGÀY / KPI / ĐÁNH GIÁ / KHO: font pixel chung
 	return t
 
 
@@ -469,6 +471,7 @@ func _pause_button() -> Control:
 	button.add_theme_color_override("font_color", TITLE_COLOR)
 	button.add_theme_color_override("font_outline_color", OUTLINE)
 	button.add_theme_constant_override("outline_size", 5)
+	PixelTitle.style(button, 28) # "II" bằng font pixel: thành hình nút tạm dừng
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 		var st := _panel_style()
 		if state == "pressed":

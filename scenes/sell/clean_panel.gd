@@ -74,6 +74,7 @@ func open(mess_kind: String, title: String) -> void:
 	head.add_theme_constant_override("separation", 12)
 	root.add_child(head)
 	var head_label := HuntUI.label("DỌN DẸP: " + title.to_upper(), 26, HuntUI.RUST)
+	PixelTitle.style_if_supported(head_label, head_label.text, 26, false) # font pixel chung, bản trơn trên nền giấy
 	head_label.size_flags_vertical = SIZE_SHRINK_CENTER
 	head_label.size_flags_horizontal = SIZE_EXPAND_FILL
 	head.add_child(head_label)
@@ -184,6 +185,7 @@ func _show_result(grade: int) -> void:
 	_bar.value = 1.0
 	_status.text = "Xong!"
 	var l := HuntUI.outlined_label(GRADE_TEXT[grade], 48, GRADE_COLOR[grade])
+	PixelTitle.style_if_supported(l, l.text, 48) # HOÀN HẢO! / ỔN / HỎNG!: font pixel chung
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.size = CleanGame.AREA

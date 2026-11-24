@@ -305,7 +305,9 @@ func _make_boss_card() -> Button:
 		state = "Sẵn sàng! Boss luôn rơi nguyên liệu hoàng kim (giá x3)"
 	else:
 		state = "Thắng thêm %d trận để mở" % (session.config.boss_unlock_wins - session.wins)
-	text.add_child(HuntUI.label("BOSS: " + boss_data.display_name if boss_data != null else "BOSS", 24, HuntUI.BAD))
+	var boss_title := HuntUI.label(("BOSS: " + boss_data.display_name.to_upper()) if boss_data != null else "BOSS", 24, HuntUI.BAD)
+	PixelTitle.style_if_supported(boss_title, boss_title.text, 24, false) # font pixel chung, bản trơn trên thẻ giấy
+	text.add_child(boss_title)
 	var s := HuntUI.label(state, HuntUI.FONT_SMALL)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text.add_child(s)

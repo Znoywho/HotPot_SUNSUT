@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://di4u5kw0rfq22"
+path="res://.godot/imported/morning.fnt-c298ffc8d3760a6ca953b16312eabb88.fontdata"
+
+[deps]
+
+source_file="res://assets/fonts/pixel_title/morning.fnt"
+dest_files=["res://.godot/imported/morning.fnt-c298ffc8d3760a6ca953b16312eabb88.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=2

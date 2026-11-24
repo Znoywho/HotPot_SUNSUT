@@ -28,10 +28,10 @@ const HORIZON_Y := 520.0 ## Mặt trời / trăng xuống dưới mức này là
 const ARC_HEIGHT := 380.0 ## Đỉnh cung mặt trời cao hơn chân trời bao nhiêu (đỉnh ở y 140, quầng sáng không chui dưới HUD).
 const ARC_LEFT := 0.06 ## Mọc ở 6% bề ngang...
 const ARC_RIGHT := 0.94 ## ...lặn ở 94%.
-const TITLE_Y := 210.0 ## Mép trên dòng tên buổi.
+const TITLE_Y := 196.0 ## Mép trên dòng tên buổi (chữ pixel x4: chân chữ hoa ở y 276, cách dòng phụ ~24 px).
 const SUBTITLE_Y := 300.0 ## Mép trên dòng phụ.
 const SUBTITLE_RISE := 14.0 ## Dòng phụ trượt lên bao nhiêu khi hiện.
-const TITLE_SIZE := 68
+const TITLE_PIXEL_SCALE := 4 ## Tên buổi dùng font pixel PixelTitle phóng 4 lần, khớp ART_SCALE và ô bọt pixel_size 4 của shader.
 const SUBTITLE_SIZE := 30
 const SKY_BANDS := 8 ## Số dải màu trời (kiểu sky.png).
 const STAR_COUNT := 18
@@ -48,7 +48,6 @@ const LAMP_STEPS := 5 ## Số bậc sáng của quầng đèn (kiểu pixel, kh�
 const LAMP_RAMP_HOURS := 1.5 ## Đèn quán bật từ DayLight.LAMP_ON_FROM, sáng hết sau 1,5 giờ (thẻ chỉ tua tới 18h18; trong game là 2,5 giờ).
 
 # --- Màu ---
-const TITLE_COLOR := Color("ffd36b")
 const SUBTITLE_COLOR := Color("fbe9d0")
 const MENU_FLASH_COLOR := Color("fff4d6") ## Khớp FLASH_COLOR của menu chính: menu kết thúc bằng màn sáng phủ kín.
 const STAR_COLOR := Color("fff4c8")
@@ -289,10 +288,8 @@ func _build() -> void:
 	_title.scroll_active = false
 	_title.clip_contents = false # chữ rơi từ trên xuống, không cắt phần ló ra ngoài khung
 	_title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_title.add_theme_font_size_override("normal_font_size", TITLE_SIZE)
-	_title.add_theme_color_override("default_color", TITLE_COLOR)
-	_title.add_theme_color_override("font_outline_color", Color.BLACK)
-	_title.add_theme_constant_override("outline_size", PixelButton.outline_for(TITLE_SIZE))
+	# Chữ pixel mập tự vẽ (assets/fonts/pixel_title): màu, viền, bóng vẽ sẵn; mỗi buổi một bảng màu (đặt lại trong _setup).
+	PixelTitle.apply_rich(_title, "noon", TITLE_PIXEL_SCALE)
 	_pop = PopInEffect.new()
 	_title.install_effect(_pop)
 	_title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -369,6 +366,8 @@ func _setup(phase: int, from_menu: bool) -> void:
 	_texts = card_text(phase)
 	_has_card = not from_menu and _texts[0] != ""
 	_hours = card_hours(phase)
+	PixelTitle.apply_rich(_title, PixelTitle.for_phase(phase), TITLE_PIXEL_SCALE)
+	_pop.lamps = phase == DayManager.Phase.SELL # chiều tối: chữ rơi xong thì lần lượt "lên đèn" như quán
 	_title.text = ""
 	_subtitle.text = ""
 	var scenery: Array[Control] = [_land, _sun, _sun_glow, _moon, _lamp]
@@ -484,6 +483,8 @@ func _set_progress(value: float) -> void:
 
 
 ## Hiệu ứng chữ [pop]...[/pop]: từng chữ rơi xuống rồi nảy nhẹ (back-out), chữ sau trễ hơn chữ trước.
+## Chữ rơi theo từng nấc STEP_PX (đúng 1 điểm ảnh của font pixel) cho chất game retro, không trượt mượt.
+## lamps = true (chiều tối): chữ rơi trong tối, chạm đất thì "bật đèn" (sáng, chớp nhẹ, sáng hẳn) như quán lên đèn.
 ## elapsed_time tự về 0 mỗi khi đổi chữ của RichTextLabel.
 class PopInEffect extends RichTextEffect:
 	const STAGGER := 0.05 ## Giây giữa hai chữ (tên buổi ngắn).
@@ -491,14 +492,33 @@ class PopInEffect extends RichTextEffect:
 	const DROP := 40.0 ## Rơi từ cao bao nhiêu (đơn vị canvas).
 	const DURATION := 0.4 ## Mỗi chữ rơi trong bao lâu.
 	const FADE_PART := 0.35 ## Chữ hiện rõ hẳn sau 35% thời gian rơi.
+	const STEP_PX := float(TITLE_PIXEL_SCALE) ## Nấc rơi = 1 điểm ảnh của font pixel.
+	const LAMP_AT := 0.7 ## Chữ bật đèn khi đã rơi được 70% (lúc vừa chạm đất, trước nhịp nảy).
+	const LAMP_DIM := 0.55 ## Độ sáng lúc chưa bật đèn.
+	const LAMP_FLICK := [[0.06, 1.0], [0.12, 0.72]] ## [tới giây thứ, độ sáng] ngay sau khi bật; sau đó sáng hẳn.
 
 	var bbcode := "pop"
 	var stagger := STAGGER
+	var lamps := false
 
-	## Vị trí và độ rõ của từng chữ: offset_y = −DROP × (1 − back_out(t)), alpha tăng dần trong FADE_PART đầu.
+	## Vị trí và độ rõ của từng chữ: offset_y = −DROP × (1 − back_out(t)) làm tròn theo STEP_PX,
+	## alpha tăng dần trong FADE_PART đầu.
 	func _process_custom_fx(fx: CharFXTransform) -> bool:
-		var t := clampf(fx.elapsed_time - fx.relative_index * stagger, 0.0, DURATION)
+		var start := fx.relative_index * stagger
+		var t := clampf(fx.elapsed_time - start, 0.0, DURATION)
 		var k: float = Tween.interpolate_value(0.0, 1.0, t, DURATION, Tween.TRANS_BACK, Tween.EASE_OUT)
-		fx.offset = Vector2(0.0, -DROP * (1.0 - k))
+		fx.offset = Vector2(0.0, roundf(-DROP * (1.0 - k) / STEP_PX) * STEP_PX)
 		fx.color.a *= clampf(t / (DURATION * FADE_PART), 0.0, 1.0)
+		if lamps:
+			var b := _lamp(fx.elapsed_time - start - DURATION * LAMP_AT)
+			fx.color = Color(fx.color.r * b, fx.color.g * b, fx.color.b * b, fx.color.a)
 		return true
+
+	## Độ sáng của chữ sau lúc bật đèn `since` giây (âm = chưa bật).
+	func _lamp(since: float) -> float:
+		if since < 0.0:
+			return LAMP_DIM
+		for step in LAMP_FLICK:
+			if since < float(step[0]):
+				return float(step[1])
+		return 1.0

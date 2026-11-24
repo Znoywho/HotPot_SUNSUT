@@ -30,6 +30,8 @@ func _init(label := "", font_size := 30) -> void:
 		add_theme_color_override(color_name, TEXT_COLOR)
 	add_theme_color_override("font_disabled_color", TEXT_DISABLED_COLOR)
 	add_theme_color_override("font_outline_color", TEXT_OUTLINE_COLOR)
+	# Chữ IN HOA (CHƠI MỚI, MUA · 1.200đ, BẮT ĐẦU NGÀY 5 »...) dùng font pixel mập chung của game, giữ màu chữ kem.
+	PixelTitle.style_if_supported(self, label, font_size)
 	add_theme_stylebox_override("normal", _make_style("normal"))
 	add_theme_stylebox_override("hover", _make_style("normal", Color(1.15, 1.15, 1.15)))
 	add_theme_stylebox_override("pressed", _make_style("pressed", Color.WHITE, PRESS_DEPTH))

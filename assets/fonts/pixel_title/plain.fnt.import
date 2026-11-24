@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://co0iqubpdnbnb"
+path="res://.godot/imported/plain.fnt-1b5908c1af77526f1f4aa7c124d9d97e.fontdata"
+
+[deps]
+
+source_file="res://assets/fonts/pixel_title/plain.fnt"
+dest_files=["res://.godot/imported/plain.fnt-1b5908c1af77526f1f4aa7c124d9d97e.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=2

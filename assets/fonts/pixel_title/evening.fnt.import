@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://gy8bfehdguc4"
+path="res://.godot/imported/evening.fnt-531edb360d0581ba0bd562e943243e2d.fontdata"
+
+[deps]
+
+source_file="res://assets/fonts/pixel_title/evening.fnt"
+dest_files=["res://.godot/imported/evening.fnt-531edb360d0581ba0bd562e943243e2d.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=2

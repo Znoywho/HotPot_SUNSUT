@@ -16,6 +16,20 @@ const ORDER_GAP := 6
 const ORDER_ARROW := 28 ## Chỗ cho dấu » sau ô đang đánh.
 const ORDER_SLIDE := 0.28 ## Thời gian trượt 1 ô (giây).
 const SFX_DIR := "res://assets/audio/sfx/"
+const TELEGRAPH := 0.18 ## Giây quái báo trước đòn (lấy bớt từ action_delay nên nhịp trận không chậm đi).
+const TELEGRAPH_BOSS := 0.26
+
+## Cấp độ cú đánh (theo skill game-feel), thứ tự từ nhẹ tới nặng: một bước lấy cấp mạnh nhất.
+enum Tier { NONE, DOT, LIGHT, MEDIUM, KILL, HEAVY, EPIC }
+## Tier -> [hitstop (giây thật), trauma rung màn, số hạt nước ép / tia lửa]
+const TIER_SPEC := {
+	Tier.DOT: [0.0, 0.0, 4], ## Độc / đốt đầu lượt: không đứng hình, không rung.
+	Tier.LIGHT: [0.04, 0.12, 6], ## Đánh thường.
+	Tier.MEDIUM: [0.07, 0.3, 12], ## Cắt thái, Hất lẩu, trúng vụ nổ.
+	Tier.KILL: [0.12, 0.45, 14], ## Hạ một quái.
+	Tier.HEAVY: [0.12, 0.55, 20], ## Chí mạng (+ zoom vào mục tiêu).
+	Tier.EPIC: [0.15, 1.0, 40], ## Boss gục / bò tót nổ (+ impact frame).
+}
 
 var session: HuntSession
 var encounter: Encounter
@@ -40,6 +54,8 @@ var _flee_button: Button
 var _auto_button: Button
 var _fast_button: Button
 var _float_layer: Control
+var _juice: BattleJuice ## Hitstop, rung màn, zoom, impact frame của trận.
+var _backdrop: TextureRect
 var _arena: Control
 var _arena_row: HBoxContainer ## Hàng phe ta - VS - quái, đặt sao cho chân đứng trên cỏ.
 var timer_label: Label
@@ -79,16 +95,20 @@ func time_out() -> void:
 # --- Vòng lặp lượt ----------------------------------------------------------
 
 func _run() -> void:
+	await _intro_banner()
 	while not controller.is_finished() and not _timed_out:
 		var before := controller.snapshot()
 		var actor := controller.begin_turn()
 		if actor == null:
 			break
-		await _show_changes(before)
+		await _show_changes(before) # độc / đốt đầu lượt
 		if not controller.can_act(actor) or _timed_out:
 			continue
 		_set_acting(actor)
 		_update_order(actor)
+		var skill: ChefSkill = null
+		var strike_secs := 0.0 ## Thời gian lấy đà + phóng tới (quy về tốc độ x1), trừ vào khoảng nghỉ sau đòn.
+		# Mọi đòn: người đánh lấy đà + phóng tới, TỚI LÚC CHẠM mới tính đòn rồi hiện ngay (số, nháy, hitstop...).
 		if controller.is_player(actor) and not auto_mode:
 			var choice: Dictionary = await _wait_player()
 			if choice.has("timeout"):
@@ -96,26 +116,35 @@ func _run() -> void:
 			if choice.has("flee"):
 				controller.flee()
 				break
+			skill = controller.auto_skill() if choice.has("auto") else choice.skill
 			before = controller.snapshot()
+			var t0 := Time.get_ticks_msec()
+			await _strike(actor, skill)
+			strike_secs = (Time.get_ticks_msec() - t0) / 1000.0 * _speed()
 			if choice.has("auto"):
 				controller.ai_action(actor)
 			else:
-				_bump(actor, _skill_animation(choice.skill))
-				_play_skill_sfx(choice.skill)
-				controller.player_action(choice.skill, selected_target)
+				controller.player_action(skill, selected_target)
 		else:
-			await _wait(session.config.action_delay)
+			# Quái báo trước đòn; thời gian báo lấy từ action_delay nên nhịp trận (và giờ săn) không chậm đi.
+			var telegraph := 0.0
+			if not actor.is_ally:
+				telegraph = TELEGRAPH_BOSS if _is_boss(actor) else TELEGRAPH
+			await _wait(maxf(0.0, session.config.action_delay - telegraph))
 			if _timed_out:
 				break
-			before = controller.snapshot()
-			_bump(actor, _skill_animation(controller.auto_skill()) if controller.is_player(actor) else "attack")
 			if controller.is_player(actor):
-				_play_skill_sfx(controller.auto_skill())
-			else:
-				_sfx("swing", -6.0)
+				skill = controller.auto_skill()
+			before = controller.snapshot()
+			if telegraph > 0.0:
+				await _telegraph(actor, telegraph)
+			var t0 := Time.get_ticks_msec()
+			await _strike(actor, skill)
+			strike_secs = (Time.get_ticks_msec() - t0) / 1000.0 * _speed()
 			controller.ai_action(actor)
-		await _show_changes(before)
-		await _wait(session.config.action_delay * 0.5)
+		await _show_changes(before, actor, skill)
+		# Nghỉ giữa 2 lượt: bớt đi thời gian vừa lấy đà / phóng tới để nhịp trận (và giờ săn) như trước khi có hiệu ứng.
+		await _wait(maxf(0.05, session.config.action_delay * 0.5 - strike_secs))
 	if _timed_out and controller.result == BattleController.Result.NONE:
 		controller.time_out()
 	_set_acting(null)
@@ -142,19 +171,24 @@ func _wait(seconds: float) -> void:
 
 # --- Hiệu ứng ---------------------------------------------------------------
 
-## So trạng thái trước/sau để hiện số sát thương, hồi máu, giáp, chết.
-func _show_changes(before: Dictionary) -> void:
-	var shake := false
+## So trạng thái trước / sau một bước, hiện mọi phản hồi cùng lúc (đúng khoảnh khắc chạm): số sát thương / hồi máu /
+## giáp bằng chữ pixel, nháy + bẹp người, hiệu ứng theo chiêu, chữ báo nội tại; rồi "juice" theo cấp độ mạnh nhất
+## của bước (hitstop, rung, zoom, impact frame, quay chậm cú kết liễu cuối). attacker = null: đầu lượt (độc / đốt).
+func _show_changes(before: Dictionary, attacker: Combatant = null, skill: ChefSkill = null) -> void:
+	var tier := Tier.NONE
 	var hurt := false
-	var crit_hit := false
+	var crit_target: Combatant = null
 	var died := false
+	var epic := false
+	var last_down: Combatant = null
+	var stacks := {} ## Combatant -> số chữ đã hiện trên đầu trong bước này (để xếp chồng)
 	var new_lines := controller.battle.log_lines.slice(_log_index)
 	var all_text := "\n".join(new_lines)
 	for c in controller.battle.all_combatants():
 		if not views.has(c):
 			_add_view(c) # Đơn vị mới sinh (nấm con).
 			_sfx("spawn")
-			_float_text(c, "Xuất hiện!", Color("ffe0b2"))
+			_number(c, "XUẤT HIỆN!", DamageNumber.Kind.CALLOUT, stacks)
 			_fx(c, "smoke", 1.2)
 			continue
 		var prev: Dictionary = before.get(c, {})
@@ -164,78 +198,199 @@ func _show_changes(before: Dictionary) -> void:
 		var dhp: int = c.hp - int(prev.hp)
 		var darmor: int = c.armor - int(prev.armor)
 		if dhp < 0:
-			view.play_hurt(c in controller.crits)
+			var crit := c in controller.crits
+			var opposing := attacker != null and attacker.is_ally != c.is_ally
+			view.play_hurt(crit, opposing and skill is BasicAttackSkill)
 			hurt = true
-			_fx_for_damage(c, new_lines, all_text)
-			if c in controller.crits:
-				crit_hit = true
-				_float_text(c, "CHÍ MẠNG -%d" % -dhp, Color("ffd54f"), 34)
+			tier = maxi(tier, _fx_for_damage(c, new_lines, all_text, attacker if opposing else null, skill, crit))
+			if crit:
+				crit_target = c
+				_number(c, "-%d" % -dhp, DamageNumber.Kind.CRIT, stacks)
+				_number(c, "CHÍ MẠNG!", DamageNumber.Kind.CALLOUT, stacks)
 			else:
-				_float_text(c, "-%d" % -dhp, Color("ff6b6b"))
+				_number(c, "-%d" % -dhp, DamageNumber.Kind.DAMAGE, stacks)
 		elif dhp > 0:
-			_float_text(c, "+%d" % dhp, Color("8cff8c"))
+			_number(c, "+%d" % dhp, DamageNumber.Kind.HEAL, stacks)
 			_fx(c, "heal")
 			_sfx("heal", -4.0)
 		if darmor > 0:
-			_float_text(c, "+%d giáp" % darmor, Color("81d4fa"), 22, 30)
+			_number(c, "+%d GIÁP" % darmor, DamageNumber.Kind.ARMOR, stacks)
 			_fx(c, "shield")
 			_sfx("shield", -4.0)
 		if prev.alive and not c.is_alive():
 			died = true
+			last_down = c
+			tier = maxi(tier, Tier.KILL)
 			if c.data != null and c.data.id == "mad_bull":
-				shake = true
+				epic = true
 				_fx(c, "explosion_big")
+				_number(c, "PHÁT NỔ!", DamageNumber.Kind.WARN, stacks)
 			elif c.data != null and c.data.is_boss:
+				epic = true
 				_fx(c, "explosion_fire", 3.0)
 			else:
 				_fx(c, "smoke")
-	for line in controller.battle.log_lines.slice(_log_index):
-		if "né" in line:
-			for c in controller.battle.all_combatants():
-				if line.begins_with(c.display_name + " nhảy né"):
-					_float_text(c, "Né!", Color("e1f5fe"))
-					_sfx("dodge")
+			if epic:
+				_fx(c, "shockwave", 4.5)
+	_callouts(new_lines, stacks)
+	if epic:
+		tier = Tier.EPIC
 	# Độc / đốt đầu lượt có tiếng riêng.
 	if " bị đốt:" in all_text:
 		_sfx("burn", -4.0)
 	if " trúng độc:" in all_text:
 		_sfx("poison", -4.0)
-	if shake:
-		_shake()
+	if epic:
 		_sfx("explosion")
 	elif died:
 		_sfx("defeat")
-	elif crit_hit:
+	elif crit_target != null:
 		_sfx("crit")
 	elif hurt:
 		_sfx("hit")
 	_flush_log()
 	_refresh_all()
+	_apply_tier(tier, crit_target)
+	# Cú kết liễu cuối trận: quay chậm + zoom vào quái vừa gục.
+	if died and controller.is_finished() and controller.battle.allies_won() and views.has(last_down):
+		_juice.slow_mo(0.3, 0.45)
+		_juice.punch_zoom((views[last_down] as CombatantView).sprite.get_global_rect().get_center(), 1.08, 0.55)
 	await _wait(0.25)
 
 
-## Chọn hiệu ứng theo nguyên nhân mất máu (đọc từ nhật ký trận của bước vừa rồi).
-func _fx_for_damage(c: Combatant, lines: Array, all_text: String) -> void:
+## "Juice" theo cấp độ mạnh nhất của bước (bảng TIER_SPEC): rung, impact frame, zoom vào mục tiêu chí mạng, hitstop.
+## Hitstop gọi sau cùng để đứng hình đúng tư thế vừa chạm (nháy trắng, bẹp người).
+func _apply_tier(tier: int, crit_target: Combatant) -> void:
+	if not TIER_SPEC.has(tier):
+		return
+	var spec: Array = TIER_SPEC[tier]
+	_juice.add_trauma(spec[1])
+	if tier == Tier.EPIC:
+		_juice.impact_frame()
+	if crit_target != null and views.has(crit_target):
+		_juice.punch_zoom((views[crit_target] as CombatantView).sprite.get_global_rect().get_center(), 1.06, 0.3)
+	_juice.hit_stop(spec[0])
+
+
+## Chữ báo nội tại đọc từ nhật ký trận: NÉ!, CUỒNG NỘ!, HỒI SINH!, NGỦ GẬT!
+func _callouts(lines: Array, stacks: Dictionary) -> void:
+	for line in lines:
+		var l: String = line
+		for c in controller.battle.all_combatants():
+			var view: CombatantView = views.get(c)
+			if view == null:
+				continue
+			var n := c.display_name
+			if l.begins_with(n + " nhảy né"):
+				_number(c, "NÉ!", DamageNumber.Kind.CALLOUT, stacks)
+				view.play_dodge()
+				_sfx("dodge")
+			elif l.begins_with(n + " nổi cơn cuồng nộ") or l.begins_with(n + " cay xé lưỡi"):
+				_number(c, "CUỒNG NỘ!", DamageNumber.Kind.WARN, stacks)
+				view.flash(Color("ff3a2a"), 0.8, 0.45)
+				FxParticles.burst(_float_layer, view.sprite.get_global_rect().get_center(), Color("ff4a3a"), 14, Vector2.UP, 80.0, Vector2(80, 200), -200.0, 0.6)
+			elif l.begins_with("Linh hồn đầu bếp") and (n + " hồi") in l:
+				_number(c, "HỒI SINH!", DamageNumber.Kind.CRIT, stacks)
+				FxParticles.burst(_float_layer, view.sprite.get_global_rect().get_center(), Color("ffd36b"), 24, Vector2.UP, 70.0, Vector2(80, 240), -260.0, 0.8)
+			elif (": " + n + " ngủ gật") in l:
+				_number(c, "NGỦ GẬT!", DamageNumber.Kind.CALLOUT, stacks)
+
+
+## Chọn hiệu ứng theo nguyên nhân mất máu (đọc từ nhật ký trận của bước vừa rồi) và trả về cấp độ cú đánh.
+## attacker: người đánh phe đối diện (null = độc / đốt / phản đòn). Mọi đòn trực tiếp bắn "nước ép" cùng màu mục tiêu.
+func _fx_for_damage(c: Combatant, lines: Array, all_text: String, attacker: Combatant, skill: ChefSkill, crit: bool) -> int:
 	var name := c.display_name
+	var center := (views[c] as CombatantView).sprite.get_global_rect().get_center()
 	for line in lines:
 		var l: String = line
 		if l.begins_with(name + " bị đốt"):
 			_fx(c, "flame")
-			return
+			return Tier.DOT
 		if l.begins_with(name + " trúng độc"):
 			_fx(c, "poison")
-			return
+			return Tier.DOT
 		if l.strip_edges().begins_with(name + " bị bỏng"):
 			_fx(c, "splash_broth")
-			return
+			_steam(center)
+			return Tier.LIGHT
+	var tier := Tier.LIGHT
+	var hit := _contact_point(c, attacker)
 	if not c.is_ally and "hất nồi lẩu" in all_text:
 		_fx(c, "splash_broth")
+		_steam(center)
+		tier = Tier.MEDIUM
 	elif "phát nổ" in all_text and not (c.data != null and c.data.id == "mad_bull"):
 		_fx(c, "burst", 2.0)
-	elif c in controller.crits:
-		_fx(c, "burst")
+		tier = Tier.MEDIUM
+	elif attacker != null and skill is SliceSkill:
+		_slice_fx(center)
+		tier = Tier.MEDIUM
+	elif attacker != null and skill is BasicAttackSkill:
+		HuntFX.play(_float_layer, "impact_star", hit, 3.0, Color.WHITE, _speed())
+		_bonk_stars(c)
+	elif attacker != null and not attacker.is_ally:
+		var tint := (views[attacker] as CombatantView).dominant_color().lerp(Color.WHITE, 0.5) if views.has(attacker) else Color.WHITE
+		HuntFX.play(_float_layer, "impact_star", hit, 3.0, tint, _speed())
 	else:
 		_fx(c, "slash")
+	if crit:
+		_fx(c, "burst")
+		HuntFX.play(_float_layer, "shockwave", center, 3.0, Color.WHITE, _speed())
+		tier = Tier.HEAVY
+	var juice := Color("fff4d6") if c.is_ally else (views[c] as CombatantView).dominant_color()
+	var away := 1.0 if attacker == null or attacker.is_ally else -1.0
+	FxParticles.burst(_float_layer, hit, juice, int(TIER_SPEC[tier][2]), Vector2(away, -0.7), 55.0, Vector2(160, 320), 900.0, 0.45)
+	return tier
+
+
+## Điểm chạm: mép thân mục tiêu phía người đánh.
+func _contact_point(c: Combatant, attacker: Combatant) -> Vector2:
+	var r := (views[c] as CombatantView).sprite.get_global_rect()
+	var side := 0.0 if attacker == null else (-1.0 if attacker.is_ally else 1.0)
+	return r.get_center() + Vector2(side * r.size.x * 0.22, -r.size.y * 0.05)
+
+
+## Cắt thái: 2 vệt smear chéo thành chữ X (cách nhau 0,05 s) + đường chém trắng vụt qua.
+func _slice_fx(center: Vector2) -> void:
+	HuntFX.play(_float_layer, "slash_arc", center, 3.2, Color.WHITE, _speed(), deg_to_rad(-35.0))
+	get_tree().create_timer(0.05 / _speed(), false).timeout.connect(func() -> void:
+		if is_inside_tree():
+			HuntFX.play(_float_layer, "slash_arc", center, 3.2, Color.WHITE, _speed(), deg_to_rad(35.0), true))
+	var line := Line2D.new()
+	line.points = PackedVector2Array([center + Vector2(-80, -52), center + Vector2(80, 52)])
+	line.width = 12.0
+	line.default_color = Color.WHITE
+	_float_layer.add_child(line)
+	var t := line.create_tween()
+	t.tween_property(line, "width", 0.0, 0.14 / _speed()).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_callback(line.queue_free)
+	FxParticles.burst(_float_layer, center, Color("bff6ff"), 10, Vector2(1, 0.65), 25.0, Vector2(200, 380), 300.0, 0.35, Vector2(4, 4))
+
+
+## Muôi gõ đầu: 3 ngôi sao lấp lánh xoay vòng elip quanh đầu mục tiêu.
+func _bonk_stars(c: Combatant) -> void:
+	var r := (views[c] as CombatantView).sprite.get_global_rect()
+	var ring := Node2D.new()
+	_float_layer.add_child(ring)
+	ring.global_position = Vector2(r.get_center().x, r.position.y + r.size.y * 0.18)
+	var stars: Array[Sprite2D] = []
+	for i in 3:
+		var s := HuntFX.sprite("bonk_star", 2.5)
+		ring.add_child(s)
+		stars.append(s)
+	var t := ring.create_tween()
+	t.tween_method(func(u: float) -> void:
+		for i in stars.size():
+			var a := u * TAU * 1.5 + TAU * i / stars.size()
+			stars[i].position = Vector2(cos(a) * 34.0, sin(a) * 10.0).round()
+			stars[i].frame = (int(u * 14.0) + i) % 4
+			stars[i].z_index = 1 if sin(a) > 0.0 else -1, 0.0, 1.0, 0.55 / _speed())
+	t.tween_callback(ring.queue_free)
+
+
+## Hơi nước trắng bốc lên (nước lẩu nóng).
+func _steam(at: Vector2) -> void:
+	FxParticles.burst(_float_layer, at + Vector2(0, -20), Color(1, 1, 1, 0.85), 8, Vector2.UP, 35.0, Vector2(40, 100), -80.0, 0.8, Vector2(6, 10))
 
 
 func _fx(c: Combatant, fx_name: String, scale := -1.0, tint := Color.WHITE) -> void:
@@ -246,27 +401,23 @@ func _fx(c: Combatant, fx_name: String, scale := -1.0, tint := Color.WHITE) -> v
 	HuntFX.play(_float_layer, fx_name, rect.get_center(), scale, tint, 2.0 if fast_mode else 1.0)
 
 
-func _float_text(c: Combatant, text: String, color: Color, size := 28, offset := 0.0) -> void:
+## Số / chữ pixel bật ra trên đầu đơn vị; nhiều chữ trong cùng một bước thì xếp chồng lên nhau.
+func _number(c: Combatant, text: String, kind: DamageNumber.Kind, stacks: Dictionary) -> void:
 	var view: CombatantView = views.get(c)
 	if view == null:
 		return
-	var l := HuntUI.outlined_label(text, size, color)
-	l.add_theme_constant_override("outline_size", 6)
-	_float_layer.add_child(l)
-	var rect := view.sprite.get_global_rect()
-	l.global_position = Vector2(rect.position.x + rect.size.x / 2.0 - 40 + randf_range(-12, 12), rect.position.y + rect.size.y * 0.3 + offset)
-	var tween := l.create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(l, "position:y", l.position.y - 60, 0.9 / (2.0 if fast_mode else 1.0))
-	tween.tween_property(l, "modulate:a", 0.0, 0.9 / (2.0 if fast_mode else 1.0)).set_delay(0.3)
-	tween.chain().tween_callback(l.queue_free)
+	var r := view.sprite.get_global_rect()
+	var index: int = stacks.get(c, 0)
+	stacks[c] = index + 1
+	DamageNumber.spawn(_float_layer, Vector2(r.get_center().x, r.position.y + r.size.y * 0.25), text, kind, index, -1.0 if c.is_ally else 1.0, _speed())
 
 
-func _shake() -> void:
-	var tween := create_tween()
-	for i in 6:
-		tween.tween_property(_arena, "position:x", 10.0 * (1 if i % 2 == 0 else -1), 0.04)
-	tween.tween_property(_arena, "position:x", 0.0, 0.04)
+func _speed() -> float:
+	return 2.0 if fast_mode else 1.0
+
+
+func _is_boss(c: Combatant) -> bool:
+	return c.data != null and c.data.is_boss
 
 
 func _sfx(sound: String, db := 0.0) -> void:
@@ -291,10 +442,121 @@ func _play_skill_sfx(skill: ChefSkill) -> void:
 		_sfx("swing") # Đánh thường: tiếng vung muôi.
 
 
-func _bump(actor: Combatant, animation_name := "attack") -> void:
+## Người đánh lấy đà rồi phóng tới; trả về lúc chạm (đòn được tính và hiện ngay sau đó).
+## Hất lẩu: chạm = lúc hất nồi, chờ thêm giọt lẩu bay tới quái rồi mới tính đòn.
+func _strike(actor: Combatant, skill: ChefSkill) -> void:
+	if controller.is_player(actor):
+		_play_skill_sfx(skill)
+	else:
+		_sfx("swing", -6.0)
 	var view: CombatantView = views.get(actor)
-	if view != null:
-		view.play_attack(1.0 if actor.is_ally else -1.0, animation_name)
+	if view == null:
+		return
+	var anim := _skill_animation(skill) if controller.is_player(actor) else "attack"
+	await view.play_attack(1.0 if actor.is_ally else -1.0, anim)
+	if skill is HotSplashSkill:
+		await _throw_broth(actor)
+
+
+## Quái báo trước đòn (chớp đỏ + "!"); boss tối viền màn.
+func _telegraph(actor: Combatant, seconds: float) -> void:
+	var view: CombatantView = views.get(actor)
+	if view == null:
+		return
+	view.telegraph(seconds)
+	if _is_boss(actor):
+		_juice.vignette(0.6, seconds + 0.25)
+	await _wait(seconds)
+
+
+## Hất lẩu: mỗi quái một giọt nước lẩu bay vòng cung từ đầu bếp tới (lệch nhịp nhau), chờ tới giọt cuối.
+func _throw_broth(actor: Combatant) -> void:
+	var from_view: CombatantView = views.get(actor)
+	if from_view == null:
+		return
+	var start := from_view.sprite.get_global_rect().get_center() + Vector2(30, -12)
+	var flight := 0.2 / _speed()
+	var gap := 0.04 / _speed()
+	var count := 0
+	for e in controller.battle.alive(controller.battle.enemies):
+		var view: CombatantView = views.get(e)
+		if view == null:
+			continue
+		var target := view.sprite.get_global_rect().get_center()
+		var blob := HuntFX.sprite("broth_blob", 4.0)
+		_float_layer.add_child(blob)
+		blob.global_position = start
+		var t := blob.create_tween()
+		t.tween_interval(gap * count)
+		t.tween_method(func(u: float) -> void:
+			blob.global_position = start.lerp(target, u) + Vector2(0, -110.0 * 4.0 * u * (1.0 - u))
+			blob.frame = int(u * 8.0) % 2, 0.0, 1.0, flight)
+		t.tween_callback(blob.queue_free)
+		count += 1
+	if count > 0:
+		await get_tree().create_timer(flight + gap * (count - 1), false).timeout
+
+
+## Mở màn: dải chéo trượt ngang qua màn với "BẮT ĐẦU!" (boss: "BOSS!" + tên boss); chạm để bỏ qua.
+func _intro_banner() -> void:
+	var boss := encounter.is_boss
+	var k := 1.0 / _speed()
+	var holder := Control.new()
+	holder.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	holder.mouse_filter = MOUSE_FILTER_STOP
+	add_child(holder)
+	var band := ColorRect.new()
+	band.color = Color(0.3, 0.03, 0.03, 0.88) if boss else Color(0.1, 0.05, 0.03, 0.85)
+	band.size = Vector2(size.x * 1.6, 168.0 if boss else 128.0)
+	band.pivot_offset = band.size / 2.0
+	band.rotation = deg_to_rad(-4.0)
+	band.mouse_filter = MOUSE_FILTER_IGNORE
+	holder.add_child(band)
+	for edge_y in [0.0, band.size.y - 6.0]: # viền trên / dưới của dải
+		var edge := ColorRect.new()
+		edge.color = HuntUI.BAD if boss else HuntUI.GOLD
+		edge.size = Vector2(band.size.x, 6.0)
+		edge.position = Vector2(0, edge_y)
+		edge.mouse_filter = MOUSE_FILTER_IGNORE
+		band.add_child(edge)
+	var title := Label.new()
+	title.text = "BOSS!" if boss else "BẮT ĐẦU!"
+	PixelTitle.apply_label(title, "game_over" if boss else "noon", 5 if boss else 4)
+	title.mouse_filter = MOUSE_FILTER_IGNORE
+	holder.add_child(title)
+	title.size = title.get_minimum_size()
+	var sub: Label = null
+	if boss:
+		sub = Label.new()
+		sub.text = encounter.names()
+		PixelTitle.apply_label(sub, "white", 2)
+		sub.mouse_filter = MOUSE_FILTER_IGNORE
+		holder.add_child(sub)
+		sub.size = sub.get_minimum_size()
+	var cy := size.y * 0.42
+	band.position = Vector2(-band.size.x, cy - band.size.y / 2.0)
+	var title_y := cy - title.size.y / 2.0 - (22.0 if boss else 0.0)
+	title.position = Vector2(-title.size.x, title_y)
+	if sub != null:
+		sub.position = Vector2(size.x, title_y + title.size.y - 8.0)
+	var t := holder.create_tween()
+	t.set_parallel(true)
+	t.tween_property(band, "position:x", (size.x - band.size.x) / 2.0, 0.18 * k).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_property(title, "position:x", (size.x - title.size.x) / 2.0, 0.24 * k).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if sub != null:
+		t.tween_property(sub, "position:x", (size.x - sub.size.x) / 2.0, 0.26 * k).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.chain().tween_interval((0.45 if boss else 0.25) * k)
+	t.chain().tween_property(band, "position:x", size.x, 0.18 * k).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	t.parallel().tween_property(title, "position:x", size.x + 40.0, 0.16 * k).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	if sub != null:
+		t.parallel().tween_property(sub, "position:x", -sub.size.x - 40.0, 0.16 * k).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	t.chain().tween_callback(holder.queue_free)
+	holder.gui_input.connect(func(event: InputEvent) -> void:
+		if (event is InputEventMouseButton or event is InputEventScreenTouch) and event.is_pressed():
+			t.kill()
+			holder.queue_free())
+	while is_instance_valid(holder) and not holder.is_queued_for_deletion():
+		await get_tree().process_frame
 
 
 ## Động tác của đầu bếp ứng với từng chiêu.
@@ -341,6 +603,10 @@ func _on_auto_toggled(on: bool) -> void:
 func _on_fast_toggled(on: bool) -> void:
 	fast_mode = on
 	_fast_button.text = "Tốc độ x2" if on else "Tốc độ x1"
+	if _juice != null:
+		_juice.speed = _speed()
+	for v in views.values():
+		(v as CombatantView).speed = _speed()
 
 
 func _set_actions_enabled(enabled: bool) -> void:
@@ -379,21 +645,23 @@ func _finish() -> void:
 	panel.add_child(box)
 
 	var title := ""
-	var color := Color.WHITE
+	var palette := "noon" ## Bảng màu chữ pixel PixelTitle của tiêu đề.
 	match result:
 		BattleController.Result.WIN:
-			title = "Thắng!"
-			color = HuntUI.GOOD
+			title = "THẮNG!"
+			palette = "noon"
 		BattleController.Result.LOSE:
-			title = "Đầu bếp gục ngã..."
-			color = HuntUI.BAD
+			title = "ĐẦU BẾP GỤC NGÃ..."
+			palette = "game_over"
 		BattleController.Result.FLED:
-			title = "Đã bỏ chạy"
-			color = HuntUI.WARN
+			title = "ĐÃ BỎ CHẠY"
+			palette = "shop"
 		BattleController.Result.TIMEOUT:
-			title = "Hết giờ săn!"
-			color = HuntUI.RUST
-	var t := HuntUI.label(title, 40, color)
+			title = "HẾT GIỜ SĂN!"
+			palette = "morning"
+	var t := Label.new()
+	t.text = title
+	PixelTitle.apply_label(t, palette, 3 if title.length() <= 10 else 2)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(t)
 	match result:
@@ -436,7 +704,8 @@ func _finish() -> void:
 
 func _build() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
-	add_child(HuntUI.background())
+	_backdrop = HuntUI.background()
+	add_child(_backdrop)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
@@ -451,7 +720,8 @@ func _build() -> void:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 12)
 	root.add_child(top)
-	var title := HuntUI.outlined_label(("BOSS: " if encounter.is_boss else "Gặp: ") + encounter.names(), 26, HuntUI.GOLD)
+	var title := HuntUI.outlined_label(("BOSS: " + encounter.names().to_upper()) if encounter.is_boss else ("Gặp: " + encounter.names()), 26, HuntUI.GOLD)
+	PixelTitle.style_if_supported(title, title.text, 26) # "BOSS: NỒI LẨU THẦN": font pixel chung
 	title.size_flags_horizontal = SIZE_EXPAND_FILL
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -538,6 +808,11 @@ func _build() -> void:
 	_float_layer.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(_float_layer)
 
+	_juice = BattleJuice.new()
+	add_child(_juice)
+	_juice.setup(_arena, _backdrop, self)
+	_juice.speed = _speed()
+
 
 ## Đặt hàng nhân vật sao cho chân đứng trên mặt cỏ của ảnh nền, ở mọi tỉ lệ màn hình.
 ## Ảnh nền phủ kín màn kiểu "cover" (co theo cạnh dài hơn rồi cắt đều hai bên) nên:
@@ -559,6 +834,8 @@ func _snap_arena_to_ground() -> void:
 
 func _add_view(c: Combatant) -> void:
 	var view := CombatantView.new()
+	view.fx_layer = _float_layer
+	view.speed = _speed()
 	view.size_flags_vertical = SIZE_SHRINK_END # căn đáy: tên 1 dòng hay 2 dòng thì chân vẫn thẳng hàng
 	if c.is_ally:
 		_allies_box.add_child(view)
@@ -709,3 +986,5 @@ func _flush_log() -> void:
 
 func _exit_tree() -> void:
 	GameMusic.set_battle(false) # Về bản đồ săn: trở lại nhạc buổi săn.
+	if _juice != null:
+		_juice.reset() # luôn trả Engine.time_scale về 1

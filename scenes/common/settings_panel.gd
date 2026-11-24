@@ -133,6 +133,7 @@ func _divider() -> Control:
 ## Nút bật / tắt toàn màn hình; chữ trên nút cho biết trạng thái hiện tại.
 func _fullscreen_control() -> Control:
 	_fullscreen_button = PixelButton.new("", 24)
+	PixelTitle.style(_fullscreen_button, 24) # chữ BẬT / TẮT gán sau: font pixel chung
 	_fullscreen_button.custom_minimum_size = Vector2(180, 64)
 	_fullscreen_button.pressed.connect(_toggle_fullscreen)
 	_show_fullscreen()
@@ -205,4 +206,5 @@ func _make_label(text: String, font_size: int, color: Color) -> Label:
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color("1a0f0b"))
 	label.add_theme_constant_override("outline_size", PixelButton.outline_for(font_size))
+	PixelTitle.style_if_supported(label, text, font_size) # chữ in hoa (CÀI ĐẶT): font pixel chung
 	return label

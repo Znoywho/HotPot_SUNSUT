@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://2qqys0y8u2eu"
+path="res://.godot/imported/heal.fnt-d63a05ae56d4d576fcc8ab63eb6405f6.fontdata"
+
+[deps]
+
+source_file="res://assets/fonts/pixel_title/heal.fnt"
+dest_files=["res://.godot/imported/heal.fnt-d63a05ae56d4d576fcc8ab63eb6405f6.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=2
