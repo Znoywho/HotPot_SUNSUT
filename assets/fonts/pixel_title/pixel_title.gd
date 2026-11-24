@@ -9,8 +9,9 @@ extends RefCounted
 ## Màu, viền, bóng đã vẽ trong ảnh font nên không dùng viền động của Godot. Cỡ chữ luôn là bội NGUYÊN của cỡ gốc
 ## (NATIVE_SIZE / SMALL_NATIVE_SIZE) để mỗi điểm ảnh của font thành ô vuông đều nhau.
 
-const NATIVE_SIZE := 25 ## = "size" trong .fnt: chiều cao dòng gốc (px ảnh), Godot phóng theo cỡ chữ / NATIVE_SIZE.
-const SMALL_NATIVE_SIZE := 21 ## Chiều cao dòng gốc của bộ nhỏ (small_*.fnt).
+const NATIVE_SIZE := 28 ## = "size" trong .fnt: chiều cao dòng gốc (px ảnh), Godot phóng theo cỡ chữ / NATIVE_SIZE.
+const SMALL_NATIVE_SIZE := 24 ## Chiều cao dòng gốc của bộ nhỏ (small_*.fnt).
+## Chữ hoa nằm đúng giữa dòng (trên / dưới chữ hoa đều chừa 8 hàng) nên căn giữa nút / nhãn là chữ ở giữa.
 const FONTS := {
 	"morning": preload("res://assets/fonts/pixel_title/morning.fnt"), ## Sáng: kem bơ -> đào -> cam (bình minh).
 	"noon": preload("res://assets/fonts/pixel_title/noon.fnt"), ## Trưa: trắng vàng -> vàng -> hổ phách.

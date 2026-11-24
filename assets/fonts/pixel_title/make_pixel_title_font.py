@@ -272,11 +272,13 @@ def compose_small(ch):
 
 # Bộ chữ: chiều cao chữ hoa, hàng trên / dưới cùng của ô (gồm viền + bóng), hàm ghép, tiền tố tên file.
 SETS = {
-    "big": {"cap": 12, "top": -8, "bottom": 16, "compose": compose_big, "prefix": "", "space": 6},
-    "small": {"cap": 8, "top": -8, "bottom": 12, "compose": compose_small, "prefix": "small_", "space": 5},
+    # Trên chữ hoa chừa 8 hàng (dấu chồng + viền), dưới cũng 8 hàng (dấu nặng + viền + bóng, phần còn lại để trống)
+    # để chữ hoa nằm ĐÚNG GIỮA dòng: Godot căn giữa theo cả dòng (ascent + descent), lệch trên / dưới là chữ lệch.
+    "big": {"cap": 12, "top": -8, "bottom": 19, "compose": compose_big, "prefix": "", "space": 6},
+    "small": {"cap": 8, "top": -8, "bottom": 15, "compose": compose_small, "prefix": "small_", "space": 5},
 }
 for _gs in SETS.values():
-    _gs["line_h"] = _gs["bottom"] - _gs["top"] + 1  # big 25, small 21 (= "size" trong .fnt)
+    _gs["line_h"] = _gs["bottom"] - _gs["top"] + 1  # big 28, small 24 (= "size" trong .fnt)
     _gs["base"] = _gs["cap"] - _gs["top"]  # từ mép trên ô tới chân chữ hoa
 
 
@@ -359,7 +361,8 @@ def render_glyph(ch, variant, gs):
         px(p, hex_rgb(outline_hex))
     for (x, y) in cells:
         px((x, y), row_color(fills, y, gs["cap"]))
-    return img, min_x, body_w + 2 + GAP
+    # Có viền: giữa 2 thân chữ = viền + hở + viền (3 px). Không viền (plain): chỉ hở 2 px, nếu không chữ thưa hẳn ra.
+    return img, min_x, body_w + (2 + GAP if outline_hex is not None else 2)
 
 
 def build_font(variant, chars, gs):
