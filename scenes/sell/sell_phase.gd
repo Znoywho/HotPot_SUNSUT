@@ -52,7 +52,7 @@ const ART := "res://assets/sprites/restaurant/"
 const STAGE := Vector2(1280, 720)
 const PX := 4.0
 const SIDE_WALL_PX := 160.0
-## Vùng xếp bàn trên sàn; chừa dải bên phải cho bảng "Khách đang chờ" (WaitingBoard), bàn tự co lại cho vừa.
+## Vùng xếp bàn trên sàn; chừa dải bên phải cho cột thẻ khách chờ (WaitingBoard), bàn tự co lại cho vừa.
 const FLOOR_RECT := Rect2(16, 352, 1248 - WaitingBoard.WIDTH - 12.0, 290)
 const BAR_Y := 650.0
 const MAX_TABLE_SCALE := 1.25 ## Quán ít bàn (1 hàng) thì phóng bàn to cho cân với đầu bếp, lễ tân.
@@ -72,7 +72,7 @@ var tables: Array[TableNode] = []
 var cart := Cart.new()
 var _spawn_timer := 2.0
 var _sold_out_notified := false ## Đã báo "hết lẩu, ngừng đón khách" (báo 1 lần mỗi đợt hết).
-var _board: WaitingBoard ## Bảng "Khách đang chờ" cạnh phải sàn.
+var _board: WaitingBoard ## Cột thẻ khách đang chờ cạnh phải sàn.
 var _negotiating: TableNode = null
 var _stage: Control
 var _pass: KitchenPass
@@ -220,11 +220,11 @@ func _build_bar() -> void:
 	_stage.add_child(close)
 
 
-## Dựng bảng "Khách đang chờ" ở cạnh phải sàn (ngang hàng với vùng bàn, trên lớp sàn).
+## Dựng cột thẻ khách chờ ở cạnh phải sàn. Gắn vào màn (không vào _stage) để đưa lên trên bảng Dọn dẹp được;
+## vị trí vẫn theo toạ độ sân khấu (đặt lại trong _center_stage).
 func _build_waiting_board() -> void:
 	_board = WaitingBoard.new(MAX_QUEUE)
-	_board.position = Vector2(STAGE.x - 16.0 - WaitingBoard.WIDTH, FLOOR_RECT.position.y + 6.0)
-	_stage.add_child(_board)
+	add_child(_board)
 
 
 func _style_button(b: Button, bg: Color, border: Color, font: Color) -> void:
@@ -245,6 +245,7 @@ func _style_button(b: Button, bg: Color, border: Color, font: Color) -> void:
 
 func _center_stage() -> void:
 	_stage.position = ((size - STAGE) / 2.0).floor()
+	_board.position = _stage.position + Vector2(STAGE.x - 16.0 - WaitingBoard.WIDTH, FLOOR_RECT.position.y + 6.0)
 
 
 func _setup_tables() -> void:
@@ -822,6 +823,7 @@ func _open_clean_panel(kind: String, title: String, on_done: Callable, on_cancel
 	var panel := CleanPanel.new()
 	add_child(panel)
 	panel.open(kind, title)
+	_board.move_to_front() # Lúc dọn vẫn thấy khách chờ (giờ vẫn chạy); cột thẻ nằm ngoài khung Dọn dẹp.
 	_clean_panel = panel
 	panel.finished.connect(func(grade: int) -> void:
 		_clean_panel = null
@@ -930,12 +932,7 @@ func _update_ui() -> void:
 		fill.size.x = (TableVisual.BAR_SIZE.x - 4.0) * clampf(r, 0.0, 1.0)
 		fill.color = TableVisual._patience_color(r)
 
-	var waiting_food := 0
-	var eating := 0
-	for table in tables:
-		waiting_food += 1 if table.state == TableNode.State.WAITING_ORDER else 0
-		eating += 1 if table.state == TableNode.State.EATING else 0
-	_board.refresh(_queue, QUEUE_WAIT, waiting_food, eating)
+	_board.refresh(_queue, QUEUE_WAIT)
 
 	for i in tables.size():
 		var table := tables[i]
