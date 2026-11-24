@@ -167,7 +167,8 @@ S_ACUTE = [".##", "##."]
 S_GRAVE = ["##.", ".##"]
 S_HOOK = ["##.", "..#", ".#."]
 S_TILDE = [".##.#", "#.##."]
-S_CIRCUMFLEX = ["..##..", "##..##"]
+S_CIRCUMFLEX = ["..#..", ".#.#.", "#...#"]  # mũ "^" 3 hàng nét 1 px (bản 2 hàng nét dày đọc thành 2 vạch rời)
+S_CIRCUMFLEX_LOW = [".##.", "#..#"]  # mũ thấp 2 hàng khi có dấu thanh chồng lên trên (Ấ Ề Ổ Ỗ...)
 S_BREVE = ["##..##", ".####."]
 S_DOT = ["##", "##"]
 S_HORN = [".#", "##"]
@@ -195,17 +196,20 @@ def split(ch):
 
 
 def compose_big(ch):
-    """Lưới ô nét {(x, y)} của 1 ký tự bộ lớn; y = 0 là mép trên thân chữ."""
+    """Lưới ô nét {(x, y)} của 1 ký tự bộ lớn (y = 0 là mép trên thân chữ) và bề rộng THÂN chữ (gồm cả móc Ơ Ư,
+    không tính dấu): khoảng cách chữ tính theo thân, dấu được phép thò ra ngoài mà không đẩy lệch chữ."""
     cells = {}
     if ch in GLYPHS:
         put(cells, GLYPHS[ch], 0, 0)
-        return cells
+        return cells, len(GLYPHS[ch][0])
     base, vowel, tone_m, horn, dot = split(ch)
     tone = {ACUTE_M: ACUTE, GRAVE_M: GRAVE, HOOK_M: HOOK, TILDE_M: TILDE}.get(tone_m)
     w = len(GLYPHS[base][0])
+    body_w = w
     put(cells, GLYPHS[base], 0, 0)
     if horn:  # móc Ơ Ư: chạm góc trên phải thân chữ
         put(cells, HORN, w - 1, -2)
+        body_w = w + len(HORN[0]) - 1
     if vowel == CIRC_M:
         cx = (w - 6) // 2
         if tone is TILDE:
@@ -226,40 +230,44 @@ def compose_big(ch):
         put(cells, tone, (w - len(tone[0])) // 2, -len(tone) - 1)
     if dot:
         put(cells, DOT, (w - 2) // 2, 12 + 1)
-    return cells
+    return cells, body_w
 
 
 def compose_small(ch):
-    """Như compose_big cho bộ nhỏ (chữ hoa cao 8): dấu đơn ở 2 hàng ngay trên chữ, dấu chồng cách 1 hàng."""
+    """Như compose_big cho bộ nhỏ (chữ hoa cao 8). Chữ nhỏ không đủ chỗ đặt dấu thanh lệch phải dấu mũ, nên mọi dấu
+    căn GIỮA thân chữ và chồng thẳng lên nhau (cách 1 hàng); dấu thanh trên dấu mũ chỉ nhích phải 1 px, không ra khỏi thân."""
     cells = {}
     if ch in SMALL_GLYPHS:
         put(cells, SMALL_GLYPHS[ch], 0, 0)
-        return cells
+        return cells, len(SMALL_GLYPHS[ch][0])
     base, vowel, tone_m, horn, dot = split(ch)
     tone = {ACUTE_M: S_ACUTE, GRAVE_M: S_GRAVE, HOOK_M: S_HOOK, TILDE_M: S_TILDE}.get(tone_m)
     w = len(SMALL_GLYPHS[base][0])
+    body_w = w
     put(cells, SMALL_GLYPHS[base], 0, 0)
     if horn:
         put(cells, S_HORN, w - 1, -2)
+        body_w = w + len(S_HORN[0]) - 1
+
+    def centre(mark, nudge=0):
+        mw = len(mark[0])
+        return max(0, min(w - mw, (w - mw) // 2 + nudge))
+
     if vowel == CIRC_M:
-        cx = (w - 6) // 2
-        if tone is S_TILDE:
-            put(cells, S_CIRCUMFLEX, cx, -3)
-            put(cells, S_TILDE, (w - len(S_TILDE[0])) // 2, -6)
-        elif tone is not None:
-            put(cells, S_CIRCUMFLEX, cx - 1, -3)
-            put(cells, tone, cx + 4, -3 - len(tone))  # góc trên phải dấu mũ
+        if tone is None:
+            put(cells, S_CIRCUMFLEX, centre(S_CIRCUMFLEX), -4)
         else:
-            put(cells, S_CIRCUMFLEX, cx, -3)
+            put(cells, S_CIRCUMFLEX_LOW, centre(S_CIRCUMFLEX_LOW), -3)
+            put(cells, tone, centre(tone, 0 if tone is S_TILDE else 1), -4 - len(tone))
     elif vowel == BREVE_M:
-        put(cells, S_BREVE, (w - 6) // 2, -3)
+        put(cells, S_BREVE, centre(S_BREVE), -3)
         if tone is not None:
-            put(cells, tone, (w - len(tone[0])) // 2, -4 - len(tone))
+            put(cells, tone, centre(tone), -4 - len(tone))
     elif tone is not None:
-        put(cells, tone, (w - len(tone[0])) // 2, -1 - len(tone))
+        put(cells, tone, centre(tone), -1 - len(tone))
     if dot:
-        put(cells, S_DOT, (w - 2) // 2, 8 + 1)
-    return cells
+        put(cells, S_DOT, centre(S_DOT), 8 + 1)
+    return cells, body_w
 
 
 # Bộ chữ: chiều cao chữ hoa, hàng trên / dưới cùng của ô (gồm viền + bóng), hàm ghép, tiền tố tên file.
@@ -319,10 +327,12 @@ def row_color(fills, y, cap):
 
 
 def render_glyph(ch, variant, gs):
-    """Ảnh RGBA cao line_h của 1 ký tự: nét tô dải màu (+ viền 8 hướng + bóng lệch xuống 1 px nếu bảng màu có)."""
+    """Ảnh RGBA cao line_h của 1 ký tự: nét tô dải màu (+ viền 8 hướng + bóng lệch xuống 1 px nếu bảng màu có).
+    Trả về (ảnh, xoffset, xadvance): bút đứng ở cột viền trái của THÂN chữ; dấu thò ra trái thì xoffset âm,
+    xadvance = thân + 2 viền + khoảng hở, nên chữ có dấu không bị đẩy lệch hay giãn cách."""
     fills_hex, outline_hex, shadow_hex = VARIANTS[variant]
     fills = [hex_rgb(h) for h in fills_hex]
-    cells = gs["compose"](ch)
+    cells, body_w = gs["compose"](ch)
     xs = [x for x, _ in cells]
     min_x, max_x = min(xs), max(xs)
     outline = set()
@@ -349,11 +359,12 @@ def render_glyph(ch, variant, gs):
         px(p, hex_rgb(outline_hex))
     for (x, y) in cells:
         px((x, y), row_color(fills, y, gs["cap"]))
-    return img
+    return img, min_x, body_w + 2 + GAP
 
 
 def build_font(variant, chars, gs):
-    glyphs = {ch: render_glyph(ch, variant, gs) for ch in chars}
+    rendered = {ch: render_glyph(ch, variant, gs) for ch in chars}
+    glyphs = {ch: r[0] for ch, r in rendered.items()}
     line_h = gs["line_h"]
     # Xếp ảnh vào atlas theo hàng, cách nhau 1 px trong suốt.
     placements = {}
@@ -379,24 +390,26 @@ def build_font(variant, chars, gs):
         f"chars count={len(glyphs) + 1}",
         f"char id=32 x=0 y=0 width=0 height=0 xoffset=0 yoffset=0 xadvance={gs['space']} page=0 chnl=15",
     ]
-    for ch, g in glyphs.items():
+    for ch, (g, xoffset, xadvance) in rendered.items():
         gx, gy = placements[ch]
-        lines.append(f"char id={ord(ch)} x={gx} y={gy} width={g.width} height={line_h} xoffset=0 yoffset=0 xadvance={g.width + GAP} page=0 chnl=15")
+        lines.append(f"char id={ord(ch)} x={gx} y={gy} width={g.width} height={line_h} xoffset={xoffset} yoffset=0 xadvance={xadvance} page=0 chnl=15")
     (HERE / f"{name}.fnt").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")  # LF: chạy lại trên Windows không đổi file
-    return glyphs
+    return rendered
 
 
 def text_image(glyphs, text, scale, gs):
-    width = sum(gs["space"] if c == ' ' else glyphs[c].width + GAP for c in text)
+    """Ghép chuỗi giống Godot vẽ BMFont: ảnh chữ đặt tại bút + xoffset, bút tiến xadvance (để xem trước)."""
+    pad = 4  # chừa chỗ cho dấu thò ra trái / phải
+    width = sum(gs["space"] if c == ' ' else glyphs[c][2] for c in text) + pad * 2
     img = Image.new("RGBA", (max(1, width), gs["line_h"]), (0, 0, 0, 0))
-    x = 0
+    x = pad
     for c in text:
         if c == ' ':
             x += gs["space"]
             continue
-        g = glyphs[c]
-        img.alpha_composite(g, (x, 0))
-        x += g.width + GAP
+        g, xoffset, xadvance = glyphs[c]
+        img.alpha_composite(g, (x + xoffset, 0))
+        x += xadvance
     return img.resize((img.width * scale, img.height * scale), Image.NEAREST)
 
 
