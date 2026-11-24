@@ -65,11 +65,16 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 	elif is_release(event) and _swiping:
 		_swiping = false
+		_path.append((event as InputEventMouseButton).position) # Vuốt nhanh: điểm nhấc tay thường xa hẳn điểm motion cuối.
 		_judge()
 		accept_event()
 
 
+const RESAMPLE_STEP := 6.0 ## px giữa 2 điểm khi chia nhỏ đường vuốt (vuốt nhanh chỉ có vài điểm thưa).
+
+
 ## Vuốt đúng: phủ >= 70% đường chấm và lệch trung bình <= dung sai.
+## Chỉ tính lệch trên đoạn nằm dọc theo đường chấm; phần vuốt quá 2 đầu (vuốt nhanh hay bị) bỏ qua.
 func _judge() -> void:
 	if _i >= _lines.size() or _path.size() < 2:
 		return
@@ -77,21 +82,31 @@ func _judge() -> void:
 	var a: Vector2 = line[0]
 	var b: Vector2 = line[1]
 	var ab := b - a
+	var walked := 0.0
+	var pts := PackedVector2Array([_path[0]])
+	for k in range(1, _path.size()):
+		var p0 := _path[k - 1]
+		var p1 := _path[k]
+		var seg := p0.distance_to(p1)
+		walked += seg
+		var n := maxi(1, ceili(seg / RESAMPLE_STEP))
+		for j in range(1, n + 1):
+			pts.append(p0.lerp(p1, float(j) / n))
+	if walked < 30.0:
+		return # Chạm nhẹ, không tính.
 	var t_min := 1.0
 	var t_max := 0.0
 	var dev := 0.0
-	var walked := 0.0
-	for k in _path.size():
-		var p := _path[k]
-		var t := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+	var inside := 0
+	for p in pts:
+		var t := (p - a).dot(ab) / ab.length_squared()
+		if t < 0.0 or t > 1.0:
+			continue
 		t_min = minf(t_min, t)
 		t_max = maxf(t_max, t)
 		dev += p.distance_to(a + ab * t)
-		if k > 0:
-			walked += p.distance_to(_path[k - 1])
-	dev /= _path.size()
-	if walked < 30.0:
-		return # Chạm nhẹ, không tính.
+		inside += 1
+	dev = dev / inside if inside > 0 else INF
 	var tol := cfg.swipe_tolerance / difficulty
 	if t_max - t_min >= 0.7 and dev <= tol:
 		_cuts.append(line)
