@@ -228,6 +228,7 @@ func _make_sub_tab(text: String, icon_path: String) -> Button:
 	tab.add_theme_constant_override("h_separation", 10)
 	tab.add_theme_font_override("font", BOLD_FONT)
 	tab.add_theme_font_size_override("font_size", 20)
+	PixelTitle.style_if_supported(tab, text, 20) # CHIẾN ĐẤU / VŨ KHÍ...: font pixel chung, màu vẫn do _style_sub_tab
 	return tab
 
 
@@ -245,6 +246,8 @@ func _style_sub_tab(tab: Button, active: bool) -> void:
 	var text_color := INK if active else TEXT_LIGHT
 	for key in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
 		tab.add_theme_color_override(key, text_color)
+	# Font pixel: tab đang chọn chữ nâu đậm trên nền kem -> bản trơn (viền tối sẽ dính vào chữ tối); chưa chọn -> có viền.
+	PixelTitle.style_if_supported(tab, tab.text, 20, not active)
 
 
 ## Chọn nhóm (Quán lẩu / Đi săn): nút nhóm sáng, dựng lại hàng tab con rồi mở tab con đầu tiên.

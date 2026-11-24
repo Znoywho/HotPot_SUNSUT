@@ -176,6 +176,7 @@ func _add_title(text: String) -> void:
 	t.add_theme_color_override("font_color", TITLE_COLOR)
 	t.add_theme_color_override("font_outline_color", OUTLINE)
 	t.add_theme_constant_override("outline_size", 6)
+	PixelTitle.style_if_supported(t, text, 34) # TẠM DỪNG / XÁC NHẬN: font pixel chung
 	_box.add_child(t)
 
 

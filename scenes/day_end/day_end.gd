@@ -62,6 +62,8 @@ var _firework_timer: Timer
 ## Khởi tạo màn hình: nối nút, đổ dữ liệu lên sổ rồi mở sổ có nhịp.
 func _ready() -> void:
 	continue_button.pressed.connect(_on_continue_pressed)
+	# Con dấu ĐẠT KPI / TRƯỢT KPI: font pixel chung (chữ trắng, nhuộm xanh / đỏ bằng modulate như cũ).
+	PixelTitle.style(stamp_label, stamp_label.get_theme_font_size("font_size"))
 	_show_day_summary()
 	_show_result()
 	_play_reveal()
