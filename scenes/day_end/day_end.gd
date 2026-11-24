@@ -104,6 +104,7 @@ func _show_progress(shown_revenue: float) -> void:
 ## Con dấu chạm sổ: tiếng đập + sổ rung nhẹ; đạt KPI thì bắt đầu bắn pháo hoa.
 func _on_stamp_landed() -> void:
 	Sfx.play(self, Sfx.HIT)
+	ParticleBurst.play(self, ParticleBurst.DUST, stamp_label.get_global_rect().get_center())
 	var origin := book.position
 	var shake := book.create_tween()
 	for offset in [Vector2(6, 3), Vector2(-5, -2), Vector2(3, 1), Vector2.ZERO]:

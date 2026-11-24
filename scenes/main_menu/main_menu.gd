@@ -596,7 +596,6 @@ func _build_record() -> void:
 	var label := Label.new()
 	label.text = "Kỷ lục: trụ được %d ngày" % best
 	label.mouse_filter = MOUSE_FILTER_IGNORE
-	label.add_theme_font_override("font", PixelButton.BOLD_FONT)
 	label.add_theme_font_size_override("font_size", 24)
 	label.add_theme_color_override("font_color", PixelButton.TEXT_COLOR)
 	label.add_theme_color_override("font_outline_color", PixelButton.TEXT_OUTLINE_COLOR)
