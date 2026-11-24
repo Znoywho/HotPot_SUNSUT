@@ -137,7 +137,7 @@ func _wait_player() -> Dictionary:
 
 
 func _wait(seconds: float) -> void:
-	await get_tree().create_timer(seconds / (2.0 if fast_mode else 1.0)).timeout
+	await get_tree().create_timer(seconds / (2.0 if fast_mode else 1.0), false).timeout
 
 
 # --- Hiệu ứng ---------------------------------------------------------------
