@@ -353,6 +353,7 @@ func _celebrate_purchase(card: Control) -> void:
 	card.pivot_offset = card.size / 2.0
 	card.scale = Vector2.ONE * 1.06
 	card.modulate = PURCHASE_FLASH
+	ParticleBurst.play(self, ParticleBurst.SPARKLE, card.get_global_rect().get_center())
 	var tween := card.create_tween().set_parallel(true)
 	tween.tween_property(card, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(card, "modulate", Color.WHITE, 0.35)
