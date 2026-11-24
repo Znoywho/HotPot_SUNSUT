@@ -10,6 +10,7 @@ Giấy phép thường gặp: CC0 (tự do), CC-BY (ghi tác giả), OFL (font).
 | Asset | Tác giả | Giấy phép | Link |
 |---|---|---|---|
 | Be Vietnam Pro | The Be Vietnam Pro Project Authors | SIL OFL 1.1 (`assets/fonts/OFL.txt`) | https://fonts.google.com/specimen/Be+Vietnam+Pro |
+| `assets/fonts/pixel_title/*` (font tiêu đề pixel mập: chữ in hoa tiếng Việt đủ dấu + số, 5 bảng màu theo buổi / Game Over) | Nhóm tự làm (vẽ bằng code `make_pixel_title_font.py`, nét theo logo menu chính, không dùng font của ai) | Của nhóm | — |
 
 ## Hình ảnh
 

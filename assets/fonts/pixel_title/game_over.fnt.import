@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://bp2drjv85t3d6"
+path="res://.godot/imported/game_over.fnt-fa887ea65ea52db9d040802ccdfbf031.fontdata"
+
+[deps]
+
+source_file="res://assets/fonts/pixel_title/game_over.fnt"
+dest_files=["res://.godot/imported/game_over.fnt-fa887ea65ea52db9d040802ccdfbf031.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=2
