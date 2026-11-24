@@ -33,7 +33,7 @@ window/handheld/orientation=4
 
 [gui]
 
-theme/custom_font="res://assets/fonts/BeVietnamPro-Regular.ttf"
+theme/custom_font="res://assets/fonts/ArkPixel12-Vietnamese.ttf"
 
 [rendering]
 
