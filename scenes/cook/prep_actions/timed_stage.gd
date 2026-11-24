@@ -3,6 +3,7 @@ extends PrepAction
 ## khi kim trong vùng xanh. Bấm trượt bị trừ điểm và vùng xanh đổi chỗ; trượt stage_max_misses lần thì hết bước.
 
 const BAR := Rect2(110, 40, 480, 26)
+const GRACE := 0.1 ## Giây bù trễ: kim còn trong vùng xanh trong khoảng này trước lúc bấm vẫn tính trúng (độ trễ chạm / khung hình).
 
 var _zone_c := 0.7
 var _zone_w := 0.22
@@ -20,6 +21,7 @@ func _build() -> void:
 	_button.position = Vector2(604, 150)
 	_button.custom_minimum_size = Vector2(160, 76)
 	_button.add_theme_font_size_override("font_size", 28)
+	_button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS # Nhận lúc nhấn xuống; mặc định là lúc thả tay -> kim đã chạy ra khỏi vùng.
 	_button.pressed.connect(_press)
 	add_child(_button)
 	var label := {"pot": "Đang chần...", "bowl": "Đang ngâm / ướp...", "basket": "Đang để ráo..."}
@@ -30,9 +32,17 @@ func _move_zone() -> void:
 	_zone_c = _rng.randf_range(0.3 + _zone_w / 2.0, 0.95 - _zone_w / 2.0)
 
 
-func needle() -> float:
-	var ph := fmod(_clock / maxf(0.3, step.duration), 2.0)
+func needle(at := -1.0) -> float:
+	var ph := fmod(maxf(0.0, _clock if at < 0.0 else at) / maxf(0.3, step.duration), 2.0)
 	return ph if ph <= 1.0 else 2.0 - ph
+
+
+## Kim có nằm trong vùng xanh ở bất kỳ lúc nào trong GRACE giây vừa qua không.
+func _hit() -> bool:
+	for k in 5:
+		if absf(needle(_clock - GRACE * k / 4.0) - _zone_c) <= _zone_w / 2.0:
+			return true
+	return false
 
 
 func _process(delta: float) -> void:
@@ -52,7 +62,7 @@ func _press() -> void:
 	if is_done():
 		return
 	var v := needle()
-	if absf(v - _zone_c) <= _zone_w / 2.0:
+	if _hit():
 		_button.disabled = true
 		good(Vector2(BAR.position.x + BAR.size.x * v - 40, BAR.end.y + 30), "Vừa tới!", "loot")
 		complete_soon(0.4)
