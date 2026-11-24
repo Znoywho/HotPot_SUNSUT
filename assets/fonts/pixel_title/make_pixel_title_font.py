@@ -247,7 +247,7 @@ def build_font(variant, chars):
     for ch, g in glyphs.items():
         gx, gy = placements[ch]
         lines.append(f"char id={ord(ch)} x={gx} y={gy} width={g.width} height={LINE_H} xoffset=0 yoffset=0 xadvance={g.width + GAP} page=0 chnl=15")
-    (HERE / f"{variant}.fnt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (HERE / f"{variant}.fnt").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")  # LF: chạy lại trên Windows không đổi file
     return glyphs
 
 
