@@ -58,7 +58,11 @@ Chơi được bằng chuột trên máy tính và **cảm ứng trên điện t
 <table>
   <tr>
     <td width="50%"><img src="docs/screenshots/hunt_map.png" alt="Chọn bụi cỏ để săn"><p align="center"><b>Sáng:</b> chọn bụi cỏ để săn</p></td>
-    <td width="50%"><img src="docs/screenshots/battle.png" alt="Trận đánh theo lượt"><p align="center"><b>Đánh theo lượt</b> với quái rau củ</p></td>
+    <td width="50%"><img src="docs/screenshots/battle.png" alt="Trận đánh theo lượt"><p align="center"><b>Đánh theo lượt:</b> Cắt thái chém chữ X, số sát thương pixel</p></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/battle_crit.png" alt="Chí mạng"><p align="center"><b>Chí mạng:</b> hitstop, nháy trắng, số vàng</p></td>
+    <td><img src="docs/screenshots/transition_evening.png" alt="Chuyển cảnh chiều tối"><p align="center"><b>Chuyển cảnh:</b> bọt sôi, tên buổi chữ pixel</p></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/cook.png" alt="Bếp"><p align="center"><b>Trưa:</b> sơ chế và nấu nước cốt</p></td>
