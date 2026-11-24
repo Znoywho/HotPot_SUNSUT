@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://bl3lfut6so4jm"
+path="res://.godot/imported/small_white.fnt-ef357929499ec171f4bf02380b60cf90.fontdata"
+
+[deps]
+
+source_file="res://assets/fonts/pixel_title/small_white.fnt"
+dest_files=["res://.godot/imported/small_white.fnt-ef357929499ec171f4bf02380b60cf90.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=2

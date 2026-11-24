@@ -720,7 +720,8 @@ func _build() -> void:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 12)
 	root.add_child(top)
-	var title := HuntUI.outlined_label(("BOSS: " if encounter.is_boss else "Gặp: ") + encounter.names(), 26, HuntUI.GOLD)
+	var title := HuntUI.outlined_label(("BOSS: " + encounter.names().to_upper()) if encounter.is_boss else ("Gặp: " + encounter.names()), 26, HuntUI.GOLD)
+	PixelTitle.style_if_supported(title, title.text, 26) # "BOSS: NỒI LẨU THẦN": font pixel chung
 	title.size_flags_horizontal = SIZE_EXPAND_FILL
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

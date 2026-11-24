@@ -1,11 +1,16 @@
 class_name PixelTitle
 extends RefCounted
-## Font tiêu đề pixel mập tự vẽ (make_pixel_title_font.py): chữ IN HOA tiếng Việt đủ dấu, số 0-9, ". , : · ! ? - + % / ( )".
-## Không có chữ thường: chỉ dùng cho tiêu đề lớn (thẻ chuyển buổi, Game Over...). Màu, viền, bóng đổ đã vẽ sẵn trong ảnh
-## font, nên chữ để màu trắng và không dùng viền động của Godot. Cỡ chữ luôn là bội NGUYÊN của NATIVE_SIZE (scale 2, 3, 4)
-## để mỗi điểm ảnh của font thành ô vuông đều nhau. Mỗi buổi một bảng màu (xem FONTS / for_phase()).
+## Font pixel mập tự vẽ (make_pixel_title_font.py) cho MỌI chữ in hoa của game: chữ IN HOA tiếng Việt đủ dấu,
+## số 0-9, "đ" (tiền), ". , : · ! ? - – + % / ( ) » « › ‹". Không có chữ thường khác: chữ thường giữ Be Vietnam Pro.
+## Hai bộ cùng độ dày nét: bộ LỚN (chữ hoa cao 12 px ảnh) và bộ NHỎ (cao 8, font small_*).
+## - Tiêu đề có bảng màu riêng (morning, noon, evening...): apply_rich / apply_label.
+## - Nhãn / nút giao diện: style(control, cỡ chữ cũ) chọn bộ + độ phóng nguyên lần gần nhất và dùng chữ TRẮNG để
+##   Godot nhuộm theo màu chữ sẵn có của màn đó (font_color / modulate): "white" có viền tối vẽ sẵn, "plain" không viền.
+## Màu, viền, bóng đã vẽ trong ảnh font nên không dùng viền động của Godot. Cỡ chữ luôn là bội NGUYÊN của cỡ gốc
+## (NATIVE_SIZE / SMALL_NATIVE_SIZE) để mỗi điểm ảnh của font thành ô vuông đều nhau.
 
 const NATIVE_SIZE := 25 ## = "size" trong .fnt: chiều cao dòng gốc (px ảnh), Godot phóng theo cỡ chữ / NATIVE_SIZE.
+const SMALL_NATIVE_SIZE := 21 ## Chiều cao dòng gốc của bộ nhỏ (small_*.fnt).
 const FONTS := {
 	"morning": preload("res://assets/fonts/pixel_title/morning.fnt"), ## Sáng: kem bơ -> đào -> cam (bình minh).
 	"noon": preload("res://assets/fonts/pixel_title/noon.fnt"), ## Trưa: trắng vàng -> vàng -> hổ phách.
@@ -14,7 +19,10 @@ const FONTS := {
 	"game_over": preload("res://assets/fonts/pixel_title/game_over.fnt"), ## Game Over: đỏ cam -> đỏ -> đỏ rượu (biển tắt đèn). Cũng là số sát thương.
 	"heal": preload("res://assets/fonts/pixel_title/heal.fnt"), ## Số hồi máu trong trận: xanh lá.
 	"armor": preload("res://assets/fonts/pixel_title/armor.fnt"), ## Số giáp trong trận: xanh dương.
-	"white": preload("res://assets/fonts/pixel_title/white.fnt"), ## Chữ báo trong trận (NÉ!, XUẤT HIỆN!...): trắng bạc.
+	"white": preload("res://assets/fonts/pixel_title/white.fnt"), ## Chữ trắng có viền: nhuộm theo màu chữ (nhãn, nút, chữ báo trong trận).
+	"plain": preload("res://assets/fonts/pixel_title/plain.fnt"), ## Chữ trắng không viền: nhuộm theo màu chữ (chữ trên nền giấy).
+	"small_white": preload("res://assets/fonts/pixel_title/small_white.fnt"), ## Bộ nhỏ, có viền.
+	"small_plain": preload("res://assets/fonts/pixel_title/small_plain.fnt"), ## Bộ nhỏ, không viền.
 }
 
 
@@ -53,6 +61,62 @@ static func apply_rich(label: RichTextLabel, variant: String, scale := 4) -> voi
 	label.add_theme_color_override("default_color", Color.WHITE) # giữ nguyên màu vẽ sẵn
 	label.add_theme_constant_override("outline_size", 0) # viền đã vẽ trong ảnh font
 	label.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
+## Chuỗi là chữ IN HOA vẽ được trọn bằng font pixel không: có ít nhất 1 chữ in hoa và mọi ký tự (trừ dấu cách) đều
+## có trong font (chữ in hoa, số, "đ" của tiền, dấu câu đã vẽ). Số tiền đứng riêng ("64.000đ") hay chuỗi có chữ thường
+## -> false: giữ font thường (không lẫn kiểu chữ trong cùng một cột số liệu, không hiện ô vuông).
+static func supports(text: String) -> bool:
+	var f := font("white")
+	var has_upper := false
+	for i in text.length():
+		var code := text.unicode_at(i)
+		if code == 32:
+			continue
+		if not f.has_char(code):
+			return false
+		var ch := text[i]
+		has_upper = has_upper or ch.to_lower() != ch
+	return has_upper
+
+
+## Bộ chữ + độ phóng cho cỡ chữ cũ (px của font thường): [bộ nhỏ?, độ phóng]. Chữ hoa cao lần lượt 12 / 16 / 24 / 36 / 48 px.
+static func pick(font_size: int) -> Array:
+	if font_size <= 18:
+		return [false, 1]
+	if font_size <= 28:
+		return [true, 2]
+	if font_size <= 46:
+		return [false, 2]
+	if font_size <= 64:
+		return [false, 3]
+	return [false, 4]
+
+
+## Đổi chữ in hoa của nhãn / nút giao diện sang font pixel, cỡ gần với `font_size` cũ, GIỮ màu chữ hiện có
+## (font trắng nhuộm theo font_color / modulate). outlined = viền tối vẽ sẵn (chữ trên nền tối / ảnh); false = trơn
+## (chữ trên nền giấy). Label, Button (cả PixelButton) và RichTextLabel đều được.
+static func style(control: Control, font_size: int, outlined := true) -> void:
+	var choice := pick(font_size)
+	var small: bool = choice[0]
+	var key := ("small_" if small else "") + ("white" if outlined else "plain")
+	var px := (SMALL_NATIVE_SIZE if small else NATIVE_SIZE) * int(choice[1])
+	if control is RichTextLabel:
+		control.add_theme_font_override("normal_font", font(key))
+		control.add_theme_font_size_override("normal_font_size", px)
+	else:
+		control.add_theme_font_override("font", font(key))
+		control.add_theme_font_size_override("font_size", px)
+	control.add_theme_constant_override("outline_size", 0) # viền đã vẽ trong ảnh font
+	control.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
+## Như style() nhưng chỉ đổi khi chuỗi vẽ được trọn bằng font pixel (dùng ở hàm dựng nhãn chung cho mọi chữ).
+static func style_if_supported(control: Control, text: String, font_size: int, outlined := true) -> bool:
+	if not supports(text):
+		return false
+	style(control, font_size, outlined)
+	return true
 
 
 ## Gắn font pixel cho Label; text được đổi sang in hoa.
