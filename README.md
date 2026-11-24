@@ -31,7 +31,7 @@
 | Buổi | Việc cần làm |
 |---|---|
 | **Sáng · Đi săn** (2:30) | Chọn bụi cỏ, đánh quái rau củ theo lượt để lấy nguyên liệu; đủ trận thì mở Boss |
-| **Trưa · Nấu** (2:30) | Sơ chế nguyên liệu bằng mini-game, nấu nước cốt trên nhiều bếp (1 bộ nguyên liệu = 1 phần lẩu) |
+| **Trưa · Nấu** (4:30) | Sơ chế nguyên liệu bằng mini-game, nấu nước cốt trên nhiều bếp (1 bộ nguyên liệu = 1 phần lẩu) |
 | **Chiều tối · Bán** (3:15) | Xếp khách vào bàn, bưng lẩu, dọn bàn và sàn, giữ sao đánh giá |
 
 Cuối ngày tổng kết **KPI**: không đạt là thua, đạt thì vào **cửa hàng** rồi sang ngày mới — KPI tăng dần theo doanh thu.
@@ -40,6 +40,8 @@ Chơi được bằng chuột trên máy tính và **cảm ứng trên điện t
 ## Tính năng
 
 - **Đánh theo lượt (ATB theo tốc độ):** 20 loại quái rau củ có nội tại riêng (độc, nổ, hồi máu, cuộn tròn…), Boss rơi **nguyên liệu hoàng kim** giá gấp 3, chế độ Tự đánh và tua x2.
+- **Đòn đánh có lực:** sát thương hiện đúng lúc chạm, hitstop khựng hình, rung màn, nháy trắng, bẹp người, quái báo trước đòn (chớp đỏ + "!"), quái gục vỡ thành hạt pixel. Mỗi chiêu một kiểu: muôi gõ ra sao, Cắt thái vệt chém chữ X, Hất lẩu ném giọt lẩu. Boss gục có impact frame và quay chậm.
+- **Chữ pixel tự vẽ:** mọi chữ in hoa (tên buổi, nút, HUD, số sát thương, Game Over) dùng font pixel tiếng Việt đủ dấu do nhóm vẽ bằng code, mỗi buổi một bảng màu.
 - **Sơ chế bằng thao tác chạm / kéo** (rửa, thái, lột, lăn viên, xiên…): mỗi bước một ô màu, cuối lượt ra **Kém / Thường / Thượng hạng** với huy chương và chữ pixel riêng. Thượng hạng nấu nước cốt nhanh hơn 15%, đồ nhúng bán đắt hơn 20%; Kém chậm hơn 10%, rẻ hơn 15%.
 - **Cửa hàng 2 nhóm:**
   - **Quán lẩu:** Bếp (nồi, bếp, nhân viên, kho lạnh) · Quán (nội thất, thêm bàn, phí phục vụ) · **Trang trí**
@@ -48,7 +50,7 @@ Chơi được bằng chuột trên máy tính và **cảm ứng trên điện t
 - **Thú cưỡi:** Trâu nước đánh cùng đầu bếp và đứng trước chịu đòn, mạnh dần theo cấp.
 - **Trang trí quán:** 17 món cho 6 chỗ (đồng hồ, tranh, kệ, mèo thần tài, góc quán, trên cửa), đặt món nào thấy món đó trong quán, mỗi món cộng tip.
 - **Quán sống động:** nhóm khách 1–6 người, bàn tròn 6 ghế, sự kiện khách đặc biệt, dọn bàn / quét rác / lau sàn, mặc cả khi hết món, **bảng Khách đang chờ** cạnh phải (từng nhóm, thanh kiên nhẫn, số bàn chờ món / đang ăn).
-- **Lưu tự động** sau mỗi ngày, bảng **Cách chơi** lần đầu vào mỗi buổi, **chuyển cảnh** có thẻ tên buổi, mốc ngày 5/10/15 quái mạnh hơn.
+- **Lưu tự động** sau mỗi ngày, bảng **Cách chơi** lần đầu vào mỗi buổi, **chuyển cảnh** bọt sôi với bầu trời theo giờ và tên buổi chữ pixel, mốc ngày 5/10/15 quái mạnh hơn.
 - **Độ khó tăng dần cho người mới:** ngày 1 khách tới thưa (12 giây một nhóm), mỗi ngày dày thêm, từ ngày 5 là 6 giây một nhóm; hết sạch lẩu thì quán tạm ngừng đón khách thay vì để khách vào rồi bỏ về.
 
 ## Ảnh chụp
@@ -56,7 +58,11 @@ Chơi được bằng chuột trên máy tính và **cảm ứng trên điện t
 <table>
   <tr>
     <td width="50%"><img src="docs/screenshots/hunt_map.png" alt="Chọn bụi cỏ để săn"><p align="center"><b>Sáng:</b> chọn bụi cỏ để săn</p></td>
-    <td width="50%"><img src="docs/screenshots/battle.png" alt="Trận đánh theo lượt"><p align="center"><b>Đánh theo lượt</b> với quái rau củ</p></td>
+    <td width="50%"><img src="docs/screenshots/battle.png" alt="Trận đánh theo lượt"><p align="center"><b>Đánh theo lượt:</b> Cắt thái chém chữ X, số sát thương pixel</p></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/battle_crit.png" alt="Chí mạng"><p align="center"><b>Chí mạng:</b> hitstop, nháy trắng, số vàng</p></td>
+    <td><img src="docs/screenshots/transition_evening.png" alt="Chuyển cảnh chiều tối"><p align="center"><b>Chuyển cảnh:</b> bọt sôi, tên buổi chữ pixel</p></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/cook.png" alt="Bếp"><p align="center"><b>Trưa:</b> sơ chế và nấu nước cốt</p></td>
@@ -79,6 +85,17 @@ Chơi được bằng chuột trên máy tính và **cảm ứng trên điện t
 <sub>Ảnh chụp ở Ngày 8, đã nâng cấp bàn, bếp, nhân viên, nội thất và đặt đồ trang trí.</sub>
 
 **Nhóm:** Lê Thiên Hạo · Đỗ Hoàng Hải · Nguyễn Ngọc Minh Tuấn
+
+## Quảng bá
+
+Mọi bài đăng đều dẫn về trang [itch.io](https://znoywho.itch.io/soi-sung-suc), chơi ngay trên trình duyệt / điện thoại.
+
+- **Clip ngắn 10–20 giây** (TikTok, Reels, Shorts), mỗi clip khoe một khoảnh khắc: kết liễu boss, bò tót nổ, minigame sơ chế, quán lên đèn, Game Over.
+- **Cộng đồng làm game:** nhóm Facebook game indie Việt, Reddit r/godot, r/IndieGaming, r/PixelArt, `#screenshotsaturday`.
+- **Devlog trên itch:** làm hiệu ứng đánh nhau có lực, vẽ font pixel tiếng Việt đủ dấu.
+- **Thử thách kỷ lục:** chụp màn Game Over khoe số ngày trụ được.
+
+Kế hoạch chi tiết (chuẩn bị trang itch, lịch đăng, đo kết quả): [`docs/QUANG_BA.md`](docs/QUANG_BA.md)
 
 ## Cài đặt
 
@@ -114,9 +131,12 @@ Menu → [Sáng: Săn 2:30] → [Trưa: Nấu 4:30] → [Chiều tối: Bán 3:1
 | `data/combatants/`, `broths/`, `upgrades/`, `weapons/`, `decor/` | File `.tres` chứa **số liệu cân bằng** (giá, chỉ số, % tip). Chỉnh trong Inspector, không cần sửa code |
 | `scenes/hunt/combat/` | `Battle` (ATB theo tốc đánh), `Combatant`, `Passive`, `StatusEffect` |
 | `scenes/hunt/combat/passives/` | Nội tại từng quái |
+| `scenes/hunt/ui/` | Giao diện trận: `BattleJuice` (hitstop, rung màn, zoom, impact frame), `FxParticles`, `DamageNumber`, `HuntFX` |
 | `scenes/common/` | HUD, nút pixel (`PixelButton`), menu tạm dừng, cài đặt, bảng Cách chơi, `DecorArt` (vẽ đồ trang trí) |
 | `scenes/shop/`, `cook/`, `sell/`, `hunt/` | Cửa hàng, bếp, quán, đi săn |
 | `assets/` | Hình, âm thanh, font (Be Vietnam Pro: có dấu tiếng Việt, dùng làm font mặc định) |
+| `assets/fonts/pixel_title/` | Font pixel chữ in hoa tự vẽ (`make_pixel_title_font.py`). Dùng: `PixelTitle.style(nút_hoặc_nhãn, cỡ_chữ)` |
+| `assets/sprites/fx/make_combat_fx.py` | Vẽ hiệu ứng chiến đấu pixel (tia chạm, vệt chém, vòng xung kích...) |
 | `tools/build_web.sh` | Export bản Web và push lên itch.io |
 | `tools/make_cover.py`, `make_shop_icons.py` | Vẽ ảnh bìa itch và icon pixel cửa hàng |
 
