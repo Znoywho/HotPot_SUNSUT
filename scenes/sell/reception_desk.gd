@@ -22,6 +22,7 @@ const WALK_SPEED := 280.0 ## px/giây
 
 var host: KitchenActor
 var cashier: KitchenActor ## Mai thu ngân: luôn có mặt, báo tiền khi bàn thanh toán.
+var host_away := false ## Lan đang rời quầy đi phụ dọn (set_host_away).
 var _bubble: PanelContainer
 var _bubble_label: Label
 var _bubble_until := 0.0
@@ -83,10 +84,17 @@ func _process(_delta: float) -> void:
 		_cash_bubble.visible = false
 
 
-## Nhân viên quầy nói một câu: Lan nếu đã thuê, không thì Mai.
+## Lan rời quầy đi phụ dọn (cấp Nhân viên 3): ẩn Lan ở quầy, Mai chào khách thay tới khi Lan quay lại.
+func set_host_away(away: bool) -> void:
+	host_away = away
+	if host != null:
+		host.visible = not away
+
+
+## Nhân viên quầy nói một câu: Lan nếu đã thuê (và đang đứng quầy), không thì Mai.
 func greet(text: String) -> void:
-	# Chưa thuê Lan thì Mai thu ngân chào thay.
-	var speaker := host if host != null else cashier
+	# Chưa thuê Lan (hoặc Lan đang đi dọn) thì Mai thu ngân chào thay.
+	var speaker := host if host != null and not host_away else cashier
 	if speaker == null:
 		return
 	var x := HOST_X if speaker == host else CASHIER_X

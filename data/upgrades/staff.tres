@@ -6,7 +6,7 @@
 script = ExtResource("1")
 id = "staff"
 display_name = "Nhân viên bếp"
-description = "Cấp 1-2: thuê phụ bếp tự sơ chế nguyên liệu. Cấp 3: thêm bếp phó tự nấu khi có bếp trống."
+description = "Cấp 1-2: thuê phụ bếp tự sơ chế nguyên liệu. Cấp 3: thêm bếp phó tự nấu khi có bếp trống. Ở quán: từ cấp 2 Tùng bưng lẩu và phụ dọn bàn, rác; cấp 3 Lan cũng phụ dọn."
 category = 0
 costs = Array[int]([500000, 1500000, 4000000])
 values = Array[float]([0.0, 1.0, 2.0, 3.0])

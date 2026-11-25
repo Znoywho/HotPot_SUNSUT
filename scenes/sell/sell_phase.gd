@@ -50,6 +50,13 @@ const TABLE_DIRTY_CHANCE := 0.35 ## Tỉ lệ khách ăn xong để lại bàn b
 const MAX_MESS := 6
 const MESS_PATIENCE_DRAIN := 0.08 ## Mỗi chỗ bẩn dưới sàn làm khách chờ ở quầy mất kiên nhẫn nhanh thêm 8%.
 const STAR_MESS_LEFT := 0.05 ## Đóng cửa còn chỗ bẩn dưới sàn: trừ sao mỗi chỗ.
+## Nhân viên phụ dọn (Tùng từ cấp Nhân viên 2, Lan từ cấp 3): chậm hơn người chơi tự dọn, không cộng sao.
+## TODO(nhóm): cân bằng các số này.
+const STAFF_CLEAN_TABLE_TIME := 4.0 ## Giây nhân viên lau xong 1 bàn bẩn.
+const STAFF_CLEAN_FLOOR_TIME := 2.5 ## Giây nhân viên dọn xong 1 chỗ rác / vũng nước.
+const STAFF_REACT_DELAY := 1.5 ## Chỗ bẩn có từ bao lâu thì nhân viên mới tới (người chơi muốn tự dọn vẫn kịp).
+const CLEANER_SPEED := 420.0 ## px/giây khi nhân viên chạy đi dọn.
+const LAN_HOME := Vector2(142, 234) ## Góc trên-trái hình Lan đứng ở quầy (HOST_X - 48, HOST_FEET - 96).
 
 const ART := "res://assets/sprites/restaurant/"
 const STAGE := Vector2(1280, 720)
@@ -98,6 +105,9 @@ var _mess: Array[FloorMess] = []
 var _mess_timer := MESS_INTERVAL
 var _cleaning: Dictionary = {} ## TableNode đang mở bảng Dọn dẹp.
 var _clean_panel: Control = null ## Bảng Dọn dẹp đang mở.
+var _clock := 0.0 ## Giây đã mở quán (để biết chỗ bẩn có từ bao lâu).
+var _cleaners: Array[Dictionary] = [] ## Nhân viên phụ dọn: {name, sprite, legs, home, waiter, busy}
+var _staff_clean: Dictionary = {} ## Chỗ (TableNode / FloorMess) nhân viên đang dọn -> {who, progress}
 
 
 
@@ -123,6 +133,7 @@ func _process(delta: float) -> void:
 		_try_spawn_group()
 	_tick_queue(delta)
 	_tick_mess(delta)
+	_tick_staff_clean(delta)
 	for table in tables:
 		if table.state == TableNode.State.WAITING_ORDER and table.customer and table != _negotiating:
 			if table.customer.remaining_time() <= 0.0:
@@ -174,6 +185,7 @@ func _build_stage() -> void:
 	_stage.add_child(_overlay)
 	if RestaurantDecor.has_waiter():
 		_build_waiter()
+	_setup_cleaners()
 
 	# Ánh sáng theo giờ phủ lên cảnh + nhân vật; đèn treo và ô cửa bếp sáng dần khi trời tối.
 	# Trong quán đèn luôn bật nên tối nhẹ hơn ngoài trời (cửa sổ vẫn thấy trời đêm), quầng đèn dịu để không loá.
@@ -469,7 +481,9 @@ func _on_table_tapped(table: TableNode) -> void:
 	if table.state == TableNode.State.DIRTY:
 		if not _queue.is_empty():
 			_notify("Bàn %d còn bẩn, chưa đón khách được. Dọn sạch rồi xếp chỗ." % (tables.find(table) + 1), Color("ffccbc"))
-		if not _cleaning.has(table):
+		if _staff_clean.has(table):
+			_float_text("%s đang dọn rồi!" % _staff_clean[table]["who"], _visuals[tables.find(table)], Color("c8e6c9"))
+		elif not _cleaning.has(table):
 			var index := tables.find(table)
 			_cleaning[table] = true
 			var done := func(grade: int) -> void:
@@ -823,6 +837,7 @@ func mess_count() -> Dictionary:
 func _leave_mess(table: TableNode, visual: TableVisual) -> void:
 	if randf() < TABLE_DIRTY_CHANCE:
 		table.make_dirty()
+		table.set_meta("dirty_at", _clock)
 		TutorialPointer.hint("sell_dirty", visual, "Bàn bẩn: chạm để dọn", true)
 	for kind in ["trash", "puddle"]:
 		if randf() < (TRASH_LEAVE_CHANCE if kind == "trash" else SPILL_LEAVE_CHANCE):
@@ -859,6 +874,9 @@ func _clean_result(grade: int, text: String) -> void:
 
 
 func _clean_floor(mess: FloorMess) -> void:
+	if is_instance_valid(mess) and _staff_clean.has(mess):
+		_float_at("%s đang dọn rồi!" % _staff_clean[mess]["who"], mess.position + mess.size / 2.0, Color("c8e6c9"))
+		return
 	if not is_instance_valid(mess) or mess.is_gone() or mess.cleaning:
 		return
 	mess.cleaning = true
@@ -871,6 +889,208 @@ func _clean_floor(mess: FloorMess) -> void:
 		if is_instance_valid(mess):
 			mess.cleaning = false
 	_open_clean_panel(mess.kind, mess.label(), done, cancel)
+
+
+# --- Nhân viên phụ dọn ---------------------------------------------------------------
+# Tùng (cấp Nhân viên 2+) lúc rảnh, Lan (cấp 3+) lúc không có khách chờ ở quầy: tự chạy tới bàn bẩn / rác /
+# vũng nước, lau dần rồi về chỗ. Chậm hơn người chơi tự dọn và không cộng sao. Dùng chung cờ _cleaning /
+# mess.cleaning với người chơi nên hai bên không giành nhau một chỗ.
+
+func _setup_cleaners() -> void:
+	if _waiter != null:
+		_cleaners.append({"name": "Tùng", "sprite": _waiter, "legs": _waiter_legs, "home": WAITER_HOME, "waiter": true, "busy": false})
+	if RestaurantDecor.has_sous() and RestaurantDecor.has_host():
+		var lan := TextureRect.new()
+		lan.texture = load(CHAR_DIR + "staff_lan.png")
+		lan.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		lan.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		lan.stretch_mode = TextureRect.STRETCH_SCALE
+		lan.size = Vector2(WAITER_SIZE, WAITER_SIZE)
+		lan.position = LAN_HOME
+		lan.mouse_filter = MOUSE_FILTER_IGNORE
+		lan.visible = false # chỉ hiện khi rời quầy đi dọn (lúc đứng quầy là hình Lan của ReceptionDesk)
+		_overlay.add_child(lan)
+		_cleaners.append({"name": "Lan", "sprite": lan, "legs": SpriteFrameLayer.attach_to(lan), "home": LAN_HOME, "waiter": false, "busy": false})
+
+
+func _cleaner_busy(c: Dictionary) -> bool:
+	return _waiter_busy if c["waiter"] else bool(c["busy"])
+
+
+func _set_cleaner_busy(c: Dictionary, busy: bool) -> void:
+	if c["waiter"]:
+		_waiter_busy = busy
+	else:
+		c["busy"] = busy
+
+
+func _tick_staff_clean(delta: float) -> void:
+	_clock += delta
+	if _leaving:
+		return
+	for c in _cleaners:
+		if _cleaner_busy(c):
+			continue
+		# Tùng ưu tiên bưng lẩu: người chơi đang cầm nồi thì chờ. Lan ưu tiên đón khách: có nhóm chờ thì ở quầy.
+		if c["waiter"] and cart.carrying_broth_id != "":
+			continue
+		if not c["waiter"] and not _queue.is_empty():
+			continue
+		var job = _pick_clean_job(c)
+		if job != null:
+			_start_clean(c, job)
+
+
+## Chỗ bẩn gần nhân viên nhất, chưa ai nhận, đã có ít nhất STAFF_REACT_DELAY giây. Ưu tiên bàn bẩn (chặn chỗ ngồi).
+func _pick_clean_job(c: Dictionary) -> Variant:
+	var from: Vector2 = (c["sprite"] as TextureRect).position
+	var best = null
+	var best_d := INF
+	for t in tables:
+		if t.state != TableNode.State.DIRTY or _cleaning.has(t) or _clock - float(t.get_meta("dirty_at", -INF)) < STAFF_REACT_DELAY:
+			continue
+		var d := from.distance_to(_clean_target(t))
+		if d < best_d:
+			best = t
+			best_d = d
+	if best != null:
+		return best
+	for m in _mess:
+		if not is_instance_valid(m) or m.is_gone() or m.cleaning or _clock - float(m.get_meta("born", -INF)) < STAFF_REACT_DELAY:
+			continue
+		var d := from.distance_to(_clean_target(m))
+		if d < best_d:
+			best = m
+			best_d = d
+	return best
+
+
+## Góc trên-trái hình nhân viên khi đứng dọn chỗ `job` (toạ độ _overlay = sân khấu).
+func _clean_target(job: Object) -> Vector2:
+	if job is TableNode:
+		var visual := _visuals[tables.find(job)]
+		return visual.pot_global_center() - _overlay.global_position - Vector2(WAITER_SIZE * 0.35, WAITER_SIZE * 0.6)
+	var m := job as FloorMess
+	return m.position + m.size / 2.0 - Vector2(WAITER_SIZE * 0.5, WAITER_SIZE * 0.85)
+
+
+func _clean_job_alive(job: Object) -> bool:
+	if not is_instance_valid(job):
+		return false
+	if job is TableNode:
+		return (job as TableNode).state == TableNode.State.DIRTY
+	return not (job as FloorMess).is_gone()
+
+
+func _start_clean(c: Dictionary, job: Object) -> void:
+	_set_cleaner_busy(c, true)
+	if job is TableNode:
+		_cleaning[job] = true
+	else:
+		(job as FloorMess).cleaning = true
+	_staff_clean[job] = {"who": c["name"], "progress": 0.0}
+	var sprite: TextureRect = c["sprite"]
+	var legs: SpriteFrameLayer = c["legs"]
+	if not c["waiter"]:
+		sprite.position = c["home"]
+		sprite.visible = true
+		_reception.set_host_away(true) # Lan rời quầy, Mai chào khách thay
+	var target := _clean_target(job)
+	var go := maxf(0.25, sprite.position.distance_to(target) / CLEANER_SPEED)
+	sprite.flip_h = target.x < sprite.position.x
+	if legs != null:
+		legs.play("run")
+	var dur := STAFF_CLEAN_TABLE_TIME if job is TableNode else STAFF_CLEAN_FLOOR_TIME
+	var t := sprite.create_tween()
+	t.tween_property(sprite, "position", target, go)
+	t.tween_callback(func() -> void:
+		if legs != null:
+			legs.stop())
+	t.tween_method(func(p: float) -> void: _clean_step(c, job, target, p, t), 0.0, 1.0, dur)
+	t.tween_callback(func() -> void: _finish_staff_clean(c, job))
+
+
+## Mỗi khung lúc đang lau: nhún qua lại, vết bẩn mờ dần. Chỗ đó mất giữa chừng thì bỏ việc về chỗ.
+func _clean_step(c: Dictionary, job: Object, target: Vector2, p: float, tween: Tween) -> void:
+	if not _clean_job_alive(job):
+		tween.kill()
+		_drop_clean_job(job)
+		_go_home(c)
+		return
+	_staff_clean[job]["progress"] = p
+	var sprite: TextureRect = c["sprite"]
+	sprite.position = target + Vector2(sin(p * TAU * 5.0) * 7.0, -absf(sin(p * TAU * 5.0)) * 3.0)
+	if job is FloorMess:
+		(job as FloorMess).modulate.a = 1.0 - 0.8 * p
+
+
+## Bỏ đánh dấu "đang dọn" của nhân viên trên một chỗ (khi xong hoặc bỏ dở).
+func _drop_clean_job(job: Object) -> void:
+	_staff_clean.erase(job)
+	if not is_instance_valid(job):
+		return
+	if job is TableNode:
+		_cleaning.erase(job)
+	else:
+		(job as FloorMess).cleaning = false
+
+
+func _finish_staff_clean(c: Dictionary, job: Object) -> void:
+	if not _clean_job_alive(job):
+		_drop_clean_job(job)
+		_go_home(c)
+		return
+	_staff_clean.erase(job)
+	var who: String = c["name"]
+	if job is TableNode:
+		var table := job as TableNode
+		_cleaning.erase(table)
+		table.finish_cleaning()
+		_float_text("%s dọn xong Bàn %d!" % [who, tables.find(table) + 1], _visuals[tables.find(table)], Color("c8e6c9"))
+		_sfx("wipe", -8.0)
+	else:
+		var m := job as FloorMess
+		_mess.erase(m)
+		_float_at("%s dọn xong!" % who, m.position + m.size / 2.0, Color("c8e6c9"))
+		m.finish()
+		_sfx("sweep", -8.0)
+	_go_home(c)
+
+
+func _go_home(c: Dictionary) -> void:
+	var sprite: TextureRect = c["sprite"]
+	var legs: SpriteFrameLayer = c["legs"]
+	if not is_instance_valid(sprite):
+		return
+	var home: Vector2 = c["home"]
+	sprite.flip_h = home.x < sprite.position.x
+	if legs != null:
+		legs.play("run")
+	var t := sprite.create_tween()
+	t.tween_property(sprite, "position", home, maxf(0.25, sprite.position.distance_to(home) / CLEANER_SPEED))
+	t.tween_callback(func() -> void:
+		sprite.flip_h = false
+		if legs != null:
+			legs.stop()
+		if not c["waiter"]:
+			sprite.visible = false
+			_reception.set_host_away(false)
+		_set_cleaner_busy(c, false))
+
+
+## Chữ bay lên tại một điểm trên sân khấu (như _float_text nhưng không cần bàn).
+func _float_at(text: String, stage_pos: Vector2, color: Color) -> void:
+	var l := HuntUI.outlined_label(text, 22, color)
+	l.mouse_filter = MOUSE_FILTER_IGNORE
+	l.custom_minimum_size = Vector2(240, 0)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var at := stage_pos # _bubbles phủ đúng sân khấu từ gốc (0, 0)
+	l.position = at - Vector2(120, 40)
+	_bubbles.add_child(l)
+	var t := l.create_tween().set_parallel(true)
+	t.tween_property(l, "position:y", at.y - 100, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(l, "modulate:a", 0.0, 0.4).set_delay(0.8)
+	t.chain().tween_callback(l.queue_free)
 
 
 ## Sàn thỉnh thoảng tự bẩn thêm (rác / vũng nước).
@@ -908,6 +1128,7 @@ func _spawn_mess(kind: String, center: Vector2) -> void:
 	var area := Rect2(FLOOR_RECT.position, FLOOR_RECT.size - m.size)
 	m.position = (center - m.size / 2.0).clamp(area.position, area.end).round()
 	_mess_layer.add_child(m)
+	m.set_meta("born", _clock)
 	_mess.append(m)
 	TutorialPointer.hint("sell_mess", m, "Chạm để dọn")
 	m.tapped.connect(_clean_floor)
@@ -972,7 +1193,8 @@ func _update_ui() -> void:
 				visual.show_waiting(table.order_broth_id, table.side_items, patience, note, note_color, has_stock)
 			TableNode.State.DIRTY:
 				visual.set_highlight(0)
-				visual.show_dirty(0.0, _cleaning.has(table))
+				var staff_progress: float = _staff_clean[table]["progress"] if _staff_clean.has(table) else 0.0
+				visual.show_dirty(staff_progress, _cleaning.has(table))
 			TableNode.State.EATING:
 				visual.set_highlight(0)
 				visual.show_eating(table.order_broth_id, 1.0 - table.eating_remaining() / maxf(table.eating_time, 0.01))
