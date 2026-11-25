@@ -71,6 +71,15 @@ const SKY_KEYS := [
 # --- Âm thanh ---
 const BUBBLE_DB := -6.0
 const POP_DB := -8.0
+const MUSIC_BUS := "Music" ## Bus nhạc nền (khai báo sẵn trong default_bus_layout.tres).
+const MUSIC_FADE_IN := 0.8 ## Nhạc buổi mới to dần lâu hơn lúc bọt vỡ một chút cho êm.
+const STING_DB := -4.0
+const STINGS := { ## Tiếng chuyển cảnh phát cùng thẻ tên buổi (tạo bằng tools/make_transition_sfx.py).
+	DayManager.Phase.HUNT: "res://assets/audio/sfx/transition_morning.ogg",
+	DayManager.Phase.COOK: "res://assets/audio/sfx/transition_noon.ogg",
+	DayManager.Phase.SELL: "res://assets/audio/sfx/transition_evening.ogg",
+	DayManager.Phase.SHOP: "res://assets/audio/sfx/transition_shop.ogg",
+}
 
 var _root: Control
 var _material: ShaderMaterial
@@ -96,6 +105,8 @@ var _hold_start := -1.0 ## _time lúc bắt đầu giữ thẻ (-1: chưa giữ,
 var _holding := false ## Đang giữ thẻ tên buổi (bấm lúc này = bỏ qua).
 var _skip := false ## Người chơi đã chạm / bấm để bỏ qua thẻ.
 var _star_alpha := 0.0 ## Độ hiện của sao theo giờ (0 ban ngày .. 1 ban đêm).
+var _sting := "" ## Tiếng chuyển cảnh của buổi đang chuyển tới ("" = không có).
+var _music_tween: Tween
 
 
 ## Nằm trên màn chơi, chạy cả khi game tạm dừng; dựng sẵn cảnh và ẩn tới lần chuyển cảnh đầu tiên.
@@ -136,6 +147,8 @@ func cover(phase: int, from_menu: bool) -> void:
 	_root.visible = true
 	_root.mouse_filter = Control.MOUSE_FILTER_STOP
 	set_process(true)
+	# Nhạc buổi cũ tắt dần theo bọt: GameMusic đổi bài ngay lúc đổi buổi, nên hai bài chỉ chồng nhau dưới lớp bọt đã câm.
+	_fade_music(0.0, COVER_SECONDS)
 	if from_menu:
 		_set_progress(1.0) # Menu chính đã tự phủ sáng kín màn bằng đúng màu này.
 		return
@@ -152,6 +165,8 @@ func hold() -> void:
 		return
 	await get_tree().process_frame # Đợi màn mới dựng xong (khung nặng) rồi mới cho chữ rơi.
 	_show_title()
+	if _sting != "":
+		Sfx.play(self, _sting, STING_DB)
 	_hold_start = _time
 	_skip = false
 	_holding = true
@@ -163,6 +178,7 @@ func hold() -> void:
 ## Bọt vỡ từ dưới lên, lộ màn mới; xong thì ẩn hẳn và trả lại thao tác.
 func uncover() -> void:
 	Sfx.play(self, Sfx.POP, POP_DB)
+	_fade_music(1.0, MUSIC_FADE_IN)
 	var tween := create_tween()
 	tween.tween_method(_set_progress, 1.0, 2.0, UNCOVER_SECONDS)
 	await tween.finished
@@ -366,6 +382,7 @@ func _setup(phase: int, from_menu: bool) -> void:
 	_texts = card_text(phase)
 	_has_card = not from_menu and _texts[0] != ""
 	_hours = card_hours(phase)
+	_sting = STINGS.get(phase, "") if _has_card else ""
 	PixelTitle.apply_rich(_title, PixelTitle.for_phase(phase), TITLE_PIXEL_SCALE)
 	_pop.lamps = phase == DayManager.Phase.SELL # chiều tối: chữ rơi xong thì lần lượt "lên đèn" như quán
 	_title.text = ""
@@ -475,6 +492,20 @@ func _show_title() -> void:
 func _hold_done() -> bool:
 	var elapsed := _time - _hold_start
 	return elapsed >= HOLD_SECONDS or (_skip and elapsed >= SKIP_AFTER)
+
+
+## Đưa âm lượng bus Music về `target` (tuyến tính 0..1) trong `seconds` giây; volume_db = linear_to_db(v).
+## Chỉ chỉnh bus Music nên âm lượng chung (bus Master, bảng Cài đặt) và tiếng bọt / thẻ không bị ảnh hưởng.
+func _fade_music(target: float, seconds: float) -> void:
+	var bus := AudioServer.get_bus_index(MUSIC_BUS)
+	if bus < 0:
+		return
+	if _music_tween != null:
+		_music_tween.kill()
+	var from := db_to_linear(AudioServer.get_bus_volume_db(bus))
+	_music_tween = create_tween()
+	_music_tween.tween_method(func(v: float) -> void: AudioServer.set_bus_volume_db(bus, linear_to_db(maxf(v, 0.0001))),
+			from, target, seconds)
 
 
 ## Tiến độ bọt cho shader: 0..1 phồng phủ kín, 1..2 vỡ lộ màn mới.
